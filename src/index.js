@@ -46,7 +46,7 @@ const api = {
   init: runtime.init,
   modules: modules.map(({ name }) => name),
   refresh: runtime.refresh,
-  version: "0.4.0"
+  version: "0.4.1"
 };
 
 window.WebflowMotionKit = api;

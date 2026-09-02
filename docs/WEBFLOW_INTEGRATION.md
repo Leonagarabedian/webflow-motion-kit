@@ -204,6 +204,21 @@ The module duplicates the group once, removes duplicate IDs and interactive tab 
 
 Layers are paired in DOM order. Give the wrapper an explicit height or aspect ratio. Use `data-motion-duration`, `data-motion-stagger`, and `data-motion-ease` to tune the choreography.
 
+## Stacked cards
+
+```html
+<div data-motion="stacked-cards"
+     data-motion-stack-top="8vh"
+     data-motion-stack-offset="12"
+     data-motion-min-width="992">
+  <article data-motion-stack-card>...</article>
+  <article data-motion-stack-card>...</article>
+  <article data-motion-stack-card>...</article>
+</div>
+```
+
+Each card stays in normal document flow, becomes sticky at its configured top, and layers beneath the cards that follow it. `data-motion-stack-offset` is a pixel increment that leaves a small visible edge between stacked cards; use `0` for exact overlap. The module restores the authored layout below the minimum width and for reduced-motion visitors. Keep overflow visible on ancestors of the stack.
+
 ## Custom cursor area
 
 ```html

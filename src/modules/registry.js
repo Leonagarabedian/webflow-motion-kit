@@ -17,6 +17,7 @@ import { scrambleText } from "./scramble-text.js";
 import { scrollHighlight } from "./scroll-highlight.js";
 import { responsiveMenu } from "./responsive-menu.js";
 import { stackedImageHover } from "./stacked-image-hover.js";
+import { stackedCards } from "./stacked-cards.js";
 import { svgReveal } from "./svg-reveal.js";
 import { textReveal } from "./text-reveal.js";
 import { themeSwitch } from "./theme-switch.js";
@@ -39,6 +40,7 @@ export const modules = [
   pageTransition,
   viewSwitch,
   loopingLabels,
+  stackedCards,
   stackedImageHover,
   flipRelocation,
   pinnedMedia,

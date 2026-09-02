@@ -31,6 +31,7 @@ Status: implementation catalogue. Checked items ship in the current bundle.
 9. [x] Work grid/slider view switch.
 10. [x] Responsive looping labels.
 11. [x] MorphSVG narrative mask.
+12. [x] Responsive sticky card stack.
 
 ## Tier 3 — optional advanced studies
 
