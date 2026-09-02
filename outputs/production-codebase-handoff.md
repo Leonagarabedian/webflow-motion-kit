@@ -39,6 +39,7 @@
 21. Grid/slider view switch
 22. Responsive looping labels
 23. MorphSVG narrative
+24. Responsive sticky card stack
 
 ## Optional advanced packages
 
@@ -53,11 +54,11 @@ The Voyeur Vérité-style pinned narrative is assembled from the existing pinned
 
 ## Verification
 
-- Tests: 5 files passed, 9 tests passed
+- Tests: 6 files passed, 10 tests passed
 - Production build: passed
 - JavaScript bundle: approximately 205 KB, 77 KB gzip
 - CSS bundle: approximately 2.2 KB, 0.6 KB gzip
-- Public browser API smoke test target: `window.WebflowMotionKit.version === "0.4.0"`
+- Public browser API smoke test target: `window.WebflowMotionKit.version === "0.4.1"`
 - Local browser mount: line/word/blur splitting, scroll-highlight state, clip state, sticky media, link swap and stacked-image structure verified without console errors
 - Accordion interaction: active item, panel height and `aria-expanded` state verified after click
 - Version 0.3 component browser pass: loader completion, menu ARIA/scroll locking, Flip view switching, safe loop duplication, DrawSVG state and scroll-driven MorphSVG progression verified without console errors
