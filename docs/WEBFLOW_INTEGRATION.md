@@ -28,6 +28,48 @@
 
 Optional: `data-motion-y`, `data-motion-ease`, `data-motion-once`, and `data-motion-trigger`.
 
+## Word, character, and blur reveals
+
+```html
+<h2 data-motion="text-reveal" data-motion-split="words">
+  Reveal each word through a mask.
+</h2>
+
+<p data-motion="blur-reveal"
+   data-motion-split="lines"
+   data-motion-blur="12">
+  Resolve soft text into focus.
+</p>
+```
+
+For `text-reveal`, `data-motion-split` accepts `lines`, `words`, or `chars`; the default is `words`. For `blur-reveal`, the default is `lines`. Both accept duration, stagger, start, ease, and vertical-distance attributes. SplitText restores the original markup when the module is destroyed.
+
+## Scramble text
+
+```html
+<a data-motion="scramble-text"
+   data-motion-text="VIEW PROJECT"
+   data-motion-event="hover">
+  EXPLORE
+</a>
+```
+
+Use `data-motion-event="scroll"` for an entrance instead. Optional attributes are `data-motion-duration`, `data-motion-speed`, `data-motion-chars`, `data-motion-restore`, `data-motion-start`, and `data-motion-once`.
+
+## Scroll-progress highlight
+
+```html
+<p data-motion="scroll-highlight"
+   data-motion-split="words"
+   data-motion-opacity-from="0.2"
+   data-motion-start="top 75%"
+   data-motion-end="bottom 35%">
+  Each word resolves as the paragraph travels through the viewport.
+</p>
+```
+
+Add `data-motion-inactive-color` and `data-motion-active-color` to interpolate color as well as opacity.
+
 ## Image clip with independent parallax
 
 ```html
@@ -52,6 +94,30 @@ The clip wrapper owns `clip-path`; the inner image owns `transform`. Do not appl
 ```
 
 It automatically disables on coarse pointers and reduced-motion devices.
+
+## Duplicate-text link swap
+
+```html
+<a data-motion="link-swap" href="/work">
+  <span data-motion-target="primary">View work</span>
+  <span data-motion-target="secondary" aria-hidden="true">View work</span>
+</a>
+```
+
+The wrapper clips both labels. The module disables on coarse pointers and reduced motion; the link remains fully usable.
+
+## Stacked-image hover
+
+```html
+<a data-motion="stacked-image-hover"
+   data-motion-scales="1,.45,.2,.08">
+  <img data-motion-target="stack-layer" alt="">
+  <img data-motion-target="stack-layer" alt="">
+  <img data-motion-target="stack-layer" alt="">
+</a>
+```
+
+Layers are paired in DOM order. Give the wrapper an explicit height or aspect ratio. Use `data-motion-duration`, `data-motion-stagger`, and `data-motion-ease` to tune the choreography.
 
 ## Custom cursor area
 
@@ -80,6 +146,20 @@ The cursor target must be a descendant of the hit area. The stylesheet supplies 
 ```
 
 Items and targets are paired in DOM order. Default behavior is the sampled Noth-style journey: `1.4s`, `power4.inOut`, stagger `.2` from the end, repeat once, yoyo, scroll scrub `3`. It is disabled below `992px` and for reduced motion.
+
+## Pinned media scale
+
+```html
+<section data-motion="pinned-media"
+         data-motion-scale-from="0.8"
+         data-motion-scale-to="1">
+  <div data-motion-target="sticky">
+    <img data-motion-target="media" alt="">
+  </div>
+</section>
+```
+
+Make the outer section taller than the viewport, for example `min-height: 180vh`. The sticky wrapper remains one viewport tall. Set `data-motion-pin="true"` only when CSS sticky is unsuitable; do not combine both pinning methods for the same layout.
 
 ## Pinned steps
 
@@ -113,6 +193,19 @@ Make the section tall enough to provide the intended travel; a useful starting p
 ```
 
 Accordion items and media are paired in DOM order. Use real buttons so keyboard interaction works without extra scripting.
+
+## Theme switch
+
+```html
+<section data-motion="theme-switch"
+         data-motion-theme-target="body"
+         data-motion-background="#f0eadf"
+         data-motion-color="#171717">
+  ...
+</section>
+```
+
+You may use `data-motion-theme-class` instead of colors. The theme is active while the trigger crosses the configured start/end range and returns to the computed original colors outside it.
 
 ## Lifecycle events
 

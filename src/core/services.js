@@ -1,6 +1,13 @@
-export function createServices({ gsap, ScrollTrigger, Flip, SplitText }) {
+export function createServices({
+  gsap,
+  ScrollTrigger,
+  Flip,
+  ScrambleTextPlugin,
+  SplitText
+}) {
   return {
     Flip,
+    ScrambleTextPlugin,
     ScrollTrigger,
     SplitText,
     gsap,

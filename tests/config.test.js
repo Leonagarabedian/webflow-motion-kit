@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readBoolean, readNumber, readString } from "../src/core/config.js";
+import { readBoolean, readList, readNumber, readString } from "../src/core/config.js";
 
 describe("data attribute configuration", () => {
   it("reads typed values and falls back safely", () => {
@@ -11,5 +11,11 @@ describe("data attribute configuration", () => {
     expect(readNumber(element, "missing", 2)).toBe(2);
     expect(readBoolean(element, "enabled", true)).toBe(false);
     expect(readString(element, "missing", "fallback")).toBe("fallback");
+  });
+
+  it("reads comma-separated configuration lists", () => {
+    const element = document.createElement("div");
+    element.dataset.scales = "1, .5, .2";
+    expect(readList(element, "scales")).toEqual(["1", ".5", ".2"]);
   });
 });

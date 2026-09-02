@@ -12,7 +12,16 @@
       h1, h2 { font-size: clamp(3rem, 9vw, 9rem); line-height: .9; margin: 0; }
       .media { aspect-ratio: 16/9; background: linear-gradient(135deg, #bdff00, #5940ff); }
       .button { border: 1px solid currentColor; color: inherit; display: inline-flex; padding: 1rem 1.5rem; width: max-content; }
+      .button-label { min-width: 8rem; text-align: center; }
       .cursor { background: #fff; border-radius: 50%; color: #111; display: grid; height: 5rem; place-items: center; width: 5rem; }
+      .text-grid { display: grid; gap: 8rem; }
+      .text-grid p { font-size: clamp(1.6rem, 4vw, 4rem); line-height: 1.15; margin: 0; max-width: 22ch; }
+      .stack-demo { aspect-ratio: 4/3; display: block; max-width: 44rem; width: 100%; }
+      .stack-demo > div:nth-child(1) { background: #bdff00; }
+      .stack-demo > div:nth-child(2) { background: #5940ff; }
+      .stack-demo > div:nth-child(3) { background: #ff5c35; }
+      .pinned-media-demo { min-height: 180vh; padding: 0 8vw; }
+      .pinned-media-demo [data-motion-target="media"] { height: 72vh; width: 100%; }
       .steps { min-height: 300vh; padding: 0; }
       .step { display: grid; place-items: center; padding: 8vw; }
       .step:nth-child(1) { background: #232323; }
@@ -39,6 +48,31 @@
         <div class="media" data-motion-target="clip">
           <div class="media" data-motion-target="parallax"></div>
         </div>
+      </div>
+    </section>
+
+    <section class="text-grid">
+      <h2 data-motion="text-reveal" data-motion-split="words">Words can move as a system.</h2>
+      <p data-motion="blur-reveal" data-motion-split="lines">Blur reveals soften editorial entrances while preserving readable content.</p>
+      <p data-motion="scroll-highlight" data-motion-split="words">Scroll turns this sentence from quiet supporting copy into the active thought.</p>
+      <a class="button" data-motion="scramble-text" data-motion-text="OPEN SYSTEM" href="#components">EXPLORE CODE</a>
+    </section>
+
+    <section id="components">
+      <a class="button button-label" data-motion="link-swap" href="#stack">
+        <span data-motion-target="primary">View layers</span>
+        <span data-motion-target="secondary" aria-hidden="true">View layers</span>
+      </a>
+      <a id="stack" class="stack-demo" data-motion="stacked-image-hover" data-motion-scales="1,.48,.22">
+        <div data-motion-target="stack-layer"></div>
+        <div data-motion-target="stack-layer"></div>
+        <div data-motion-target="stack-layer"></div>
+      </a>
+    </section>
+
+    <section class="pinned-media-demo" data-motion="pinned-media">
+      <div data-motion-target="sticky">
+        <div class="media" data-motion-target="media"></div>
       </div>
     </section>
 
@@ -77,6 +111,10 @@
     <section data-motion="cursor">
       <h2>Custom cursor area</h2>
       <div class="cursor" data-motion-target="cursor">View</div>
+    </section>
+
+    <section data-motion="theme-switch" data-motion-background="#e9e3d7" data-motion-color="#141414">
+      <h2>The same modules can also coordinate a section theme.</h2>
     </section>
 
     <script type="module" src="/src/index.js"></script>

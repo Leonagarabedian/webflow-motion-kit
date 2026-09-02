@@ -16,6 +16,15 @@ export function readBoolean(element, name, fallback = false) {
   return fallback;
 }
 
+export function readList(element, name, fallback = []) {
+  const value = element.getAttribute(`data-${name}`);
+  if (!value) return fallback;
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 export function selectTarget(root, role, fallback = root) {
   return root.querySelector(`[data-motion-target="${role}"]`) ?? fallback;
 }

@@ -1,29 +1,24 @@
-import { Flip, gsap, ScrollTrigger, SplitText } from "gsap/all";
+import {
+  Flip,
+  gsap,
+  ScrambleTextPlugin,
+  ScrollTrigger,
+  SplitText
+} from "gsap/all";
 import "./styles.css";
 import { createRuntime } from "./core/runtime.js";
 import { createServices } from "./core/services.js";
-import { accordionMedia } from "./modules/accordion-media.js";
-import { cursor } from "./modules/cursor.js";
-import { flipRelocation } from "./modules/flip-relocation.js";
-import { imageClip } from "./modules/image-clip.js";
-import { lineReveal } from "./modules/line-reveal.js";
-import { magnetic } from "./modules/magnetic.js";
-import { parallax } from "./modules/parallax.js";
-import { pinnedSteps } from "./modules/pinned-steps.js";
+import { modules } from "./modules/registry.js";
 
-gsap.registerPlugin(ScrollTrigger, Flip, SplitText);
+gsap.registerPlugin(ScrollTrigger, Flip, SplitText, ScrambleTextPlugin);
 
-const modules = [
-  lineReveal,
-  imageClip,
-  parallax,
-  magnetic,
-  cursor,
-  flipRelocation,
-  pinnedSteps,
-  accordionMedia
-];
-const services = createServices({ gsap, ScrollTrigger, Flip, SplitText });
+const services = createServices({
+  gsap,
+  ScrollTrigger,
+  Flip,
+  ScrambleTextPlugin,
+  SplitText
+});
 const runtime = createRuntime({ modules, services });
 
 let booted = false;
@@ -38,8 +33,9 @@ function boot() {
 const api = {
   destroy: runtime.destroy,
   init: runtime.init,
+  modules: modules.map(({ name }) => name),
   refresh: runtime.refresh,
-  version: "0.1.0"
+  version: "0.2.0"
 };
 
 window.WebflowMotionKit = api;

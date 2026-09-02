@@ -34,18 +34,26 @@ window.WebflowMotionKit.destroy(document);
 
 For page-transition tools, destroy the outgoing container before removal, initialize the incoming container after insertion, then refresh ScrollTrigger.
 
-## Initial modules
+## Included modules
 
 | Module | Webflow attribute | Intended layer |
 |---|---|---|
 | Line reveal | `data-motion="line-reveal"` | Text element |
+| Word/character reveal | `data-motion="text-reveal"` | Text element |
+| Blur reveal | `data-motion="blur-reveal"` | Text element |
+| Scramble text | `data-motion="scramble-text"` | Text or link element |
+| Scroll highlight | `data-motion="scroll-highlight"` | Text element |
 | Image clip | `data-motion="image-clip"` | Clipping wrapper |
 | Parallax | `data-motion="parallax"` | Media wrapper or inner media |
 | Magnetic | `data-motion="magnetic"` | Button/link outer hit area |
 | Cursor | `data-motion="cursor"` | Pointer area with cursor child |
+| Link text swap | `data-motion="link-swap"` | Link/button wrapper |
+| Stacked-image hover | `data-motion="stacked-image-hover"` | Media stack wrapper |
 | Flip relocation | `data-motion="flip-relocation"` | Section containing items and destinations |
+| Pinned media | `data-motion="pinned-media"` | Tall media section |
 | Pinned steps | `data-motion="pinned-steps"` | Tall story section |
 | Accordion/media | `data-motion="accordion-media"` | Component root |
+| Theme switch | `data-motion="theme-switch"` | Section that activates a theme |
 
 Detailed attributes and Webflow hierarchies are documented in `docs/WEBFLOW_INTEGRATION.md`.
 
