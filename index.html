@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Webflow Motion Kit</title>
+    <style>
+      :root { color: #eee; background: #101010; font-family: Arial, sans-serif; }
+      * { box-sizing: border-box; }
+      body { margin: 0; }
+      section { min-height: 100vh; padding: 8vw; display: grid; align-content: center; gap: 2rem; }
+      h1, h2 { font-size: clamp(3rem, 9vw, 9rem); line-height: .9; margin: 0; }
+      .media { aspect-ratio: 16/9; background: linear-gradient(135deg, #bdff00, #5940ff); }
+      .button { border: 1px solid currentColor; color: inherit; display: inline-flex; padding: 1rem 1.5rem; width: max-content; }
+      .cursor { background: #fff; border-radius: 50%; color: #111; display: grid; height: 5rem; place-items: center; width: 5rem; }
+      .steps { min-height: 300vh; padding: 0; }
+      .step { display: grid; place-items: center; padding: 8vw; }
+      .step:nth-child(1) { background: #232323; }
+      .step:nth-child(2) { background: #5940ff; }
+      .step:nth-child(3) { background: #bdff00; color: #111; }
+      .accordion { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; }
+      .accordion button { background: none; border: 0; border-top: 1px solid; color: inherit; cursor: pointer; padding: 1rem 0; text-align: left; width: 100%; }
+      .accordion-media { min-height: 24rem; position: relative; }
+      .accordion-media > div:nth-child(1) { background: #bdff00; }
+      .accordion-media > div:nth-child(2) { background: #5940ff; }
+      .accordion-media > div:nth-child(3) { background: #ff5c35; }
+    </style>
+  </head>
+  <body>
+    <section>
+      <h1 data-motion="line-reveal">A modular motion system for Webflow.</h1>
+      <a class="button" data-motion="magnetic" href="#demo">
+        <span data-motion-target="magnetic">Explore modules</span>
+      </a>
+    </section>
+
+    <section id="demo">
+      <div data-motion="image-clip parallax" data-motion-from="5" data-motion-to="-10">
+        <div class="media" data-motion-target="clip">
+          <div class="media" data-motion-target="parallax"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="steps" data-motion="pinned-steps">
+      <div data-motion-target="sticky">
+        <article class="step" data-motion-step><h2>Strategy</h2></article>
+        <article class="step" data-motion-step><h2>Design</h2></article>
+        <article class="step" data-motion-step><h2>Build</h2></article>
+      </div>
+    </section>
+
+    <section data-motion="accordion-media">
+      <div class="accordion">
+        <div>
+          <article data-motion-accordion-item data-motion-active>
+            <button data-motion-accordion-trigger>Discovery</button>
+            <div data-motion-accordion-panel><p>Understand the problem before animating the solution.</p></div>
+          </article>
+          <article data-motion-accordion-item>
+            <button data-motion-accordion-trigger>Direction</button>
+            <div data-motion-accordion-panel><p>Turn evidence into reusable motion rules.</p></div>
+          </article>
+          <article data-motion-accordion-item>
+            <button data-motion-accordion-trigger>Delivery</button>
+            <div data-motion-accordion-panel><p>Ship one tested bundle that Webflow can load.</p></div>
+          </article>
+        </div>
+        <div class="accordion-media">
+          <div data-motion-media></div>
+          <div data-motion-media></div>
+          <div data-motion-media></div>
+        </div>
+      </div>
+    </section>
+
+    <section data-motion="cursor">
+      <h2>Custom cursor area</h2>
+      <div class="cursor" data-motion-target="cursor">View</div>
+    </section>
+
+    <script type="module" src="/src/index.js"></script>
+  </body>
+</html>
