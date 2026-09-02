@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.netlify/
+.DS_Store
+*.log
+.env
+.env.*
+!.env.example
+
+# Public-site bundles downloaded only for research; do not redistribute them.
+work/site-sources/
+work/noth-main.js
