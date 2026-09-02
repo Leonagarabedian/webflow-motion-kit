@@ -43,17 +43,24 @@ For page-transition tools, destroy the outgoing container before removal, initia
 | Blur reveal | `data-motion="blur-reveal"` | Text element |
 | Scramble text | `data-motion="scramble-text"` | Text or link element |
 | Scroll highlight | `data-motion="scroll-highlight"` | Text element |
+| SVG reveal/hover | `data-motion="svg-reveal"` | SVG wrapper |
 | Image clip | `data-motion="image-clip"` | Clipping wrapper |
 | Parallax | `data-motion="parallax"` | Media wrapper or inner media |
 | Magnetic | `data-motion="magnetic"` | Button/link outer hit area |
 | Cursor | `data-motion="cursor"` | Pointer area with cursor child |
 | Link text swap | `data-motion="link-swap"` | Link/button wrapper |
+| Responsive menu | `data-motion="responsive-menu"` | Custom navigation component |
+| Loader composition | `data-motion="loader-composition"` | Fixed loader wrapper |
+| Page transition | `data-motion="page-transition"` | Site-wide transition wrapper |
+| Grid/slider switch | `data-motion="view-switch"` | Collection/list wrapper |
+| Looping labels | `data-motion="looping-labels"` | Marquee wrapper |
 | Stacked-image hover | `data-motion="stacked-image-hover"` | Media stack wrapper |
 | Flip relocation | `data-motion="flip-relocation"` | Section containing items and destinations |
 | Pinned media | `data-motion="pinned-media"` | Tall media section |
 | Pinned steps | `data-motion="pinned-steps"` | Tall story section |
 | Accordion/media | `data-motion="accordion-media"` | Component root |
 | Theme switch | `data-motion="theme-switch"` | Section that activates a theme |
+| Morph narrative | `data-motion="morph-narrative"` | Scroll section containing SVG paths |
 
 Detailed attributes and Webflow hierarchies are documented in `docs/WEBFLOW_INTEGRATION.md`.
 

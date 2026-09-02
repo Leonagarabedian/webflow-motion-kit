@@ -70,6 +70,50 @@
   top: 0;
 }
 
+[data-motion~="responsive-menu"] [data-motion-target="menu-panel"] {
+  inset: 0;
+  position: fixed;
+  visibility: hidden;
+  z-index: 100;
+}
+
+[data-motion~="responsive-menu"] [data-motion-target="menu-toggle"] {
+  position: relative;
+  z-index: 101;
+}
+
+[data-motion~="loader-composition"] {
+  inset: 0;
+  position: fixed;
+  z-index: 1000;
+}
+
+[data-motion~="page-transition"] [data-motion-target="transition-panel"] {
+  inset: 0;
+  pointer-events: none;
+  position: fixed;
+  z-index: 999;
+}
+
+[data-motion~="looping-labels"] {
+  overflow: hidden;
+}
+
+[data-motion~="looping-labels"] [data-motion-target="loop-track"] {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+}
+
+[data-motion~="looping-labels"] [data-motion-target="loop-group"] {
+  display: flex;
+  flex: none;
+}
+
+[data-motion-morph-shape] {
+  visibility: hidden;
+}
+
 @media (max-width: 991px) {
   [data-motion~="pinned-steps"] [data-motion-target="sticky"] {
     height: auto;

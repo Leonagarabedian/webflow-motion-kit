@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Motion Kit — Component Demo</title>
+    <style>
+      :root { background: #101010; color: #f4f1e8; font-family: Arial, sans-serif; }
+      * { box-sizing: border-box; }
+      body { margin: 0; }
+      section { min-height: 100vh; padding: 10vw; }
+      button, a { color: inherit; }
+      .loader, .transition { background: #5940ff; }
+      .loader-panel { align-content: center; display: grid; height: 100%; padding: 10vw; }
+      .loader-line { background: #ffffff33; height: 2px; margin-top: 2rem; }
+      .loader-progress { background: white; height: 100%; }
+      .transition { height: 100%; width: 100%; }
+      .menu-toggle { background: #101010; border: 1px solid; padding: .75rem 1rem; }
+      .menu-panel { align-content: center; background: #bdff00; color: #101010; display: grid; gap: 1rem; padding: 10vw; }
+      .menu-panel a { font-size: 4rem; }
+      .draw-demo { width: min(30rem, 80vw); }
+      .view-controls { display: flex; gap: 1rem; margin-bottom: 2rem; }
+      .view-list { display: grid; gap: 1rem; }
+      .is-grid .view-list { grid-template-columns: repeat(3, 1fr); }
+      .is-slider .view-list { display: flex; overflow: auto; }
+      .view-card { aspect-ratio: 4/3; background: #5940ff; display: grid; min-width: 45vw; place-items: center; }
+      .loop-group { gap: 4rem; padding-right: 4rem; }
+      .loop-group span { font-size: 4rem; white-space: nowrap; }
+      .morph-story { min-height: 220vh; }
+      .morph-story svg { height: 70vh; position: sticky; top: 15vh; width: 100%; }
+    </style>
+  </head>
+  <body>
+    <div class="loader" data-motion="loader-composition">
+      <div class="loader-panel" data-motion-target="loader-panel">
+        <strong data-motion-target="loader-item">Motion Kit 0.3.0</strong>
+        <div class="loader-line">
+          <div class="loader-progress" data-motion-target="loader-progress"></div>
+        </div>
+      </div>
+    </div>
+
+    <div data-motion="page-transition" aria-hidden="true">
+      <div class="transition" data-motion-target="transition-panel"></div>
+    </div>
+
+    <nav data-motion="responsive-menu">
+      <button class="menu-toggle" data-motion-target="menu-toggle">Menu</button>
+      <div class="menu-panel" data-motion-target="menu-panel">
+        <a data-motion-target="menu-item" href="#svg" data-motion-no-transition>SVG</a>
+        <a data-motion-target="menu-item" href="#views" data-motion-no-transition>Views</a>
+      </div>
+    </nav>
+
+    <section id="svg">
+      <div data-motion="svg-reveal" data-motion-hover="true">
+        <svg class="draw-demo" data-motion-target="svg-hover" viewBox="0 0 300 180">
+          <path data-motion-target="svg-path" d="M20 145 C65 20 235 20 280 145" fill="none" stroke="currentColor" stroke-width="4" />
+          <circle data-motion-target="svg-path" cx="150" cy="95" r="42" fill="none" stroke="currentColor" stroke-width="4" />
+        </svg>
+      </div>
+    </section>
+
+    <section id="views" data-motion="view-switch" data-motion-default-view="grid">
+      <div class="view-controls">
+        <button data-motion-view="grid">Grid</button>
+        <button data-motion-view="slider">Slider</button>
+      </div>
+      <div class="view-list">
+        <article class="view-card" data-motion-target="view-item">One</article>
+        <article class="view-card" data-motion-target="view-item">Two</article>
+        <article class="view-card" data-motion-target="view-item">Three</article>
+      </div>
+    </section>
+
+    <section>
+      <div data-motion="looping-labels" data-motion-duration="12" data-motion-pause-hover="true">
+        <div data-motion-target="loop-track">
+          <div class="loop-group" data-motion-target="loop-group">
+            <span>Strategy</span><span>Design</span><span>Development</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="morph-story" data-motion="morph-narrative">
+      <svg viewBox="0 0 300 300">
+        <path data-motion-target="morph-source" d="M150,35 C215,35 265,85 265,150 C265,215 215,265 150,265 C85,265 35,215 35,150 C35,85 85,35 150,35 Z" fill="#bdff00" />
+        <path data-motion-morph-shape d="M150,25 L275,150 L150,275 L25,150 Z" />
+        <path data-motion-morph-shape d="M150,20 L180,120 L280,150 L180,180 L150,280 L120,180 L20,150 L120,120 Z" />
+      </svg>
+    </section>
+
+    <script type="module" src="/src/index.js"></script>
+  </body>
+</html>

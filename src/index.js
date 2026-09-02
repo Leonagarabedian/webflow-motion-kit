@@ -1,6 +1,8 @@
 import {
+  DrawSVGPlugin,
   Flip,
   gsap,
+  MorphSVGPlugin,
   ScrambleTextPlugin,
   ScrollTrigger,
   SplitText
@@ -10,12 +12,21 @@ import { createRuntime } from "./core/runtime.js";
 import { createServices } from "./core/services.js";
 import { modules } from "./modules/registry.js";
 
-gsap.registerPlugin(ScrollTrigger, Flip, SplitText, ScrambleTextPlugin);
+gsap.registerPlugin(
+  ScrollTrigger,
+  Flip,
+  SplitText,
+  ScrambleTextPlugin,
+  DrawSVGPlugin,
+  MorphSVGPlugin
+);
 
 const services = createServices({
+  DrawSVGPlugin,
   gsap,
   ScrollTrigger,
   Flip,
+  MorphSVGPlugin,
   ScrambleTextPlugin,
   SplitText
 });
@@ -35,7 +46,7 @@ const api = {
   init: runtime.init,
   modules: modules.map(({ name }) => name),
   refresh: runtime.refresh,
-  version: "0.2.0"
+  version: "0.3.0"
 };
 
 window.WebflowMotionKit = api;

@@ -15,7 +15,7 @@ Status: implementation catalogue. Checked items ship in the current bundle.
 9. [x] Magnetic element with optional inner target.
 10. [x] Custom cursor follower.
 11. [x] Duplicate-text button/link swap.
-12. SVG path/group reveal and elastic hover.
+12. [x] SVG path/group reveal and elastic hover.
 13. [x] Theme-switch trigger.
 
 ## Tier 2 — configurable components
@@ -24,13 +24,13 @@ Status: implementation catalogue. Checked items ship in the current bundle.
 2. [x] Pinned media scale/zoom.
 3. [x] Stacked-image hover.
 4. [x] Accordion synchronized with media.
-5. Responsive menu reveal.
-6. Loader composition.
-7. Page transition adapter.
+5. [x] Responsive menu reveal.
+6. [x] Loader composition.
+7. [x] Page transition adapter.
 8. [x] Pinned step/process narrative.
-9. Work grid/slider view switch.
-10. Responsive looping labels.
-11. MorphSVG narrative mask.
+9. [x] Work grid/slider view switch.
+10. [x] Responsive looping labels.
+11. [x] MorphSVG narrative mask.
 
 ## Tier 3 — site-specific studies
 

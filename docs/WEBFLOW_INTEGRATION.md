@@ -70,6 +70,21 @@ Use `data-motion-event="scroll"` for an entrance instead. Optional attributes ar
 
 Add `data-motion-inactive-color` and `data-motion-active-color` to interpolate color as well as opacity.
 
+## SVG draw reveal and elastic hover
+
+```html
+<div data-motion="svg-reveal" data-motion-hover="true">
+  <svg data-motion-target="svg-hover" viewBox="0 0 100 100">
+    <path data-motion-target="svg-path"
+          d="M10 50 L90 50"
+          fill="none"
+          stroke="currentColor" />
+  </svg>
+</div>
+```
+
+The paths must have a visible stroke. Mark explicit paths with `data-motion-target="svg-path"`; otherwise the module uses all supported stroke shapes inside the wrapper. Optional attributes include duration, stagger, start, ease, hover scale, hover rotation, and hover duration.
+
 ## Image clip with independent parallax
 
 ```html
@@ -105,6 +120,76 @@ It automatically disables on coarse pointers and reduced-motion devices.
 ```
 
 The wrapper clips both labels. The module disables on coarse pointers and reduced motion; the link remains fully usable.
+
+## Responsive menu
+
+```html
+<nav data-motion="responsive-menu" data-motion-lock-scroll="true">
+  <button data-motion-target="menu-toggle">Menu</button>
+  <div data-motion-target="menu-panel">
+    <a data-motion-target="menu-item" href="/work">Work</a>
+    <a data-motion-target="menu-item" href="/about">About</a>
+  </div>
+</nav>
+```
+
+Use this with a custom navigation component, not Webflow's built-in Navbar interaction. The module manages `aria-expanded`, `aria-hidden`, Escape-to-close, body scroll locking, link closing, and reversal. Optional attributes: `data-motion-duration`, `data-motion-stagger`, `data-motion-ease`, `data-motion-lock-scroll`, and `data-motion-close-on-link`.
+
+## Loader composition
+
+```html
+<div data-motion="loader-composition">
+  <div data-motion-target="loader-panel">
+    <div data-motion-target="loader-item">Studio name</div>
+    <div class="loader-line">
+      <div data-motion-target="loader-progress"></div>
+    </div>
+  </div>
+</div>
+```
+
+Place the loader once near the top of the page. It plays after window load, then hides itself without removing the Webflow element. Configure item, progress and exit durations independently. Reduced-motion visitors skip the composition.
+
+## Page-transition adapter
+
+```html
+<div data-motion="page-transition" aria-hidden="true">
+  <div data-motion-target="transition-panel"></div>
+</div>
+```
+
+Place one instance on every participating page, preferably in a Webflow component. It animates the panel away on entry and over the page before eligible same-origin navigation. External links, downloads, new-tab links, modifier clicks, and same-page anchors are ignored. Add `data-motion-no-transition` to any link that should bypass it. This adapter lets Webflow perform navigation; it is not an SPA router.
+
+## Grid/slider view switch
+
+```html
+<section data-motion="view-switch" data-motion-default-view="grid">
+  <button data-motion-view="grid">Grid</button>
+  <button data-motion-view="slider">Slider</button>
+  <div class="work-list">
+    <article data-motion-target="view-item">...</article>
+    <article data-motion-target="view-item">...</article>
+  </div>
+</section>
+```
+
+Create Webflow styles for `.is-grid` and `.is-slider` on the component root; the module toggles those classes and uses Flip to animate the items between the two layouts. Buttons receive `aria-pressed`. Keep item DOM order identical in both views.
+
+## Looping labels
+
+```html
+<div data-motion="looping-labels"
+     data-motion-duration="18"
+     data-motion-pause-hover="true">
+  <div data-motion-target="loop-track">
+    <div data-motion-target="loop-group">
+      <span>Strategy</span><span>Design</span><span>Development</span>
+    </div>
+  </div>
+</div>
+```
+
+The module duplicates the group once, removes duplicate IDs and interactive tab stops, then loops the track continuously. Use `data-motion-direction="right"` to reverse direction. It pauses while off-screen and restores a single original group on cleanup.
 
 ## Stacked-image hover
 
@@ -206,6 +291,22 @@ Accordion items and media are paired in DOM order. Use real buttons so keyboard 
 ```
 
 You may use `data-motion-theme-class` instead of colors. The theme is active while the trigger crosses the configured start/end range and returns to the computed original colors outside it.
+
+## MorphSVG narrative
+
+```html
+<section data-motion="morph-narrative"
+         data-motion-start="top top"
+         data-motion-end="bottom bottom">
+  <svg viewBox="0 0 100 100">
+    <path data-motion-target="morph-source" d="M10,10 ... Z"></path>
+    <path data-motion-morph-shape d="M20,5 ... Z"></path>
+    <path data-motion-morph-shape d="M5,20 ... Z"></path>
+  </svg>
+</section>
+```
+
+The source path morphs through each hidden shape in DOM order as scroll advances. Give the section enough height for the story. Optional attributes: scrub, start, end, `data-motion-morph-type="linear|rotational"`, and `data-motion-morph-map="size|position|complexity"`. Test custom path pairs carefully because source geometry determines whether a morph twists or remains smooth.
 
 ## Lifecycle events
 

@@ -1,12 +1,16 @@
 export function createServices({
+  DrawSVGPlugin,
   gsap,
   ScrollTrigger,
   Flip,
+  MorphSVGPlugin,
   ScrambleTextPlugin,
   SplitText
 }) {
   return {
+    DrawSVGPlugin,
     Flip,
+    MorphSVGPlugin,
     ScrambleTextPlugin,
     ScrollTrigger,
     SplitText,
