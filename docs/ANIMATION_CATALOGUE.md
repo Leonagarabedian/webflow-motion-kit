@@ -32,14 +32,17 @@ Status: implementation catalogue. Checked items ship in the current bundle.
 10. [x] Responsive looping labels.
 11. [x] MorphSVG narrative mask.
 
-## Tier 3 — site-specific studies
+## Tier 3 — optional advanced studies
 
-1. Nothin’ fluid canvas reveal.
-2. Nothin’ velocity-reactive glitch section.
-3. Voyeur Vérité stacked hero/about/history narratives.
-4. Scheme Engine WebGL work browser.
-5. Jesko Jets hero/aircraft/globe scroll compositions.
-6. a-lign timeline/image-sequence and process compositions.
+1. [x] Nothin’-informed fluid canvas engine.
+2. [x] Nothin’-informed velocity-reactive effect.
+3. [x] Voyeur Vérité-informed narrative composition using main-kit modules.
+4. [x] Scheme Engine-informed WebGL work browser.
+5. [x] House of Corto-informed infinite product world.
+6. [x] Jesko Jets-informed hero/aircraft/globe scroll composition.
+7. [x] a-lign-informed timeline/image-sequence composition.
+
+These are original reusable implementations derived from observed behavior. They accept placeholder or project-approved media and do not redistribute source-site assets or claim source-site visual fidelity without project-specific integration and synchronized QA.
 
 ## Webflow API
 

@@ -64,6 +64,10 @@ For page-transition tools, destroy the outgoing container before removal, initia
 
 Detailed attributes and Webflow hierarchies are documented in `docs/WEBFLOW_INTEGRATION.md`.
 
+## Optional advanced packages
+
+Six heavier systems build as separate ES-module entries under `dist/advanced/`: fluid canvas, velocity effects, WebGL work browser, infinite product world, aircraft scroll story, and canvas image sequence. They are not included in `motion-kit.js`; Webflow pages load only the package they use. Installation and markup contracts are documented in `docs/ADVANCED_PACKAGES.md`.
+
 ## Repository boundary
 
 The research manifests may be committed. Downloaded third-party production bundles under `work/` are ignored and must not be redistributed.

@@ -12,6 +12,7 @@
 - Automated configuration and lifecycle tests
 - Research manifests kept in the same repository
 - Downloaded third-party bundles excluded by `.gitignore`
+- Six optional advanced packages with separate page-level loading
 
 ## Included modules
 
@@ -39,16 +40,29 @@
 22. Responsive looping labels
 23. MorphSVG narrative
 
+## Optional advanced packages
+
+1. Fluid pointer/scroll canvas
+2. Scroll-velocity layer effects
+3. WebGL work browser with filters
+4. Infinite draggable product world
+5. Aircraft scroll story
+6. Canvas image sequence
+
+The Voyeur Vérité-style pinned narrative is assembled from the existing pinned-steps, morph-narrative and theme-switch modules rather than duplicating another package.
+
 ## Verification
 
-- Tests: 4 files passed, 6 tests passed
+- Tests: 5 files passed, 9 tests passed
 - Production build: passed
 - JavaScript bundle: approximately 205 KB, 77 KB gzip
 - CSS bundle: approximately 2.2 KB, 0.6 KB gzip
-- Public browser API smoke test target: `window.WebflowMotionKit.version === "0.3.0"`
+- Public browser API smoke test target: `window.WebflowMotionKit.version === "0.4.0"`
 - Local browser mount: line/word/blur splitting, scroll-highlight state, clip state, sticky media, link swap and stacked-image structure verified without console errors
 - Accordion interaction: active item, panel height and `aria-expanded` state verified after click
 - Version 0.3 component browser pass: loader completion, menu ARIA/scroll locking, Flip view switching, safe loop duplication, DrawSVG state and scroll-driven MorphSVG progression verified without console errors
+- Advanced production build: six entries plus shared CSS and hashed dependency chunks; the main bundle remains unchanged at approximately 77 KB gzip
+- Advanced browser pass: three canvases mounted at device resolution, eight infinite-world clones created, work-browser scrolling/filtering verified, aircraft late-stage transforms reached, and both image-sequence stages activated without new console errors or warnings
 - Syntax and whitespace checks: passed
 
 ## Commands
@@ -64,6 +78,13 @@ pnpm run check
 ```html
 <link rel="stylesheet" href="https://YOUR-SITE.netlify.app/motion-kit.css">
 <script defer src="https://YOUR-SITE.netlify.app/motion-kit.js"></script>
+```
+
+Advanced packages add the shared stylesheet once and only the page-specific module:
+
+```html
+<link rel="stylesheet" href="https://YOUR-SITE.netlify.app/advanced/motion-advanced.css">
+<script type="module" src="https://YOUR-SITE.netlify.app/advanced/fluid-canvas.js"></script>
 ```
 
 ## Deployment

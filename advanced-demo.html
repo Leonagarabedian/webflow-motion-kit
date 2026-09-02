@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Motion Packages</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { margin: 0; background: #0c0c0c; color: #f4f1e8; font: 16px/1.35 Arial, sans-serif; }
+      h1, h2, p { margin: 0; }
+      header { min-height: 65vh; padding: 8vw; display: grid; align-content: end; }
+      .label { position: absolute; z-index: 4; top: 2rem; left: 2rem; font-size: .75rem; letter-spacing: .14em; text-transform: uppercase; }
+      .fluid { height: 85vh; }
+      .velocity { min-height: 120vh; display: grid; place-items: center; overflow: hidden; position: relative; }
+      .velocity h2 { position: absolute; font-size: clamp(4rem, 14vw, 13rem); white-space: nowrap; }
+      .velocity h2:nth-of-type(1) { color: #f4f1e8; z-index: 3; }
+      .velocity h2:nth-of-type(2) { color: #5940ff; transform: translateY(-.12em); }
+      .velocity h2:nth-of-type(3) { color: #bdff00; transform: translateY(.12em); }
+      .work-browser { min-height: 350vh; background: #ece9df; color: #111; }
+      .work-browser [data-advanced-target="viewport"] { background: #ece9df; }
+      .filters { position: sticky; z-index: 5; top: 1.5rem; display: flex; gap: .5rem; padding: 1.5rem; }
+      button { border: 1px solid currentColor; border-radius: 10rem; background: transparent; padding: .6rem 1rem; }
+      button[aria-pressed="true"] { background: #111; color: white; }
+      .world-section { background: #ff5c35; }
+      .world-grid { width: 110vw; height: 110vh; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; padding: 5vw; }
+      .world-card { display: grid; place-items: center; min-height: 12rem; background: #f4f1e8; color: #111; font-size: clamp(2rem, 5vw, 5rem); }
+      .aircraft { color: white; background: #111827; }
+      .aircraft .sticky { display: grid; place-items: center; }
+      .aircraft .bg { background: radial-gradient(circle, #725cff, #101629 68%); }
+      .aircraft .title { position: absolute; z-index: 2; font-size: 10vw; }
+      .aircraft .left { left: 4vw; }
+      .aircraft .right { right: 4vw; }
+      .aircraft .plane { position: absolute; z-index: 3; font-size: 20vw; display: grid; place-items: center; }
+      .aircraft .blueprint { z-index: 4; inset: 12% 18%; border: 1px solid #67e8f9; }
+      .aircraft .globe { z-index: 4; inset: auto 7vw 7vw auto; width: 18vw; height: 18vw; border: 1px solid white; border-radius: 50%; }
+      .aircraft .specs { position: absolute; z-index: 5; left: 7vw; bottom: 7vw; }
+      .sequence { min-height: 400vh; background: #050505; }
+      .sequence-stage { position: absolute; z-index: 3; left: 7vw; bottom: 7vw; opacity: 0; font-size: clamp(2rem, 7vw, 7rem); transition: opacity .2s; }
+      .sequence-stage.is-active { opacity: 1; }
+    </style>
+  </head>
+  <body>
+    <header><h1>Advanced motion package validation</h1></header>
+
+    <section class="fluid" data-advanced="fluid-canvas" data-advanced-color-a="#5940ff" data-advanced-color-b="#bdff00">
+      <p class="label">01 — Fluid canvas: move the pointer</p>
+    </section>
+
+    <section class="velocity" data-advanced="velocity-effects" data-advanced-strength="40">
+      <p class="label">02 — Velocity echoes</p>
+      <h2 data-advanced-velocity-layer>VELOCITY</h2>
+      <h2 data-advanced-velocity-layer aria-hidden="true">VELOCITY</h2>
+      <h2 data-advanced-velocity-layer aria-hidden="true">VELOCITY</h2>
+    </section>
+
+    <section class="work-browser" data-advanced="webgl-work-browser">
+      <div data-advanced-target="viewport"></div>
+      <div class="filters">
+        <button data-advanced-filter="all" aria-pressed="true">All</button>
+        <button data-advanced-filter="identity" aria-pressed="false">Identity</button>
+      </div>
+      <article data-advanced-work-item data-advanced-category="identity"></article>
+      <article data-advanced-work-item data-advanced-category="digital"></article>
+      <article data-advanced-work-item data-advanced-category="identity"></article>
+    </section>
+
+    <section class="world-section" data-advanced="infinite-product-world" data-advanced-capture-wheel="false">
+      <p class="label">04 — Drag the infinite world</p>
+      <div data-advanced-target="world">
+        <div class="world-grid" data-advanced-target="world-group">
+          <div class="world-card">A</div><div class="world-card">B</div><div class="world-card">C</div>
+          <div class="world-card">D</div><div class="world-card">E</div><div class="world-card">F</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="aircraft" data-advanced="aircraft-scroll-story">
+      <div class="sticky" data-advanced-target="sticky">
+        <div class="bg" data-advanced-target="hero-background"></div>
+        <h2 class="title left" data-advanced-target="hero-left">PRIVATE</h2>
+        <h2 class="title right" data-advanced-target="hero-right">FLIGHT</h2>
+        <div class="plane" data-advanced-target="aircraft">✈</div>
+        <div class="blueprint" data-advanced-target="blueprint"></div>
+        <div class="globe" data-advanced-target="globe"></div>
+        <div class="specs"><p data-advanced-target="spec">Mach 0.92</p><p data-advanced-target="spec">7,500 nm</p></div>
+      </div>
+    </section>
+
+    <section class="sequence" data-advanced="image-sequence" data-advanced-crossorigin="none">
+      <div data-advanced-target="sticky">
+        <div class="sequence-stage" data-advanced-sequence-stage>FRAME ONE</div>
+        <div class="sequence-stage" data-advanced-sequence-stage>FRAME TWO</div>
+      </div>
+      <img data-advanced-frame src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1600' height='900'%3E%3Crect width='1600' height='900' fill='%235940ff'/%3E%3Ccircle cx='500' cy='450' r='220' fill='%23bdff00'/%3E%3C/svg%3E" alt="">
+      <img data-advanced-frame src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1600' height='900'%3E%3Crect width='1600' height='900' fill='%23ff5c35'/%3E%3Ccircle cx='1100' cy='450' r='320' fill='%235940ff'/%3E%3C/svg%3E" alt="">
+    </section>
+
+    <script type="module" src="/src/advanced/fluid-canvas.js"></script>
+    <script type="module" src="/src/advanced/velocity-effects.js"></script>
+    <script type="module" src="/src/advanced/webgl-work-browser.js"></script>
+    <script type="module" src="/src/advanced/infinite-product-world.js"></script>
+    <script type="module" src="/src/advanced/aircraft-scroll-story.js"></script>
+    <script type="module" src="/src/advanced/image-sequence.js"></script>
+  </body>
+</html>

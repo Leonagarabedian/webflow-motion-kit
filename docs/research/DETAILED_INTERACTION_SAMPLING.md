@@ -25,6 +25,6 @@ High-salience DOM/GSAP sequences were sampled at `0, .05 … 1`. Canvas or input
 4. Fixed internal worlds are not ScrollTrigger timelines. Corto needs normalized wheel/touch input, inertia and world wrapping.
 5. Site-specific compositions can still be assembled from reusable primitives. Jesko’s aircraft piece combines sticky layout, scaling, CSS masks and staged media handoff.
 
-## Next gate
+## Implementation gate completed
 
-The evidence is sufficient to begin the production scaffold and first module batch: lifecycle registry, line reveal, image clip, parallax, magnetic/cursor, Flip relocation, pinned steps/process, and accordion-media. Advanced WebGL and fluid/canvas studies remain isolated packages.
+The production scaffold, main module catalogue and six isolated advanced packages are implemented. The advanced status matrix records the boundary between completed reusable behavior and the approved project media/art direction still required for a source-specific build.
