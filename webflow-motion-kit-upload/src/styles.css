@@ -1,0 +1,60 @@
+[data-motion~="cursor"] {
+  cursor: none;
+  position: relative;
+}
+
+[data-motion-target="cursor"] {
+  left: 0;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  will-change: transform, opacity;
+  z-index: 20;
+}
+
+[data-motion~="image-clip"] {
+  overflow: clip;
+}
+
+[data-motion~="pinned-steps"] [data-motion-target="sticky"] {
+  height: 100svh;
+  overflow: clip;
+  position: sticky;
+  top: 0;
+}
+
+[data-motion~="pinned-steps"] [data-motion-step] {
+  inset: 0;
+  position: absolute;
+}
+
+[data-motion-accordion-panel] {
+  overflow: hidden;
+}
+
+[data-motion-media] {
+  inset: 0;
+  position: absolute;
+}
+
+@media (max-width: 991px) {
+  [data-motion~="pinned-steps"] [data-motion-target="sticky"] {
+    height: auto;
+    overflow: visible;
+    position: relative;
+  }
+
+  [data-motion~="pinned-steps"] [data-motion-step] {
+    inset: auto;
+    opacity: 1 !important;
+    position: relative;
+    transform: none !important;
+    visibility: visible !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-motion] {
+    scroll-behavior: auto;
+  }
+}
