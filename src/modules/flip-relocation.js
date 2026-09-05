@@ -2,6 +2,7 @@ import { readNumber, readString } from "../core/config.js";
 
 export const flipRelocation = {
   name: "flip-relocation",
+  category: "component",
   selector: '[data-motion~="flip-relocation"]',
   mount(element, { Flip, ScrollTrigger, gsap }) {
     const items = [...element.querySelectorAll("[data-flip-item]")];

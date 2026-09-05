@@ -7,6 +7,7 @@ import {
 
 export const pinnedMedia = {
   name: "pinned-media",
+  category: "component",
   selector: '[data-motion~="pinned-media"]',
   mount(element, { gsap }) {
     const sticky = selectTarget(element, "sticky", element);

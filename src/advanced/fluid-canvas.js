@@ -157,6 +157,7 @@ function mount(element) {
 }
 
 createAdvancedPackage({
+  category: "component",
   mount,
   name: "fluid-canvas",
   selector: '[data-advanced="fluid-canvas"]'

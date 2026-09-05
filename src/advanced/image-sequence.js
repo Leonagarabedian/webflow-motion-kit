@@ -137,6 +137,7 @@ function mount(element) {
 }
 
 createAdvancedPackage({
+  category: "component",
   mount,
   name: "image-sequence",
   selector: '[data-advanced="image-sequence"]'

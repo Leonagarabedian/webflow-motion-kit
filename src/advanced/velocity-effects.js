@@ -51,6 +51,7 @@ function mount(element) {
 }
 
 createAdvancedPackage({
+  category: "primitive",
   mount,
   name: "velocity-effects",
   selector: '[data-advanced="velocity-effects"]'

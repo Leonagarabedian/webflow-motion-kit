@@ -2,6 +2,7 @@ import { readList, readNumber, readString, selectTargets } from "../core/config.
 
 export const stackedImageHover = {
   name: "stacked-image-hover",
+  category: "component",
   selector: '[data-motion~="stacked-image-hover"]',
   mount(element, { gsap, reducedMotion, supportsHover }) {
     const layers = selectTargets(element, "stack-layer");

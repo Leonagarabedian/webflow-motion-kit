@@ -2,6 +2,7 @@ import { readNumber, readString, selectTarget, selectTargets } from "../core/con
 
 export const loaderComposition = {
   name: "loader-composition",
+  category: "component",
   selector: '[data-motion~="loader-composition"]',
   mount(element, { gsap, reducedMotion }) {
     const panel = selectTarget(element, "loader-panel", element);

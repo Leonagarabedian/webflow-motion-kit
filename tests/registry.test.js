@@ -6,5 +6,6 @@ describe("module registry", () => {
     expect(modules).toHaveLength(24);
     expect(new Set(modules.map(({ name }) => name))).toHaveProperty("size", 24);
     expect(modules.every(({ mount, selector }) => typeof mount === "function" && selector)).toBe(true);
+    expect(modules.every(({ category }) => ["primitive", "component", "composition"].includes(category))).toBe(true);
   });
 });

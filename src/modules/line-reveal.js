@@ -7,6 +7,7 @@ import {
 
 export const lineReveal = {
   name: "line-reveal",
+  category: "primitive",
   selector: '[data-motion~="line-reveal"]',
   mount(element, { gsap, SplitText, reducedMotion }) {
     if (reducedMotion()) {

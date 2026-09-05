@@ -2,6 +2,7 @@ import { readNumber, readString, selectTargets } from "../core/config.js";
 
 export const viewSwitch = {
   name: "view-switch",
+  category: "component",
   selector: '[data-motion~="view-switch"]',
   mount(element, { Flip, ScrollTrigger, reducedMotion }) {
     const buttons = [...element.querySelectorAll("[data-motion-view]")];

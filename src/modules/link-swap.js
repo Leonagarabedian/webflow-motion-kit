@@ -2,6 +2,7 @@ import { readNumber, readString, selectTarget } from "../core/config.js";
 
 export const linkSwap = {
   name: "link-swap",
+  category: "primitive",
   selector: '[data-motion~="link-swap"]',
   mount(element, { gsap, reducedMotion, supportsHover }) {
     const primary = selectTarget(element, "primary", null);

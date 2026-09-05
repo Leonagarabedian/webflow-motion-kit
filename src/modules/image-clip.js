@@ -8,6 +8,7 @@ import {
 
 export const imageClip = {
   name: "image-clip",
+  category: "primitive",
   selector: '[data-motion~="image-clip"]',
   mount(element, { gsap, reducedMotion }) {
     const target = selectTarget(element, "clip", element);

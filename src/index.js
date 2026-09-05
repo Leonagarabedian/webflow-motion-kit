@@ -10,6 +10,7 @@ import {
 import "./styles.css";
 import { createRuntime } from "./core/runtime.js";
 import { createServices } from "./core/services.js";
+import { motionTokens } from "./core/tokens.js";
 import { modules } from "./modules/registry.js";
 
 gsap.registerPlugin(
@@ -44,8 +45,10 @@ function boot() {
 const api = {
   destroy: runtime.destroy,
   init: runtime.init,
+  moduleInventory: modules.map(({ category, name }) => ({ category, name })),
   modules: modules.map(({ name }) => name),
   refresh: runtime.refresh,
+  tokens: motionTokens,
   version: "0.4.2"
 };
 

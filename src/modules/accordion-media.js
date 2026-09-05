@@ -2,6 +2,7 @@ import { readNumber } from "../core/config.js";
 
 export const accordionMedia = {
   name: "accordion-media",
+  category: "component",
   selector: '[data-motion~="accordion-media"]',
   mount(element, { gsap, reducedMotion }) {
     const items = [...element.querySelectorAll("[data-motion-accordion-item]")];

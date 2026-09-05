@@ -2,7 +2,7 @@
 
 Status: implementation catalogue. Checked items ship in the current bundle.
 
-## Tier 1 — reusable primitives
+## Primitive modules
 
 1. [x] Masked line reveal.
 2. [x] Word/character rise reveal.
@@ -18,7 +18,7 @@ Status: implementation catalogue. Checked items ship in the current bundle.
 12. [x] SVG path/group reveal and elastic hover.
 13. [x] Theme-switch trigger.
 
-## Tier 2 — configurable components
+## Component modules
 
 1. [x] Flip relocation between Webflow containers.
 2. [x] Pinned media scale/zoom.
@@ -33,7 +33,7 @@ Status: implementation catalogue. Checked items ship in the current bundle.
 11. [x] MorphSVG narrative mask.
 12. [x] Responsive sticky card stack.
 
-## Tier 3 — optional advanced studies
+## Advanced packages
 
 1. [x] Nothin’-informed fluid canvas engine.
 2. [x] Nothin’-informed velocity-reactive effect.
@@ -49,10 +49,27 @@ These are original reusable implementations derived from observed behavior. They
 
 ```html
 <h2 data-motion="line-reveal"></h2>
-<div data-motion="image-reveal" data-motion-direction="left"></div>
-<div data-motion="parallax" data-motion-y="-12" data-motion-scrub="1.5"></div>
+<div data-motion="image-clip" data-motion-clip-from="inset(0 0 100% 0)"></div>
+<div data-motion="parallax" data-motion-from="-5" data-motion-to="-20" data-motion-scrub="1.5"></div>
 <a data-motion="magnetic" data-motion-strength="24"></a>
-<section data-motion="pinned-media" data-motion-breakpoint="desktop"></section>
+<section data-motion="pinned-media" data-motion-min-width="992"></section>
 ```
 
 Each shipped module documents its Webflow structure and configurable attributes in `WEBFLOW_INTEGRATION.md`. Tier 3 studies stay separate because they require site-specific canvas/WebGL assets and should not inflate every Webflow project.
+
+
+## Shared motion tokens
+
+The main MotionKit now accepts semantic aliases anywhere the corresponding data attribute is read. Raw values remain valid.
+
+```html
+<h2
+  data-motion="line-reveal"
+  data-motion-duration="slow"
+  data-motion-stagger="relaxed"
+  data-motion-y="reveal"
+  data-motion-ease="enter"
+></h2>
+```
+
+Available token groups live in `src/core/tokens.js` and are exposed at `WebflowMotionKit.tokens`. The code-level category inventory is exposed at `WebflowMotionKit.moduleInventory`.

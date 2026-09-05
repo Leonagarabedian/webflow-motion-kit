@@ -88,6 +88,7 @@ function mount(element) {
 }
 
 createAdvancedPackage({
+  category: "composition",
   mount,
   name: "aircraft-scroll-story",
   selector: '[data-advanced="aircraft-scroll-story"]'

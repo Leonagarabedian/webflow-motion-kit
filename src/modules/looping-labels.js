@@ -11,6 +11,7 @@ function sanitizeClone(clone) {
 
 export const loopingLabels = {
   name: "looping-labels",
+  category: "primitive",
   selector: '[data-motion~="looping-labels"]',
   mount(element, { gsap, reducedMotion, supportsHover }) {
     const track = selectTarget(element, "loop-track", null);

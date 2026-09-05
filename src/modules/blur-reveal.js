@@ -2,6 +2,7 @@ import { readNumber, readString, resolveTrigger } from "../core/config.js";
 
 export const blurReveal = {
   name: "blur-reveal",
+  category: "primitive",
   selector: '[data-motion~="blur-reveal"]',
   mount(element, { gsap, SplitText, reducedMotion }) {
     if (reducedMotion()) {

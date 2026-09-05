@@ -118,6 +118,7 @@ function mount(element) {
 }
 
 createAdvancedPackage({
+  category: "composition",
   mount,
   name: "infinite-product-world",
   selector: '[data-advanced="infinite-product-world"]'

@@ -7,6 +7,7 @@ import {
 
 export const morphNarrative = {
   name: "morph-narrative",
+  category: "component",
   selector: '[data-motion~="morph-narrative"]',
   mount(element, { gsap, reducedMotion }) {
     const source = selectTarget(element, "morph-source", null);

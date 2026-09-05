@@ -8,6 +8,7 @@ import {
 
 export const pinnedSteps = {
   name: "pinned-steps",
+  category: "component",
   selector: '[data-motion~="pinned-steps"]',
   mount(element, { gsap }) {
     const panels = [...element.querySelectorAll("[data-motion-step]")];

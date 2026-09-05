@@ -2,6 +2,7 @@ import { readNumber, selectTarget } from "../core/config.js";
 
 export const magnetic = {
   name: "magnetic",
+  category: "primitive",
   selector: '[data-motion~="magnetic"]',
   mount(element, { gsap, reducedMotion, supportsHover }) {
     if (reducedMotion() || !supportsHover()) return;

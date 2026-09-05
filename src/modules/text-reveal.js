@@ -7,6 +7,7 @@ import {
 
 export const textReveal = {
   name: "text-reveal",
+  category: "primitive",
   selector: '[data-motion~="text-reveal"]',
   mount(element, { gsap, SplitText, reducedMotion }) {
     if (reducedMotion()) {

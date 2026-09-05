@@ -5,11 +5,12 @@ function matches(root, selector) {
   return elements;
 }
 
-export function createAdvancedPackage({ mount, name, selector }) {
+export function createAdvancedPackage({ category, mount, name, selector }) {
   const mounted = new WeakMap();
   const records = new Set();
 
   const api = {
+    category,
     destroy(root = document) {
       for (const record of [...records]) {
         if (root !== document && root !== record.element && !root.contains(record.element)) {

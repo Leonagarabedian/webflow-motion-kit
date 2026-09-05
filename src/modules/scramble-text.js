@@ -2,6 +2,7 @@ import { readBoolean, readNumber, readString, resolveTrigger } from "../core/con
 
 export const scrambleText = {
   name: "scramble-text",
+  category: "primitive",
   selector: '[data-motion~="scramble-text"]',
   mount(element, { gsap, ScrollTrigger, reducedMotion, supportsHover }) {
     const original = element.textContent;

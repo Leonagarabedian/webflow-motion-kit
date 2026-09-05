@@ -32,6 +32,7 @@ describe("advanced package runtime", () => {
     let mounts = 0;
     let cleanups = 0;
     const api = createAdvancedPackage({
+      category: "primitive",
       mount: () => {
         mounts += 1;
         return () => {
@@ -42,6 +43,7 @@ describe("advanced package runtime", () => {
       selector: '[data-advanced="fake"]'
     });
     await Promise.resolve();
+    expect(api.category).toBe("primitive");
     api.init().init();
     expect(mounts).toBe(1);
     api.destroy();

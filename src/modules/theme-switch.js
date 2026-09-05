@@ -2,6 +2,7 @@ import { readNumber, readString } from "../core/config.js";
 
 export const themeSwitch = {
   name: "theme-switch",
+  category: "primitive",
   selector: '[data-motion~="theme-switch"]',
   mount(element, { ScrollTrigger, gsap, reducedMotion }) {
     const selector = readString(element, "motion-theme-target", "body");

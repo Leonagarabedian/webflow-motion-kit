@@ -2,6 +2,7 @@ import { readNumber, readString, resolveTrigger } from "../core/config.js";
 
 export const scrollHighlight = {
   name: "scroll-highlight",
+  category: "primitive",
   selector: '[data-motion~="scroll-highlight"]',
   mount(element, { gsap, SplitText, reducedMotion }) {
     const unit = readString(element, "motion-split", "words");

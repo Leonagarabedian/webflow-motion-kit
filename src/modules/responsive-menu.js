@@ -8,6 +8,7 @@ import {
 
 export const responsiveMenu = {
   name: "responsive-menu",
+  category: "component",
   selector: '[data-motion~="responsive-menu"]',
   mount(element, { gsap, reducedMotion }) {
     const toggle = selectTarget(element, "menu-toggle", null);

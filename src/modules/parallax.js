@@ -7,6 +7,7 @@ import {
 
 export const parallax = {
   name: "parallax",
+  category: "primitive",
   selector: '[data-motion~="parallax"]',
   mount(element, { gsap, reducedMotion }) {
     const target = selectTarget(element, "parallax", element);

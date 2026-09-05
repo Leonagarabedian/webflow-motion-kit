@@ -16,6 +16,7 @@ export function isTransitionLink(link, currentUrl = window.location.href) {
 
 export const pageTransition = {
   name: "page-transition",
+  category: "component",
   selector: '[data-motion~="page-transition"]',
   mount(element, { gsap, reducedMotion }) {
     const panel = selectTarget(element, "transition-panel", element);

@@ -175,6 +175,7 @@ function mount(element) {
 }
 
 createAdvancedPackage({
+  category: "composition",
   mount,
   name: "webgl-work-browser",
   selector: '[data-advanced="webgl-work-browser"]'

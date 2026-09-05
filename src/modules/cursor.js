@@ -2,6 +2,7 @@ import { readNumber, selectTarget } from "../core/config.js";
 
 export const cursor = {
   name: "cursor",
+  category: "primitive",
   selector: '[data-motion~="cursor"]',
   mount(element, { gsap, reducedMotion, supportsHover }) {
     const target = selectTarget(element, "cursor", null);

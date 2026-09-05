@@ -9,6 +9,7 @@ import {
 
 export const svgReveal = {
   name: "svg-reveal",
+  category: "primitive",
   selector: '[data-motion~="svg-reveal"]',
   mount(element, { gsap, reducedMotion, supportsHover }) {
     const explicitPaths = selectTargets(element, "svg-path");

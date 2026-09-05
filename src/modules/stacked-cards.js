@@ -7,6 +7,7 @@ function restoreStyle(element, style) {
 
 export const stackedCards = {
   name: "stacked-cards",
+  category: "component",
   selector: '[data-motion~="stacked-cards"]',
   mount(element, { gsap }) {
     const cards = [...element.querySelectorAll("[data-motion-stack-card]")];

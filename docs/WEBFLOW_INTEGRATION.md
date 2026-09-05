@@ -1,5 +1,17 @@
 # Webflow integration contract
 
+## Shared motion tokens
+
+MotionKit accepts both raw values and shared token aliases. Use tokens when you want different sections to share the same motion language.
+
+- Duration: `instant`, `fast`, `medium`, `standard`, `slow`, `deliberate`, `ambient`
+- Easing: `linear`, `gentle`, `standard`, `enter`, `exit`, `smooth`
+- Stagger: `tight`, `compact`, `standard`, `relaxed`, `wide`
+- Distance: `xs`, `sm`, `md`, `lg`, `reveal`
+
+Example: `data-motion-duration="slow" data-motion-ease="enter" data-motion-stagger="relaxed"`. Numeric values and raw GSAP ease strings continue to work.
+
+
 ## Installation
 
 1. Connect this repository to Netlify.
