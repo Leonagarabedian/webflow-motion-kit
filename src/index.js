@@ -4,9 +4,12 @@ import {
   gsap,
   MorphSVGPlugin,
   ScrambleTextPlugin,
+  ScrollSmoother,
+  ScrollToPlugin,
   ScrollTrigger,
   SplitText
 } from "gsap/all";
+
 import "./styles.css";
 import { createRuntime } from "./core/runtime.js";
 import { createServices } from "./core/services.js";
