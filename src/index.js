@@ -15,7 +15,6 @@ import { createRuntime } from "./core/runtime.js";
 import { createServices } from "./core/services.js";
 import { motionTokens } from "./core/tokens.js";
 import { modules } from "./modules/registry.js";
-import { initPageScroll, getPageScroll } from "./modules/page-scroll.js";
 
 gsap.registerPlugin(
   ScrollTrigger,
@@ -40,11 +39,20 @@ const services = createServices({
 const runtime = createRuntime({ modules, services });
 
 let booted = false;
+let smoother = null;
 
 function boot() {
-  initPageScroll({
-    ScrollSmoother
-  });
+  if (
+    !smoother &&
+    !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  ) {
+    smoother = ScrollSmoother.create({
+      content: ".page-wrapper",
+      smooth: 0.8,
+      effects: true,
+      smoothTouch: 0
+    });
+  }
 
   runtime.init(document);
 
@@ -53,6 +61,7 @@ function boot() {
     document.fonts?.ready.then(() => runtime.refresh());
   }
 }
+
 
 const api = {
   destroy: runtime.destroy,
