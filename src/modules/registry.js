@@ -2,6 +2,7 @@ import { accordionMedia } from "./accordion-media.js";
 import { blurReveal } from "./blur-reveal.js";
 import { cursor } from "./cursor.js";
 import { flipRelocation } from "./flip-relocation.js";
+import { heroFrameTransition } from "./hero-frame-transition.js";
 import { imageClip } from "./image-clip.js";
 import { lineReveal } from "./line-reveal.js";
 import { linkSwap } from "./link-swap.js";
@@ -43,6 +44,7 @@ export const modules = [
   stackedCards,
   stackedImageHover,
   flipRelocation,
+  heroFrameTransition,
   pinnedMedia,
   pinnedSteps,
   accordionMedia,

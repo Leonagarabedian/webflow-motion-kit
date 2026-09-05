@@ -260,6 +260,25 @@ The cursor target must be a descendant of the hit area. The stylesheet supplies 
 
 Items and targets are paired in DOM order. Default behavior is the sampled Noth-style journey: `1.4s`, `power4.inOut`, stagger `.2` from the end, repeat once, yoyo, scroll scrub `3`. It is disabled below `992px` and for reduced motion.
 
+
+## Hero frame transition
+
+```html
+<section data-motion="hero-frame-transition"
+         data-motion-state-class="is-frame-b"
+         data-motion-delay="0.25"
+         data-motion-frame-duration="1.15"
+         data-motion-side-delay="1.15"
+         data-motion-side-duration="0.7">
+  <div data-motion-target="intro">...</div>
+  <div data-motion-target="frame">...</div>
+  <div data-motion-target="side-left">...</div>
+  <div data-motion-target="side-right">...</div>
+</section>
+```
+
+Author Frame A as the normal Webflow state and Frame B as a combo/state class, defaulting to `is-frame-b`. MotionKit reads the actual authored Frame B geometry through GSAP Flip, so the module does not hardcode template-specific sizes, positions, or transforms. The frame and intro transition first, followed by the side blocks. Optional attributes: `data-motion-state-class`, `data-motion-min-width`, `data-motion-delay`, `data-motion-frame-duration`, `data-motion-side-delay`, `data-motion-side-duration`, `data-motion-ease`, and `data-motion-side-ease`. On reduced-motion desktop environments, the final authored state is applied without animation. Below the minimum width, the authored responsive state is left untouched.
+
 ## Pinned media scale
 
 ```html

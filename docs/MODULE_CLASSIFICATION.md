@@ -45,8 +45,9 @@ A reusable interaction that requires a defined DOM contract or coordinated sub-e
 
 A higher-level experience assembled around a specific interaction model. These should not be treated as generic one-element commands.
 
+- `hero-frame-transition`
 - Advanced: `infinite-product-world`
 - Advanced: `webgl-work-browser`
 - Advanced: `aircraft-scroll-story`
 
-There are currently no main-kit modules classified as compositions. Page-specific Branda animation recipes should be kept outside the primitive registry and should compose primitives/components rather than expanding a composition until it becomes a fake universal API.
+Main-kit compositions are allowed when the interaction model has a reusable DOM/state contract. Site-specific art direction should remain in the template's authored states and configuration rather than being hardcoded into the MotionKit module.
