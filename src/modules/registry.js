@@ -23,6 +23,7 @@ import { svgReveal } from "./svg-reveal.js";
 import { textReveal } from "./text-reveal.js";
 import { themeSwitch } from "./theme-switch.js";
 import { viewSwitch } from "./view-switch.js";
+import { heroSlitTransition } from "./hero-slit-transition.js";
 
 export const modules = [
   lineReveal,
@@ -49,5 +50,6 @@ export const modules = [
   pinnedSteps,
   accordionMedia,
   themeSwitch,
-  morphNarrative
+  morphNarrative,
+  heroSlitTransition
 ];
