@@ -18,6 +18,8 @@ import { modules } from "./modules/registry.js";
 
 gsap.registerPlugin(
   ScrollTrigger,
+  ScrollSmoother,
+  ScrollToPlugin,
   Flip,
   SplitText,
   ScrambleTextPlugin,
