@@ -268,21 +268,19 @@ Items and targets are paired in DOM order. Default behavior is the sampled Noth-
          data-motion-state-class="is-frame-b"
          data-motion-scroll-vh="250"
          data-motion-scrub="1"
-         data-motion-frame-end="0.78"
-         data-motion-side-start="0.68"
-         data-motion-side-end="1">
-  <div data-motion-target="sticky">
-    <div data-motion-target="intro">...</div>
-    <div data-motion-target="frame">...</div>
-    <div data-motion-target="side-left">...</div>
-    <div data-motion-target="side-right">...</div>
-  </div>
+         data-motion-frame-end="0.72"
+         data-motion-side-start="0.62"
+         data-motion-side-end="0.92">
+  <div data-motion-target="intro">...</div>
+  <div data-motion-target="frame">...</div>
+  <div data-motion-target="side-left">...</div>
+  <div data-motion-target="side-right">...</div>
 </section>
 ```
 
-This is a scroll-scrubbed composition, not a page-load animation. Frame A is the normal authored Webflow state at scroll progress `0`; Frame B is the combo/state class, defaulting to `is-frame-b`. MotionKit pins the sticky target and creates the scroll runway with ScrollTrigger pin spacing, so a separate oversized section is not required. GSAP Flip reads the real Frame A and Frame B geometry from Webflow, which keeps the composition reusable across templates without hardcoded sizes, positions, or transforms. The frame/intro transformation occupies the first part of the scroll, while the side blocks transition later and finish at progress `1`. Scrolling upward reverses the sequence.
+This is a scroll-scrubbed composition, not a page-load animation. Frame A is the normal authored Webflow state at scroll progress `0`; Frame B is the combo/state class, defaulting to `is-frame-b`. The module follows the Voyeur Vérité interaction model: one pinned ScrollTrigger owns the scroll runway and an `onUpdate` handler maps normalized scroll progress into manual phases. There is no animation timeline. GSAP Flip is used only to derive reusable A → B interpolators from the authored Webflow states, so template-specific sizes, positions, and transforms stay in Webflow. The frame/intro phase runs first; side blocks start later. Scrolling upward reverses both phases continuously.
 
-Useful controls: `data-motion-state-class`, `data-motion-min-width`, `data-motion-scroll-vh` (default `250`, meaning 2.5 viewport heights), `data-motion-scrub` (default `1`), `data-motion-start` (default `top top`), `data-motion-frame-end` (default `.78`), `data-motion-side-start` (default `.68`), and `data-motion-side-end` (default `1`). The original Voyeur Vérité reference uses a longer pinned runway for its full multi-phase hero; this composition intentionally covers only the Frame A → Frame B portion. Reduced-motion and sub-minimum-width layouts remain in their authored state with no scrub animation.
+Useful controls: `data-motion-state-class`, `data-motion-min-width`, `data-motion-scroll-vh` (default `250`, meaning 2.5 viewport heights for this shortened Frame A → Frame B excerpt), `data-motion-scrub` (default `1`), `data-motion-start` (default `top top`), `data-motion-frame-end` (default `.72`), `data-motion-side-start` (default `.62`), and `data-motion-side-end` (default `.92`). The full Voyeur Vérité reference pins for five viewport heights because it contains additional phases after this excerpt. Reduced-motion and sub-minimum-width layouts remain in their authored state with no scrub animation.
 
 ## Pinned media scale
 
