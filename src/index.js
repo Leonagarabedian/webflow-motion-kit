@@ -15,6 +15,7 @@ import { createRuntime } from "./core/runtime.js";
 import { createServices } from "./core/services.js";
 import { motionTokens } from "./core/tokens.js";
 import { modules } from "./modules/registry.js";
+import { initPageScroll, getPageScroll } from "./core/page-scroll.js";
 
 gsap.registerPlugin(
   ScrollTrigger,
@@ -39,8 +40,14 @@ const services = createServices({
 const runtime = createRuntime({ modules, services });
 
 let booted = false;
+
 function boot() {
+  initPageScroll({
+    ScrollSmoother
+  });
+
   runtime.init(document);
+
   if (!booted) {
     booted = true;
     document.fonts?.ready.then(() => runtime.refresh());
