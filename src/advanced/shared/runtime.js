@@ -36,7 +36,7 @@ export function createAdvancedPackage({ mount, name, selector }) {
       return api;
     },
     name,
-    version: "0.4.1"
+    version: "0.4.2"
   };
 
   window.WebflowMotionAdvanced = window.WebflowMotionAdvanced || {};

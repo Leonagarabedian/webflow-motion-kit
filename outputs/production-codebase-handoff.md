@@ -58,7 +58,7 @@ The Voyeur Vérité-style pinned narrative is assembled from the existing pinned
 - Production build: passed
 - JavaScript bundle: approximately 205 KB, 77 KB gzip
 - CSS bundle: approximately 2.2 KB, 0.6 KB gzip
-- Public browser API smoke test target: `window.WebflowMotionKit.version === "0.4.1"`
+- Public browser API smoke test target: `window.WebflowMotionKit.version === "0.4.2"`
 - Local browser mount: line/word/blur splitting, scroll-highlight state, clip state, sticky media, link swap and stacked-image structure verified without console errors
 - Accordion interaction: active item, panel height and `aria-expanded` state verified after click
 - Version 0.3 component browser pass: loader completion, menu ARIA/scroll locking, Flip view switching, safe loop duplication, DrawSVG state and scroll-driven MorphSVG progression verified without console errors

@@ -13,7 +13,7 @@ function setStyle(targets, values) {
 describe("stacked cards", () => {
   it("creates a desktop sticky stack and restores authored styles", () => {
     document.body.innerHTML = `
-      <div data-motion="stacked-cards" data-motion-stack-top="10vh" data-motion-stack-offset="8">
+      <div data-motion="stacked-cards" data-motion-stack-top="10vh" data-motion-stack-offset="8" data-motion-stack-overlap="10">
         <article data-motion-stack-card style="color: red"></article>
         <article data-motion-stack-card></article>
       </div>
@@ -30,12 +30,14 @@ describe("stacked cards", () => {
     };
     const root = document.querySelector('[data-motion="stacked-cards"]');
     const cards = [...root.querySelectorAll("[data-motion-stack-card]")];
+    cards[0].getBoundingClientRect = () => ({ height: 400 });
     const cleanup = stackedCards.mount(root, { gsap });
 
     expect(cards[0].style.position).toBe("sticky");
     expect(cards[0].style.top).toBe("10vh");
     expect(cards[1].style.top).toBe("calc(8px + 10vh)");
     expect(cards[1].style.zIndex).toBe("2");
+    expect(cards[1].style.marginTop).toBe("-40px");
 
     cleanup();
     expect(cards[0].getAttribute("style")).toBe("color: red");

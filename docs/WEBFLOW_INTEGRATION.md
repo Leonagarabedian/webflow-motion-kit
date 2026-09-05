@@ -210,6 +210,7 @@ Layers are paired in DOM order. Give the wrapper an explicit height or aspect ra
 <div data-motion="stacked-cards"
      data-motion-stack-top="8vh"
      data-motion-stack-offset="12"
+     data-motion-stack-overlap="10"
      data-motion-min-width="992">
   <article data-motion-stack-card>...</article>
   <article data-motion-stack-card>...</article>
@@ -217,7 +218,7 @@ Layers are paired in DOM order. Give the wrapper an explicit height or aspect ra
 </div>
 ```
 
-Each card stays in normal document flow, becomes sticky at its configured top, and layers beneath the cards that follow it. `data-motion-stack-offset` is a pixel increment that leaves a small visible edge between stacked cards; use `0` for exact overlap. The module restores the authored layout below the minimum width and for reduced-motion visitors. Keep overflow visible on ancestors of the stack.
+Each card stays in normal document flow, becomes sticky at its configured top, and layers beneath the cards that follow it. `data-motion-stack-overlap="10"` starts the next card after roughly 90% of the previous card's measured height has passed. `data-motion-stack-offset` is a pixel increment that leaves a small visible edge between stacked cards; use `0` for exact overlap. The module recalculates overlap when card dimensions change, then restores the authored layout below the minimum width and for reduced-motion visitors. Keep overflow visible on ancestors of the stack.
 
 ## Custom cursor area
 
