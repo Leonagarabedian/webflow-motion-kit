@@ -32,9 +32,11 @@ export const heroFrameTransition = {
     const minWidth = readNumber(element, "motion-min-width", 992);
     const scrollVh = readNumber(element, "motion-scroll-vh", 250);
     const scrub = readNumber(element, "motion-scrub", 1);
-    const frameEnd = readNumber(element, "motion-frame-end", 0.72);
-    const sideStart = readNumber(element, "motion-side-start", 0.62);
-    const sideEnd = readNumber(element, "motion-side-end", 0.92);
+    const shrinkEnd = readNumber(element, "motion-shrink-end", 0.55);
+    const rotateStart = readNumber(element, "motion-rotate-start", shrinkEnd);
+    const rotateEnd = readNumber(element, "motion-rotate-end", 0.75);
+    const sideStart = readNumber(element, "motion-sides-start", 0.65);
+    const sideEnd = readNumber(element, "motion-sides-end", 1);
     const start = readString(element, "motion-start", "top top");
     const originalClassState = new Map(
       targets.map((target) => [target, target.classList.contains(stateClass)])
@@ -71,10 +73,14 @@ export const heroFrameTransition = {
           ? Flip.getState(sides, { props: "opacity,visibility" })
           : null;
 
-        // Apply the authored Frame B classes. Flip creates paused A -> B
-        // interpolators, while the ScrollTrigger below owns all progress.
+        // Apply the authored Frame B classes so MotionKit can derive the final
+        // geometry directly from Webflow. Rotation is split into its own later
+        // phase so the frame shrinks first while remaining straight.
         frameTargets.forEach((target) => target.classList.add(stateClass));
         sides.forEach((target) => target.classList.add(stateClass));
+
+        const finalRotation = Number(gsap.getProperty(frame, "rotation")) || 0;
+        gsap.set(frame, { rotation: 0 });
 
         const frameFlip = Flip.from(frameState, {
           duration: 1,
@@ -84,6 +90,13 @@ export const heroFrameTransition = {
           scale: true
         });
         frameFlip.progress(0);
+
+        const rotateTween = gsap.fromTo(
+          frame,
+          { rotation: 0 },
+          { rotation: finalRotation, duration: 1, ease: "none", paused: true }
+        );
+        rotateTween.progress(0);
 
         const sideFlip = sideState
           ? Flip.from(sideState, {
@@ -108,7 +121,10 @@ export const heroFrameTransition = {
           invalidateOnRefresh: true,
           onUpdate(self) {
             const progress = self.progress;
-            frameFlip.progress(phaseProgress(progress, 0, frameEnd, clamp));
+            frameFlip.progress(phaseProgress(progress, 0, shrinkEnd, clamp));
+            rotateTween.progress(
+              phaseProgress(progress, rotateStart, rotateEnd, clamp)
+            );
             sideFlip?.progress(
               phaseProgress(progress, sideStart, sideEnd, clamp)
             );
@@ -118,6 +134,7 @@ export const heroFrameTransition = {
         return () => {
           trigger.kill();
           frameFlip.kill();
+          rotateTween.kill();
           sideFlip?.kill();
           restoreAuthoredState();
         };

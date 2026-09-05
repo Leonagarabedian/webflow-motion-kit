@@ -27,7 +27,11 @@ describe("hero frame transition", () => {
         return { kill: killed };
       })
     };
+    const rotateTween = { progress: vi.fn().mockReturnThis(), kill: killed };
     const gsap = {
+      getProperty: vi.fn(() => 16),
+      set: vi.fn(),
+      fromTo: vi.fn(() => rotateTween),
       matchMedia: () => ({
         add: (_conditions, callback) => {
           mediaCleanup = callback({
@@ -60,16 +64,23 @@ describe("hero frame transition", () => {
 
     triggerConfig.onUpdate({ progress: 0 });
     expect(frameFlip.progress).toHaveBeenLastCalledWith(0);
+    expect(rotateTween.progress).toHaveBeenLastCalledWith(0);
     expect(sideFlip.progress).toHaveBeenLastCalledWith(0);
 
-    triggerConfig.onUpdate({ progress: 0.72 });
+    triggerConfig.onUpdate({ progress: 0.55 });
     expect(frameFlip.progress).toHaveBeenLastCalledWith(1);
+    expect(rotateTween.progress).toHaveBeenLastCalledWith(0);
+
+    triggerConfig.onUpdate({ progress: 0.75 });
+    expect(frameFlip.progress).toHaveBeenLastCalledWith(1);
+    expect(rotateTween.progress).toHaveBeenLastCalledWith(1);
     expect(sideFlip.progress).toHaveBeenLastCalledWith(
-      (0.72 - 0.62) / (0.92 - 0.62)
+      (0.75 - 0.65) / (1 - 0.65)
     );
 
     triggerConfig.onUpdate({ progress: 1 });
     expect(frameFlip.progress).toHaveBeenLastCalledWith(1);
+    expect(rotateTween.progress).toHaveBeenLastCalledWith(1);
     expect(sideFlip.progress).toHaveBeenLastCalledWith(1);
 
     cleanup();
