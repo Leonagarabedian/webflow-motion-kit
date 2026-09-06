@@ -1,6 +1,10 @@
-import { readNumber, readString } from "../core/config.js";
+import { readString } from "../core/config.js";
 
 const STYLE_ID = "motion-kit-character-scatter-title-styles";
+const GLITCH_CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ0123456789#$()!?"§&<>@*+-';
+const GLITCH_WINDOW = 22;
+const UPDATE_EVERY = 8;
+const FINAL_GLITCH_COUNT = 4;
 let sequence = 0;
 
 function ensureStyles(doc) {
@@ -35,7 +39,6 @@ function ensureStyles(doc) {
       left: 50% !important;
       transform: translate(-50%, -50%);
       pointer-events: none;
-      will-change: opacity;
     }
     [data-mk-character-scatter-title-char] {
       display: inline-block;
@@ -50,53 +53,34 @@ function ensureStyles(doc) {
   doc.head.appendChild(style);
 }
 
-function seededRandom(seed) {
-  let value = seed >>> 0;
-  return () => {
-    value += 0x6d2b79f5;
-    let result = value;
-    result = Math.imul(result ^ (result >>> 15), result | 1);
-    result ^= result + Math.imul(result ^ (result >>> 7), result | 61);
-    return ((result ^ (result >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function between(random, min, max) {
-  return min + (max - min) * random();
-}
-
-function clamp01(value) {
-  return Math.max(0, Math.min(1, value));
-}
-
-function rangeProgress(progress, start, end) {
-  if (end <= start) return progress >= end ? 1 : 0;
-  return clamp01((progress - start) / (end - start));
-}
-
-function smooth(progress) {
-  const p = clamp01(progress);
-  return p * p * (3 - 2 * p);
-}
-
 function splitCharacters(element) {
   const originalHTML = element.innerHTML;
   const originalLabel = element.getAttribute("aria-label");
-  const text = element.textContent.trim();
-  const fragment = element.ownerDocument.createDocumentFragment();
   const characters = [];
 
-  for (const character of Array.from(text)) {
-    const span = element.ownerDocument.createElement("span");
-    span.setAttribute("data-mk-character-scatter-title-char", "");
-    span.setAttribute("aria-hidden", "true");
-    span.textContent = character === " " ? "\u00a0" : character;
-    fragment.appendChild(span);
-    characters.push(span);
+  function walk(node) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const fragment = element.ownerDocument.createDocumentFragment();
+      for (const character of node.textContent) {
+        if (character === " " || character === "\u00a0" || character === "\n") {
+          fragment.appendChild(element.ownerDocument.createTextNode(character));
+        } else {
+          const span = element.ownerDocument.createElement("span");
+          span.setAttribute("data-mk-character-scatter-title-char", "");
+          span.setAttribute("aria-hidden", "true");
+          span.textContent = character;
+          fragment.appendChild(span);
+          characters.push({ span, original: character });
+        }
+      }
+      node.parentNode.replaceChild(fragment, node);
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+      [...node.childNodes].forEach(walk);
+    }
   }
 
-  element.replaceChildren(fragment);
-  element.setAttribute("aria-label", text);
+  [...element.childNodes].forEach(walk);
+  element.setAttribute("aria-label", element.textContent.trim());
 
   return {
     characters,
@@ -106,6 +90,54 @@ function splitCharacters(element) {
       else element.setAttribute("aria-label", originalLabel);
     }
   };
+}
+
+function randomGlitchCharacter() {
+  return GLITCH_CHARS[Math.floor(Math.random() * GLITCH_CHARS.length)];
+}
+
+function updateSourceGlitch(characters, offset, intensity) {
+  const length = characters.length;
+  if (!length) return;
+  const start = ((Math.floor(offset) % length) + length) % length;
+
+  characters.forEach(({ span, original }, index) => {
+    let distance = index - start;
+    if (distance < 0) distance += length;
+
+    if (distance < GLITCH_WINDOW) {
+      const probability = intensity * Math.pow(1 - distance / GLITCH_WINDOW, 0.6);
+      span.textContent = Math.random() < probability ? randomGlitchCharacter() : original;
+    } else {
+      span.textContent = original;
+    }
+  });
+}
+
+function updateFinalReveal(characters, progress) {
+  if (!characters.length) return;
+  const cursor = progress * characters.length;
+
+  characters.forEach(({ span, original }, index) => {
+    if (index < cursor - FINAL_GLITCH_COUNT) {
+      span.style.opacity = "1";
+      span.textContent = original;
+    } else if (index < cursor) {
+      span.style.opacity = "1";
+      span.textContent = randomGlitchCharacter();
+    } else {
+      span.style.opacity = "0";
+      span.textContent = original;
+    }
+  });
+}
+
+function resolveFinalReveal(characters, progress) {
+  const cursor = progress * characters.length;
+  characters.forEach(({ span, original }, index) => {
+    span.style.opacity = index < cursor ? "1" : "0";
+    span.textContent = original;
+  });
 }
 
 export const characterScatterTitle = {
@@ -144,89 +176,136 @@ export const characterScatterTitle = {
       readString(section, "motion-mobile-section-height", "180vh")
     );
 
-    const chipSplits = chips.map(splitCharacters);
+    const sourceSplits = chips.map(splitCharacters);
+    const sourceGroups = sourceSplits.map((split) => split.characters);
+    const sourceCharacters = sourceGroups.flat();
     const titleSplit = splitCharacters(title);
-    const sourceCharacters = chipSplits.flatMap((split) => split.characters);
     const titleCharacters = titleSplit.characters;
 
-    const seed = readNumber(section, "motion-seed", 2604);
-    const random = seededRandom(seed);
-    const scatterX = readNumber(section, "motion-scatter-x", 90);
-    const scatterY = readNumber(section, "motion-scatter-y", 70);
-    const rotation = readNumber(section, "motion-rotation", 6);
+    titleCharacters.forEach(({ span }) => {
+      span.style.opacity = "0";
+    });
 
-    const scatterStart = clamp01(readNumber(section, "motion-scatter-start", 0.05));
-    const scatterEnd = clamp01(readNumber(section, "motion-scatter-end", 0.9));
-    const fadeStart = clamp01(readNumber(section, "motion-scatter-fade-start", 0.52));
-    const fadeEnd = clamp01(readNumber(section, "motion-scatter-fade-end", 0.96));
-    const titleStart = clamp01(readNumber(section, "motion-title-start", 0.12));
-    const titleEnd = clamp01(readNumber(section, "motion-title-end", 0.46));
-    const titleStagger = Math.max(
-      0,
-      Math.min(titleEnd - titleStart - 0.01, readNumber(section, "motion-title-stagger", 0.14))
-    );
-
-    const destinations = sourceCharacters.map(() => ({
-      x: between(random, -scatterX, scatterX),
-      y: between(random, -scatterY, scatterY),
-      rotation: between(random, -rotation, rotation),
-      moveDelay: between(random, 0, 0.14),
-      fadeDelay: between(random, 0, 0.08)
-    }));
-
-    const render = (progress) => {
-      gsap.set(sourceCharacters, {
-        x: (index) => {
-          const destination = destinations[index];
-          const move = smooth(rangeProgress(progress, scatterStart + destination.moveDelay, scatterEnd));
-          return destination.x * move;
-        },
-        y: (index) => {
-          const destination = destinations[index];
-          const move = smooth(rangeProgress(progress, scatterStart + destination.moveDelay, scatterEnd));
-          return destination.y * move;
-        },
-        rotation: (index) => {
-          const destination = destinations[index];
-          const move = smooth(rangeProgress(progress, scatterStart + destination.moveDelay, scatterEnd));
-          return destination.rotation * move;
-        },
-        autoAlpha: (index) => {
-          const destination = destinations[index];
-          const start = Math.min(fadeEnd - 0.01, fadeStart + destination.fadeDelay);
-          return 1 - smooth(rangeProgress(progress, start, fadeEnd));
-        }
+    if (reducedMotion()) {
+      gsap.set(sourceCharacters.map(({ span }) => span), { opacity: 0 });
+      titleCharacters.forEach(({ span, original }) => {
+        span.style.opacity = "1";
+        span.textContent = original;
       });
+    }
 
-      const count = Math.max(1, titleCharacters.length - 1);
-      const revealDuration = Math.max(0.01, titleEnd - titleStart - titleStagger);
+    let fallTimeline = null;
+    let velocityTrigger = null;
+    let rafId = null;
+    let running = false;
+    let frame = 0;
+    let velocity = 0;
+    let velocityTarget = 0;
+    let glitchOffset = 0;
+    let lastProgress = -1;
 
-      gsap.set(titleCharacters, {
-        autoAlpha: (index) => {
-          const start = titleStart + titleStagger * (index / count);
-          return smooth(rangeProgress(progress, start, start + revealDuration));
-        },
-        x: 0,
-        y: 0,
-        rotation: 0
+    const resetSourceCharacters = () => {
+      sourceCharacters.forEach(({ span, original }) => {
+        span.textContent = original;
       });
     };
 
-    let trigger = null;
+    const stopGlitch = () => {
+      running = false;
+      velocityTarget = 0;
+      velocity = 0;
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+      resetSourceCharacters();
+      titleCharacters.forEach(({ span, original }) => {
+        span.style.opacity = "0";
+        span.textContent = original;
+      });
+      lastProgress = -1;
+    };
 
-    if (reducedMotion()) {
-      render(1);
-    } else {
-      render(0);
-      trigger = ScrollTrigger.create({
-        id: `mk-character-scatter-title-${++sequence}`,
+    const tick = () => {
+      if (!running) return;
+
+      frame += 1;
+      velocity += (velocityTarget - velocity) * 0.14;
+      velocityTarget *= 0.9;
+
+      if (frame % UPDATE_EVERY === 0) {
+        if (velocity > 0.01) {
+          const longestGroup = Math.max(...sourceGroups.map((group) => group.length), 1);
+          glitchOffset = (glitchOffset + 1 + velocity * 10) % longestGroup;
+          sourceGroups.forEach((group) => updateSourceGlitch(group, glitchOffset, velocity));
+        } else {
+          resetSourceCharacters();
+        }
+
+        if (titleCharacters.length && fallTimeline) {
+          const progress = fallTimeline.scrollTrigger?.progress ?? 0;
+          if (Math.abs(progress - lastProgress) > 0.0002) {
+            updateFinalReveal(titleCharacters, progress);
+          } else {
+            resolveFinalReveal(titleCharacters, progress);
+          }
+          lastProgress = progress;
+        }
+      }
+
+      rafId = requestAnimationFrame(tick);
+    };
+
+    const startGlitch = () => {
+      if (running) return;
+      running = true;
+      frame = 0;
+      rafId = requestAnimationFrame(tick);
+    };
+
+    if (!reducedMotion()) {
+      velocityTrigger = ScrollTrigger.create({
+        id: `mk-character-scatter-title-velocity-${++sequence}`,
         trigger: section,
-        start: readString(section, "motion-start", "top top"),
-        end: readString(section, "motion-end", "bottom bottom"),
-        scrub: readNumber(section, "motion-scrub", 1),
-        invalidateOnRefresh: true,
-        markers: readString(section, "motion-markers", "false") === "true",
-        onUpdate: (self) => render(self.progress)
+        start: "top bottom",
+        end: "bottom top",
+        onEnter: startGlitch,
+        onLeave: stopGlitch,
+        onEnterBack: startGlitch,
+        onLeaveBack: stopGlitch,
+        onUpdate(self) {
+          velocityTarget = Math.min(Math.abs(self.getVelocity()) / 3400, 0.45);
+        }
+      });
+
+      fallTimeline = gsap.timeline({
+        scrollTrigger: {
+          id: `mk-character-scatter-title-fall-${sequence}`,
+          trigger: section,
+          start: readString(section, "motion-start", "top top"),
+          end: readString(section, "motion-end", "center 30%"),
+          scrub: 2,
+          invalidateOnRefresh: true,
+          markers: readString(section, "motion-markers", "false") === "true"
+        }
+      });
+
+      sourceGroups.forEach((group, groupIndex) => {
+        const basePosition = groupIndex * 0.06;
+        group.forEach(({ span }) => {
+          fallTimeline.to(
+            span,
+            {
+              y: gsap.utils.random(40, 160),
+              x: gsap.utils.random(-10, 10),
+              rotation: gsap.utils.random(-20, 20),
+              opacity: 0,
+              ease: "power2.in",
+              duration: gsap.utils.random(0.25, 0.7)
+            },
+            basePosition + gsap.utils.random(0, 0.6)
+          );
+        });
       });
     }
 
@@ -241,11 +320,19 @@ export const characterScatterTitle = {
 
     return () => {
       window.removeEventListener("resize", onResize);
-      trigger?.kill?.();
-      gsap.set([...sourceCharacters, ...titleCharacters], {
+      stopGlitch();
+      velocityTrigger?.kill?.();
+      fallTimeline?.scrollTrigger?.kill?.();
+      fallTimeline?.kill?.();
+
+      gsap.set(sourceCharacters.map(({ span }) => span), {
         clearProps: "transform,opacity,visibility"
       });
-      chipSplits.forEach((split) => split.restore());
+      gsap.set(titleCharacters.map(({ span }) => span), {
+        clearProps: "transform,opacity,visibility"
+      });
+
+      sourceSplits.forEach((split) => split.restore());
       titleSplit.restore();
       field.removeAttribute("data-mk-character-scatter-title-field");
       title.removeAttribute("data-mk-character-scatter-title-title");
