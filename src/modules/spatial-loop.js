@@ -15,6 +15,13 @@ const SHORT_LANDSCAPE_QUERY = "(orientation: landscape) and (max-width: 1180px) 
 // y *= 1 + pow(worldX * .075, 2)
 const CURVE_FACTOR = 0.075;
 
+// Works takeover choreography.
+const INPUT_SCALE = 0.01;
+const SNAP_DELAY = 140;
+const EXIT_INTENT_THRESHOLD = 160;
+const ENTER_DURATION = 0.55;
+const RELEASE_DURATION = 0.8;
+
 function ensureStyles(doc) {
   if (doc.getElementById(STYLE_ID)) return;
   const style = doc.createElement("style");
@@ -22,25 +29,28 @@ function ensureStyles(doc) {
   style.textContent = `
     [data-mk-spatial-loop-section] {
       position: relative !important;
-      min-height: var(--mk-spatial-loop-height, 260svh) !important;
+      min-height: var(--mk-spatial-loop-height, 100svh) !important;
       overflow: visible !important;
     }
     [data-mk-spatial-loop-container] {
       position: relative !important;
       width: 100% !important;
-      min-height: var(--mk-spatial-loop-height, 260svh) !important;
+      min-height: var(--mk-spatial-loop-height, 100svh) !important;
       padding-left: 0 !important;
       padding-right: 0 !important;
     }
     [data-mk-spatial-loop-layout] {
       position: sticky !important;
       top: 0 !important;
+      z-index: 20 !important;
       width: 100% !important;
       height: 100svh !important;
       min-height: 100svh !important;
       padding-top: 0 !important;
       padding-bottom: 0 !important;
       overflow: hidden !important;
+      transform-origin: 50% 50%;
+      will-change: transform, border-radius;
     }
     [data-mk-spatial-loop-heading] {
       position: absolute !important;
@@ -72,6 +82,9 @@ function ensureStyles(doc) {
       touch-action: pan-x pan-y;
       overscroll-behavior: contain;
     }
+    [data-motion~="spatial-loop"][data-mk-spatial-loop-locked] [data-mk-spatial-loop-canvas] {
+      touch-action: none !important;
+    }
     [data-mk-spatial-loop-source-hidden] {
       visibility: hidden !important;
       pointer-events: none !important;
@@ -102,7 +115,7 @@ function ensureStyles(doc) {
     @media screen and (max-width: 767px) {
       [data-mk-spatial-loop-section],
       [data-mk-spatial-loop-container] {
-        min-height: var(--mk-spatial-loop-height-mobile, 240svh) !important;
+        min-height: var(--mk-spatial-loop-height-mobile, 100svh) !important;
       }
       [data-mk-spatial-loop-title] { bottom: 6svh; }
       [data-mk-spatial-loop-title-item] { font-size: 1.35rem; }
@@ -178,6 +191,10 @@ function titleFromItem(item, media, index) {
   ).trim();
 }
 
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
 export const spatialLoop = {
   name: "spatial-loop",
   category: "composition",
@@ -190,18 +207,20 @@ export const spatialLoop = {
 
     const itemSelector = readString(root, "motion-item-selector", ".work-item");
     const mediaSelector = readString(root, "motion-media-selector", ".work-image");
-    const sectionHeight = readString(root, "motion-section-height", "260svh");
-    const mobileSectionHeight = readString(root, "motion-mobile-section-height", "240svh");
+    const sectionHeight = readString(root, "motion-section-height", "100svh");
+    const mobileSectionHeight = readString(root, "motion-mobile-section-height", "100svh");
     const sourceItems = Array.from(root.querySelectorAll(itemSelector));
     if (sourceItems.length < 2) return;
 
     const shell = findSceneShell(root);
-    shell.section?.setAttribute("data-mk-spatial-loop-section", "");
+    if (!shell.layout || !shell.section) return;
+
+    shell.section.setAttribute("data-mk-spatial-loop-section", "");
     shell.container?.setAttribute("data-mk-spatial-loop-container", "");
-    shell.layout?.setAttribute("data-mk-spatial-loop-layout", "");
+    shell.layout.setAttribute("data-mk-spatial-loop-layout", "");
     shell.heading?.setAttribute("data-mk-spatial-loop-heading", "");
-    shell.section?.style.setProperty("--mk-spatial-loop-height", sectionHeight);
-    shell.section?.style.setProperty("--mk-spatial-loop-height-mobile", mobileSectionHeight);
+    shell.section.style.setProperty("--mk-spatial-loop-height", sectionHeight);
+    shell.section.style.setProperty("--mk-spatial-loop-height-mobile", mobileSectionHeight);
     shell.container?.style.setProperty("--mk-spatial-loop-height", sectionHeight);
     shell.container?.style.setProperty("--mk-spatial-loop-height-mobile", mobileSectionHeight);
 
@@ -222,7 +241,6 @@ export const spatialLoop = {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.domElement.setAttribute("data-mk-spatial-loop-canvas", "");
     renderer.domElement.setAttribute("aria-hidden", "true");
-    renderer.domElement.style.touchAction = "pan-x pan-y";
     renderer.domElement.style.overscrollBehavior = "contain";
     root.prepend(renderer.domElement);
 
@@ -230,6 +248,7 @@ export const spatialLoop = {
     let slides = [];
     let titleItems = [];
     let totalWidth = 0;
+    let maxTravel = 0;
     let scrollPosition = 0;
     let targetScrollPosition = 0;
     let previousScrollPosition = 0;
@@ -237,6 +256,31 @@ export const spatialLoop = {
     let destroyed = false;
     let rafId = null;
     let pageTrigger = null;
+    let inputTimeout = null;
+    let takeoverState = "idle";
+    let exitIntent = 0;
+    let jumpGuard = false;
+    let touchX = null;
+    let touchY = null;
+
+    const getSmoother = () => window.WebflowMotionKit?.scroll?.get?.() ?? null;
+    const getPageY = () => {
+      const smoother = getSmoother();
+      if (smoother?.scrollTop) return smoother.scrollTop();
+      return window.scrollY || window.pageYOffset || 0;
+    };
+    const setPageY = (value) => {
+      const smoother = getSmoother();
+      if (smoother?.scrollTo) smoother.scrollTo(value, false);
+      else window.scrollTo(0, value);
+    };
+    const getSectionTop = () => getPageY() + shell.section.getBoundingClientRect().top;
+
+    const resetSlidePositions = () => {
+      slides.forEach((slide) => {
+        slide.originalPosition = slide.index * stride;
+      });
+    };
 
     const showTitle = (nextIndex) => {
       if (nextIndex === currentCenterIndex || !titleItems.length) return;
@@ -312,6 +356,176 @@ export const spatialLoop = {
       rafId = requestAnimationFrame(animate);
     };
 
+    const snapGallery = () => {
+      targetScrollPosition = clamp(
+        Math.round(targetScrollPosition / stride) * stride,
+        0,
+        maxTravel
+      );
+      exitIntent = 0;
+    };
+
+    const lockTakeover = (direction) => {
+      if (destroyed || jumpGuard || takeoverState !== "idle" || !slides.length) return;
+
+      takeoverState = "locked";
+      exitIntent = 0;
+      clearTimeout(inputTimeout);
+      resetSlidePositions();
+
+      if (direction < 0) {
+        targetScrollPosition = maxTravel;
+        scrollPosition = maxTravel;
+        currentCenterIndex = slides.length - 1;
+      } else {
+        targetScrollPosition = 0;
+        scrollPosition = 0;
+        currentCenterIndex = 0;
+      }
+      previousScrollPosition = scrollPosition;
+
+      titleItems.forEach((title, index) => {
+        gsap.set(title, {
+          yPercent: index === currentCenterIndex ? 0 : 30,
+          opacity: index === currentCenterIndex ? 1 : 0
+        });
+      });
+
+      root.setAttribute("data-mk-spatial-loop-locked", "");
+      gsap.killTweensOf(shell.layout);
+      gsap.fromTo(
+        shell.layout,
+        { scale: 0.94, yPercent: 0, borderRadius: "2.5vw" },
+        {
+          scale: 1,
+          yPercent: 0,
+          borderRadius: "0vw",
+          duration: ENTER_DURATION,
+          ease: "power3.out",
+          overwrite: true
+        }
+      );
+    };
+
+    const releaseTakeover = (direction) => {
+      if (takeoverState !== "locked") return;
+      takeoverState = "releasing";
+      clearTimeout(inputTimeout);
+      exitIntent = 0;
+
+      const startY = getPageY();
+      const sectionTop = getSectionTop();
+      const targetY = direction > 0
+        ? sectionTop + shell.section.offsetHeight + 2
+        : Math.max(0, sectionTop - 2);
+      const travelState = { y: startY };
+
+      gsap.killTweensOf(shell.layout);
+      gsap.to(shell.layout, {
+        yPercent: direction > 0 ? -18 : 18,
+        scale: 0.965,
+        borderRadius: "2vw",
+        duration: RELEASE_DURATION,
+        ease: "power3.inOut",
+        overwrite: true
+      });
+
+      gsap.to(travelState, {
+        y: targetY,
+        duration: RELEASE_DURATION,
+        ease: "power3.inOut",
+        onUpdate() {
+          setPageY(travelState.y);
+        },
+        onComplete() {
+          jumpGuard = true;
+          setPageY(targetY);
+          root.removeAttribute("data-mk-spatial-loop-locked");
+          gsap.set(shell.layout, { clearProps: "transform,borderRadius" });
+          takeoverState = "idle";
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              jumpGuard = false;
+            });
+          });
+        }
+      });
+    };
+
+    const handleInput = (delta) => {
+      if (takeoverState !== "locked" || !Number.isFinite(delta) || delta === 0) return;
+
+      const nextTarget = targetScrollPosition + delta * INPUT_SCALE;
+
+      if (delta > 0 && nextTarget > maxTravel) {
+        targetScrollPosition = maxTravel;
+        exitIntent += delta;
+        if (exitIntent >= EXIT_INTENT_THRESHOLD) {
+          releaseTakeover(1);
+          return;
+        }
+      } else if (delta < 0 && nextTarget < 0) {
+        targetScrollPosition = 0;
+        exitIntent += Math.abs(delta);
+        if (exitIntent >= EXIT_INTENT_THRESHOLD) {
+          releaseTakeover(-1);
+          return;
+        }
+      } else {
+        targetScrollPosition = clamp(nextTarget, 0, maxTravel);
+        exitIntent = 0;
+      }
+
+      clearTimeout(inputTimeout);
+      inputTimeout = setTimeout(snapGallery, SNAP_DELAY);
+    };
+
+    const onWheel = (event) => {
+      if (takeoverState !== "locked") return;
+      event.preventDefault();
+      event.stopPropagation();
+      const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY)
+        ? event.deltaX
+        : event.deltaY;
+      handleInput(delta);
+    };
+
+    const onTouchStart = (event) => {
+      if (takeoverState !== "locked" || !event.touches?.length) return;
+      touchX = event.touches[0].clientX;
+      touchY = event.touches[0].clientY;
+    };
+
+    const onTouchMove = (event) => {
+      if (takeoverState !== "locked" || !event.touches?.length) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const nextX = event.touches[0].clientX;
+      const nextY = event.touches[0].clientY;
+      const deltaX = touchX == null ? 0 : touchX - nextX;
+      const deltaY = touchY == null ? 0 : touchY - nextY;
+      touchX = nextX;
+      touchY = nextY;
+      handleInput(Math.abs(deltaX) > Math.abs(deltaY) ? deltaX : deltaY);
+    };
+
+    const onTouchEnd = () => {
+      touchX = null;
+      touchY = null;
+    };
+
+    const onKeyDown = (event) => {
+      if (takeoverState !== "locked") return;
+      let delta = 0;
+      if (["ArrowDown", "ArrowRight", "PageDown"].includes(event.key)) delta = 120;
+      if (["ArrowUp", "ArrowLeft", "PageUp"].includes(event.key)) delta = -120;
+      if (event.key === " ") delta = event.shiftKey ? -120 : 120;
+      if (!delta) return;
+      event.preventDefault();
+      event.stopPropagation();
+      handleInput(delta);
+    };
+
     const onResize = () => {
       const width = window.innerWidth;
       const height = Math.max(1, window.innerHeight);
@@ -322,6 +536,13 @@ export const spatialLoop = {
       renderer.setSize(width, height);
       ScrollTrigger.refresh?.();
     };
+
+    window.addEventListener("wheel", onWheel, { passive: false, capture: true });
+    window.addEventListener("touchstart", onTouchStart, { passive: true, capture: true });
+    window.addEventListener("touchmove", onTouchMove, { passive: false, capture: true });
+    window.addEventListener("touchend", onTouchEnd, { passive: true, capture: true });
+    window.addEventListener("touchcancel", onTouchEnd, { passive: true, capture: true });
+    window.addEventListener("keydown", onKeyDown, { capture: true });
     window.addEventListener("resize", onResize);
 
     (async () => {
@@ -379,33 +600,44 @@ export const spatialLoop = {
         if (slides.length < 2) return;
         titleItems = slides.map((slide) => slide.title);
         totalWidth = slides.length * stride;
+        maxTravel = stride * Math.max(1, slides.length - 1);
         sourceItems.forEach((item) => item.setAttribute("data-mk-spatial-loop-source-hidden", ""));
 
-        const travel = stride * Math.max(1, slides.length - 1);
         pageTrigger = ScrollTrigger.create({
-          id: "mk-spatial-loop-page-flow",
-          trigger: shell.section || root,
+          id: "mk-spatial-loop-takeover",
+          trigger: shell.section,
           start: "top top",
-          end: "bottom bottom",
+          end: "bottom top",
           invalidateOnRefresh: true,
-          onUpdate(self) {
-            targetScrollPosition = self.progress * travel;
+          onEnter() {
+            lockTakeover(1);
+          },
+          onEnterBack() {
+            lockTakeover(-1);
           }
         });
-        targetScrollPosition = pageTrigger.progress * travel;
 
         rafId = requestAnimationFrame(animate);
         ScrollTrigger.refresh?.();
       } catch (error) {
-        console.error("[MotionKit spatial-loop] Unable to initialize page-directed WebGPU gallery", error);
+        console.error("[MotionKit spatial-loop] Unable to initialize takeover WebGPU gallery", error);
       }
     })();
 
     return () => {
       destroyed = true;
       cancelAnimationFrame(rafId);
+      clearTimeout(inputTimeout);
       pageTrigger?.kill?.();
+      window.removeEventListener("wheel", onWheel, true);
+      window.removeEventListener("touchstart", onTouchStart, true);
+      window.removeEventListener("touchmove", onTouchMove, true);
+      window.removeEventListener("touchend", onTouchEnd, true);
+      window.removeEventListener("touchcancel", onTouchEnd, true);
+      window.removeEventListener("keydown", onKeyDown, true);
       window.removeEventListener("resize", onResize);
+      root.removeAttribute("data-mk-spatial-loop-locked");
+      gsap.set(shell.layout, { clearProps: "transform,borderRadius" });
 
       slides.forEach((slide) => {
         slide.video?.pause?.();
@@ -419,12 +651,12 @@ export const spatialLoop = {
       renderer.domElement.remove();
       titleHost.remove();
       sourceItems.forEach((item) => item.removeAttribute("data-mk-spatial-loop-source-hidden"));
-      shell.section?.removeAttribute("data-mk-spatial-loop-section");
+      shell.section.removeAttribute("data-mk-spatial-loop-section");
       shell.container?.removeAttribute("data-mk-spatial-loop-container");
-      shell.layout?.removeAttribute("data-mk-spatial-loop-layout");
+      shell.layout.removeAttribute("data-mk-spatial-loop-layout");
       shell.heading?.removeAttribute("data-mk-spatial-loop-heading");
-      shell.section?.style.removeProperty("--mk-spatial-loop-height");
-      shell.section?.style.removeProperty("--mk-spatial-loop-height-mobile");
+      shell.section.style.removeProperty("--mk-spatial-loop-height");
+      shell.section.style.removeProperty("--mk-spatial-loop-height-mobile");
       shell.container?.style.removeProperty("--mk-spatial-loop-height");
       shell.container?.style.removeProperty("--mk-spatial-loop-height-mobile");
     };
