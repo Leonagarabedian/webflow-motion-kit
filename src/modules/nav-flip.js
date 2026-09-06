@@ -1,18 +1,41 @@
 import { readNumber, readString } from "../core/config.js";
 
-const STYLE_ID = "motion-kit-nav-flip-styles";
+const STYLE_ID = "motion-kit-nav-flip-v1-styles";
 
-function ensureStyles(doc) {
+function addStyles(doc) {
   if (doc.getElementById(STYLE_ID)) return;
+
   const style = doc.createElement("style");
   style.id = STYLE_ID;
   style.textContent = `
-    [data-motion~="nav-flip"] { perspective: var(--mk-nav-flip-perspective, 500px); }
-    [data-mk-nav-flip-inner] {
-      display: inline-block;
-      transform-style: preserve-3d;
-      transform-origin: 50% 50%;
+    [data-mk-flip-link] {
+      perspective: var(--mk-flip-perspective, 500px);
+    }
+
+    [data-mk-flip-clip] {
+      position: relative;
+      display: block;
+      height: var(--mk-flip-height, 1.15em);
+      overflow: hidden;
+      line-height: var(--mk-flip-line-height, 1.15);
+    }
+
+    [data-mk-flip-current],
+    [data-mk-flip-next] {
+      display: block;
+      white-space: nowrap;
       will-change: transform;
+    }
+
+    [data-mk-flip-current] {
+      transform-origin: 50% 0%;
+    }
+
+    [data-mk-flip-next] {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      transform-origin: 50% 100%;
     }
   `;
   doc.head.appendChild(style);
@@ -22,42 +45,102 @@ export const navFlip = {
   name: "nav-flip",
   category: "primitive",
   selector: '[data-motion~="nav-flip"]',
-  mount(element, { gsap, reducedMotion, supportsHover }) {
-    if (reducedMotion() || !supportsHover()) return;
 
-    ensureStyles(element.ownerDocument);
-    const originalHTML = element.innerHTML;
-    const inner = element.ownerDocument.createElement("span");
-    inner.setAttribute("data-mk-nav-flip-inner", "");
-    while (element.firstChild) inner.appendChild(element.firstChild);
-    element.appendChild(inner);
-    element.style.setProperty(
-      "--mk-nav-flip-perspective",
-      `${readNumber(element, "motion-perspective", 500)}px`
-    );
+  mount(link, { gsap, reducedMotion, supportsHover }) {
+    const respectReducedMotion =
+      readString(link, "motion-respect-reduced-motion", "true") !== "false";
 
-    const timeline = gsap.timeline({ paused: true });
-    timeline.to(inner, {
-      rotationX: readNumber(element, "motion-rotation-x", -90),
-      duration: readNumber(element, "motion-duration", 0.35),
-      ease: readString(element, "motion-ease", "power2.inOut")
+    if ((respectReducedMotion && reducedMotion()) || !supportsHover()) return;
+
+    const doc = link.ownerDocument;
+    const label = link.textContent.trim();
+    if (!label) return;
+
+    const duration = readNumber(link, "motion-duration", 0.42);
+    const ease = readString(link, "motion-ease", "power3.out");
+    const perspective = readNumber(link, "motion-perspective", 500);
+    const rotation = readNumber(link, "motion-rotation", 75);
+    const nextStartY = readNumber(link, "motion-next-start-y", 10);
+    const currentEndY = readNumber(link, "motion-current-end-y", -110);
+    const nextEndY = readNumber(link, "motion-next-end-y", -100);
+    const overlap = readNumber(link, "motion-overlap", 0.03);
+    const height = readString(link, "motion-height", "1.15em");
+    const lineHeight = readString(link, "motion-line-height", "1.15");
+
+    addStyles(doc);
+
+    const originalHTML = link.innerHTML;
+    const clip = doc.createElement("span");
+    const current = doc.createElement("span");
+    const next = doc.createElement("span");
+
+    link.setAttribute("data-mk-flip-link", "");
+    link.style.setProperty("--mk-flip-perspective", perspective + "px");
+    link.style.setProperty("--mk-flip-height", height);
+    link.style.setProperty("--mk-flip-line-height", lineHeight);
+
+    clip.setAttribute("data-mk-flip-clip", "");
+    current.setAttribute("data-mk-flip-current", "");
+    next.setAttribute("data-mk-flip-next", "");
+    next.setAttribute("aria-hidden", "true");
+
+    current.textContent = label;
+    next.textContent = label;
+    clip.append(current, next);
+    link.replaceChildren(clip);
+
+    gsap.set(next, {
+      yPercent: nextStartY,
+      rotationX: rotation
     });
 
-    const enter = () => timeline.play();
-    const leave = () => timeline.reverse();
-    element.addEventListener("pointerenter", enter);
-    element.addEventListener("focusin", enter);
-    element.addEventListener("pointerleave", leave);
-    element.addEventListener("focusout", leave);
+    const timeline = gsap.timeline({
+      paused: true,
+      defaults: {
+        duration,
+        ease
+      }
+    });
+
+    timeline
+      .to(
+        current,
+        {
+          yPercent: currentEndY,
+          rotationX: -rotation
+        },
+        0
+      )
+      .to(
+        next,
+        {
+          yPercent: nextEndY,
+          rotationX: 0
+        },
+        overlap
+      );
+
+    function update() {
+      const active = link.matches(":hover") || link.matches(":focus");
+      active ? timeline.play() : timeline.reverse();
+    }
+
+    link.addEventListener("mouseenter", update);
+    link.addEventListener("mouseleave", update);
+    link.addEventListener("focus", update);
+    link.addEventListener("blur", update);
 
     return () => {
-      element.removeEventListener("pointerenter", enter);
-      element.removeEventListener("focusin", enter);
-      element.removeEventListener("pointerleave", leave);
-      element.removeEventListener("focusout", leave);
+      link.removeEventListener("mouseenter", update);
+      link.removeEventListener("mouseleave", update);
+      link.removeEventListener("focus", update);
+      link.removeEventListener("blur", update);
       timeline.kill();
-      element.innerHTML = originalHTML;
-      element.style.removeProperty("--mk-nav-flip-perspective");
+      link.innerHTML = originalHTML;
+      link.removeAttribute("data-mk-flip-link");
+      link.style.removeProperty("--mk-flip-perspective");
+      link.style.removeProperty("--mk-flip-height");
+      link.style.removeProperty("--mk-flip-line-height");
     };
   }
 };
