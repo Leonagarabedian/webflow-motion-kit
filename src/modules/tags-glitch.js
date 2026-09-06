@@ -13,7 +13,7 @@ function ensureStyles(doc) {
     [data-mk-tags-glitch-field] { position: absolute !important; inset: 0 !important; z-index: 1; display: block !important; width: 100% !important; height: 100% !important; min-height: 0 !important; margin: 0 !important; }
     [data-mk-tags-glitch-cluster] { position: absolute !important; left: var(--mk-cluster-x) !important; top: var(--mk-cluster-y) !important; display: block !important; width: min(15rem, 28vw) !important; max-width: none !important; line-height: 1.05; transform: translate(-50%, -50%); }
     [data-mk-tags-glitch-chip] { position: static !important; display: inline !important; margin: 0 0.42em 0 0 !important; padding: 0 !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; color: inherit !important; font-size: clamp(0.72rem, 1.1vw, 1.125rem) !important; line-height: 1 !important; white-space: normal !important; }
-    [data-mk-tags-glitch-title] { position: absolute !important; z-index: 2; top: 50% !important; left: 50% !important; width: min(13rem, calc(100% - 2rem)) !important; margin: 0 !important; color: inherit !important; font-size: clamp(0.9rem, 1.1vw, 1.125rem) !important; line-height: 1.05 !important; text-align: left !important; transform: translate(-50%, -50%); pointer-events: none; }
+    [data-mk-tags-glitch-title] { position: absolute !important; z-index: 2; top: 50% !important; left: 50% !important; width: min(13rem, calc(100% - 2rem)) !important; margin: 0 !important; color: inherit !important; font-size: clamp(0.9rem, 1.1vw, 1.125rem) !important; line-height: 1.05 !important; text-align: left !important; transform: translate(-50%, -50%); pointer-events: none; will-change: transform; }
     [data-mk-tags-glitch-char] { display: inline-block; will-change: transform, opacity; }
     @media (max-width: 767px) {
       [data-mk-tags-glitch-section] { min-height: var(--mk-tags-glitch-height-mobile, 175vh) !important; }
@@ -144,12 +144,15 @@ export const tagsGlitch = {
     const scatterYMin = readNumber(section, "motion-scatter-y-min", 55);
     const scatterYMax = readNumber(section, "motion-scatter-y-max", 160);
     const rotation = readNumber(section, "motion-rotation", 20);
+    const titleStartY = readNumber(section, "motion-title-start-y", 0);
+    const titleEndY = readNumber(section, "motion-title-end-y", 0);
     const destinations = chipCharacters.map(() => ({
       x: between(random, -scatterX, scatterX),
       y: between(random, scatterYMin, scatterYMax),
       rotation: between(random, -rotation, rotation)
     }));
 
+    gsap.set(title, { y: reducedMotion() ? 0 : titleStartY });
     gsap.set(titleSplit.characters, { autoAlpha: reducedMotion() ? 1 : 0, y: reducedMotion() ? 0 : 12 });
     gsap.set(chipCharacters, { x: 0, y: 0, rotation: 0, autoAlpha: reducedMotion() ? 0 : 1 });
 
@@ -178,6 +181,10 @@ export const tagsGlitch = {
         duration: chipFadeEnd,
         stagger: { each: chipFadeEnd / Math.max(1, chipCharacters.length * 3.5), from: "random" }
       }, 0);
+      timeline.to(title, {
+        y: titleEndY,
+        duration: Math.max(0.01, titleEnd - titleStart)
+      }, titleStart);
       timeline.to(titleSplit.characters, {
         autoAlpha: 1,
         y: 0,
@@ -207,6 +214,7 @@ export const tagsGlitch = {
       clearTimeout(resizeTimer);
       timeline?.scrollTrigger?.kill();
       timeline?.kill();
+      gsap.set(title, { clearProps: "transform" });
       gsap.set([...chipCharacters, ...titleSplit.characters], { clearProps: "transform,opacity,visibility" });
       chipSplits.forEach((split) => split.restore());
       titleSplit.restore();
