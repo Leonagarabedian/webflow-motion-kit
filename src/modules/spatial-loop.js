@@ -2,27 +2,22 @@ import * as THREE from "three/webgpu";
 import { readString } from "../core/config.js";
 
 const STYLE_ID = "motion-kit-spatial-loop-styles";
-
-// Scheme Engine Work gallery source values.
 const WIDTH = 8;
 const HEIGHT = 4.5;
 const GAP = 0.35;
 const SCROLL_LERP = 0.1;
 const FOV = 75;
 const SHORT_LANDSCAPE_QUERY = "(orientation: landscape) and (max-width: 1180px) and (max-height: 600px)";
-
-// Exact Work-plane curve factor from Scheme's applyCurveNode():
-// y *= 1 + pow(worldX * .075, 2)
 const CURVE_FACTOR = 0.075;
 
-// Works takeover choreography.
+// Takeover interaction. Works owns input only while fully settled at the top.
+// Once exit intent is clear, native vertical page flow resumes through a short
+// sticky release runway instead of jumping the scroll position programmatically.
 const INPUT_SCALE = 0.01;
 const SNAP_DELAY = 140;
 const EXIT_INTENT_THRESHOLD = 560;
 const EXIT_INTENT_RESET_DELAY = 220;
 const EXIT_ARM_DELAY = 550;
-const ENTER_DURATION = 0.55;
-const RELEASE_DURATION = 0.8;
 
 function ensureStyles(doc) {
   if (doc.getElementById(STYLE_ID)) return;
@@ -31,13 +26,13 @@ function ensureStyles(doc) {
   style.textContent = `
     [data-mk-spatial-loop-section] {
       position: relative !important;
-      min-height: var(--mk-spatial-loop-height, 100svh) !important;
+      min-height: var(--mk-spatial-loop-height, 160svh) !important;
       overflow: visible !important;
     }
     [data-mk-spatial-loop-container] {
       position: relative !important;
       width: 100% !important;
-      min-height: var(--mk-spatial-loop-height, 100svh) !important;
+      min-height: var(--mk-spatial-loop-height, 160svh) !important;
       padding-left: 0 !important;
       padding-right: 0 !important;
     }
@@ -52,7 +47,7 @@ function ensureStyles(doc) {
       padding-bottom: 0 !important;
       overflow: hidden !important;
       transform-origin: 50% 50%;
-      will-change: transform, border-radius;
+      will-change: transform;
     }
     [data-mk-spatial-loop-heading] {
       position: absolute !important;
@@ -117,7 +112,7 @@ function ensureStyles(doc) {
     @media screen and (max-width: 767px) {
       [data-mk-spatial-loop-section],
       [data-mk-spatial-loop-container] {
-        min-height: var(--mk-spatial-loop-height-mobile, 100svh) !important;
+        min-height: var(--mk-spatial-loop-height-mobile, 150svh) !important;
       }
       [data-mk-spatial-loop-title] { bottom: 6svh; }
       [data-mk-spatial-loop-title-item] { font-size: 1.35rem; }
@@ -163,16 +158,11 @@ function createTexture(media) {
 
 function curveGeometry(slide, worldOffsetX) {
   const position = slide.geometry.attributes.position;
-  const baseX = slide.baseX;
-  const baseY = slide.baseY;
-
   for (let index = 0; index < position.count; index += 1) {
-    const worldX = baseX[index] + worldOffsetX;
+    const worldX = slide.baseX[index] + worldOffsetX;
     const scaled = worldX * CURVE_FACTOR;
-    const scaleY = 1 + scaled * scaled;
-    position.setY(index, baseY[index] * scaleY);
+    position.setY(index, slide.baseY[index] * (1 + scaled * scaled));
   }
-
   position.needsUpdate = true;
 }
 
@@ -204,13 +194,12 @@ export const spatialLoop = {
 
   mount(root, { gsap, ScrollTrigger, reducedMotion }) {
     if (reducedMotion()) return;
-
     ensureStyles(root.ownerDocument);
 
     const itemSelector = readString(root, "motion-item-selector", ".work-item");
     const mediaSelector = readString(root, "motion-media-selector", ".work-image");
-    const sectionHeight = readString(root, "motion-section-height", "100svh");
-    const mobileSectionHeight = readString(root, "motion-mobile-section-height", "100svh");
+    const sectionHeight = readString(root, "motion-section-height", "160svh");
+    const mobileSectionHeight = readString(root, "motion-mobile-section-height", "150svh");
     const sourceItems = Array.from(root.querySelectorAll(itemSelector));
     if (sourceItems.length < 2) return;
 
@@ -257,35 +246,16 @@ export const spatialLoop = {
     let currentCenterIndex = 0;
     let destroyed = false;
     let rafId = null;
-    let pageTrigger = null;
+    let lockTrigger = null;
+    let releaseTimeline = null;
     let inputTimeout = null;
     let takeoverState = "idle";
     let exitIntent = 0;
     let exitIntentDirection = 0;
     let lastExitIntentAt = 0;
     let lockedAt = 0;
-    let jumpGuard = false;
     let touchX = null;
     let touchY = null;
-
-    const getSmoother = () => window.WebflowMotionKit?.scroll?.get?.() ?? null;
-    const getPageY = () => {
-      const smoother = getSmoother();
-      if (smoother?.scrollTop) return smoother.scrollTop();
-      return window.scrollY || window.pageYOffset || 0;
-    };
-    const setPageY = (value) => {
-      const smoother = getSmoother();
-      if (smoother?.scrollTo) smoother.scrollTo(value, false);
-      else window.scrollTo(0, value);
-    };
-    const getSectionTop = () => getPageY() + shell.section.getBoundingClientRect().top;
-
-    const resetSlidePositions = () => {
-      slides.forEach((slide) => {
-        slide.originalPosition = slide.index * stride;
-      });
-    };
 
     const resetExitIntent = () => {
       exitIntent = 0;
@@ -311,12 +281,8 @@ export const spatialLoop = {
           overwrite: true
         });
       }
-
       if (incoming) {
-        gsap.set(incoming, {
-          yPercent: direction === "right" ? 30 : -30,
-          opacity: 0
-        });
+        gsap.set(incoming, { yPercent: direction === "right" ? 30 : -30, opacity: 0 });
         gsap.to(incoming, {
           yPercent: 0,
           opacity: 1,
@@ -330,7 +296,6 @@ export const spatialLoop = {
 
     const updateInfiniteScroll = () => {
       scrollPosition += (targetScrollPosition - scrollPosition) * SCROLL_LERP;
-
       const halfWidth = totalWidth / 2;
       let nearestIndex = 0;
       let nearestDistance = Infinity;
@@ -345,18 +310,14 @@ export const spatialLoop = {
           x -= totalWidth;
           slide.originalPosition -= totalWidth;
         }
-
         slide.mesh.position.x = x;
         slide.mesh.rotation.set(0, 0, 0);
         curveGeometry(slide, x);
-
-        const distance = Math.abs(x);
-        if (distance < nearestDistance) {
-          nearestDistance = distance;
+        if (Math.abs(x) < nearestDistance) {
+          nearestDistance = Math.abs(x);
           nearestIndex = slide.index;
         }
       });
-
       showTitle(nearestIndex);
     };
 
@@ -368,137 +329,51 @@ export const spatialLoop = {
     };
 
     const snapGallery = () => {
-      targetScrollPosition = clamp(
-        Math.round(targetScrollPosition / stride) * stride,
-        0,
-        maxTravel
-      );
+      targetScrollPosition = clamp(Math.round(targetScrollPosition / stride) * stride, 0, maxTravel);
       resetExitIntent();
     };
 
-    const lockTakeover = (direction) => {
-      if (destroyed || jumpGuard || takeoverState !== "idle" || !slides.length) return;
-
+    const lockTakeover = () => {
+      if (destroyed || takeoverState === "locked" || !slides.length) return;
       takeoverState = "locked";
       lockedAt = performance.now();
       resetExitIntent();
       clearTimeout(inputTimeout);
-      resetSlidePositions();
-
-      if (direction < 0) {
-        targetScrollPosition = maxTravel;
-        scrollPosition = maxTravel;
-        currentCenterIndex = slides.length - 1;
-      } else {
-        targetScrollPosition = 0;
-        scrollPosition = 0;
-        currentCenterIndex = 0;
-      }
-      previousScrollPosition = scrollPosition;
-
-      titleItems.forEach((title, index) => {
-        gsap.set(title, {
-          yPercent: index === currentCenterIndex ? 0 : 30,
-          opacity: index === currentCenterIndex ? 1 : 0
-        });
-      });
-
       root.setAttribute("data-mk-spatial-loop-locked", "");
-      gsap.killTweensOf(shell.layout);
-      gsap.fromTo(
-        shell.layout,
-        { scale: 0.94, yPercent: 0, borderRadius: "2.5vw" },
-        {
-          scale: 1,
-          yPercent: 0,
-          borderRadius: "0vw",
-          duration: ENTER_DURATION,
-          ease: "power3.out",
-          overwrite: true
-        }
-      );
     };
 
-    const releaseTakeover = (direction) => {
+    const releaseTakeover = () => {
       if (takeoverState !== "locked") return;
-      takeoverState = "releasing";
+      takeoverState = "released";
       clearTimeout(inputTimeout);
       resetExitIntent();
-
-      const startY = getPageY();
-      const sectionTop = getSectionTop();
-      const targetY = direction > 0
-        ? sectionTop + shell.section.offsetHeight + 2
-        : Math.max(0, sectionTop - 2);
-      const travelState = { y: startY };
-
-      gsap.killTweensOf(shell.layout);
-      gsap.to(shell.layout, {
-        yPercent: direction > 0 ? -18 : 18,
-        scale: 0.965,
-        borderRadius: "2vw",
-        duration: RELEASE_DURATION,
-        ease: "power3.inOut",
-        overwrite: true
-      });
-
-      gsap.to(travelState, {
-        y: targetY,
-        duration: RELEASE_DURATION,
-        ease: "power3.inOut",
-        onUpdate() {
-          setPageY(travelState.y);
-        },
-        onComplete() {
-          jumpGuard = true;
-          setPageY(targetY);
-          root.removeAttribute("data-mk-spatial-loop-locked");
-          gsap.set(shell.layout, { clearProps: "transform,borderRadius" });
-          takeoverState = "idle";
-          requestAnimationFrame(() => {
-            requestAnimationFrame(() => {
-              jumpGuard = false;
-            });
-          });
-        }
-      });
+      root.removeAttribute("data-mk-spatial-loop-locked");
     };
 
     const registerExitIntent = (delta) => {
       const now = performance.now();
       if (now - lockedAt < EXIT_ARM_DELAY) return false;
-
       const direction = Math.sign(delta);
       if (!direction) return false;
 
-      if (
-        direction !== exitIntentDirection ||
-        now - lastExitIntentAt > EXIT_INTENT_RESET_DELAY
-      ) {
+      if (direction !== exitIntentDirection || now - lastExitIntentAt > EXIT_INTENT_RESET_DELAY) {
         exitIntent = Math.abs(delta);
       } else {
         exitIntent += Math.abs(delta);
       }
-
       exitIntentDirection = direction;
       lastExitIntentAt = now;
 
       if (exitIntent >= EXIT_INTENT_THRESHOLD) {
-        releaseTakeover(direction);
+        releaseTakeover();
         return true;
       }
-
       return false;
     };
 
     const handleInput = (delta, allowExitIntent = true) => {
       if (takeoverState !== "locked" || !Number.isFinite(delta) || delta === 0) return;
-
-      targetScrollPosition = clamp(
-        targetScrollPosition + delta * INPUT_SCALE,
-        0,
-        maxTravel
-      );
+      targetScrollPosition = clamp(targetScrollPosition + delta * INPUT_SCALE, 0, maxTravel);
 
       if (allowExitIntent) {
         if (registerExitIntent(delta)) return;
@@ -514,15 +389,10 @@ export const spatialLoop = {
       if (takeoverState !== "locked") return;
       event.preventDefault();
       event.stopPropagation();
-
       const horizontal = Math.abs(event.deltaX);
       const vertical = Math.abs(event.deltaY);
       const useHorizontal = horizontal > vertical;
-      const delta = useHorizontal ? event.deltaX : event.deltaY;
-
-      // Horizontal gestures can browse indefinitely. A sustained vertical gesture
-      // means the visitor wants to continue down/up the page and releases Works.
-      handleInput(delta, !useHorizontal);
+      handleInput(useHorizontal ? event.deltaX : event.deltaY, !useHorizontal);
     };
 
     const onTouchStart = (event) => {
@@ -559,8 +429,7 @@ export const spatialLoop = {
       if (!delta) return;
       event.preventDefault();
       event.stopPropagation();
-      const allowExitIntent = !["ArrowLeft", "ArrowRight"].includes(event.key);
-      handleInput(delta, allowExitIntent);
+      handleInput(delta, !["ArrowLeft", "ArrowRight"].includes(event.key));
     };
 
     const onResize = () => {
@@ -601,11 +470,7 @@ export const spatialLoop = {
             baseY[vertex] = position.getY(vertex);
           }
 
-          const material = new THREE.MeshBasicMaterial({
-            map: asset.texture,
-            side: THREE.DoubleSide,
-            transparent: true
-          });
+          const material = new THREE.MeshBasicMaterial({ map: asset.texture, side: THREE.DoubleSide, transparent: true });
           const mesh = new THREE.Mesh(geometry, material);
           const originalPosition = index * stride;
           mesh.position.x = originalPosition;
@@ -615,23 +480,9 @@ export const spatialLoop = {
           title.setAttribute("data-mk-spatial-loop-title-item", "");
           title.textContent = titleFromItem(item, media, index);
           titleHost.appendChild(title);
-          gsap.set(title, {
-            yPercent: index === 0 ? 0 : 30,
-            opacity: index === 0 ? 1 : 0
-          });
+          gsap.set(title, { yPercent: index === 0 ? 0 : 30, opacity: index === 0 ? 1 : 0 });
 
-          return {
-            index,
-            mesh,
-            geometry,
-            material,
-            texture: asset.texture,
-            video: asset.video,
-            originalPosition,
-            title,
-            baseX,
-            baseY
-          };
+          return { index, mesh, geometry, material, texture: asset.texture, video: asset.video, originalPosition, title, baseX, baseY };
         }).filter(Boolean);
 
         if (slides.length < 2) return;
@@ -640,18 +491,45 @@ export const spatialLoop = {
         maxTravel = stride * Math.max(1, slides.length - 1);
         sourceItems.forEach((item) => item.setAttribute("data-mk-spatial-loop-source-hidden", ""));
 
-        pageTrigger = ScrollTrigger.create({
-          id: "mk-spatial-loop-takeover",
+        // Natural scroll now owns the transition out. No scrollTop tween and no
+        // synthetic jump. The scene simply eases back while the page advances.
+        releaseTimeline = gsap.timeline({
+          scrollTrigger: {
+            id: "mk-spatial-loop-release",
+            trigger: shell.section,
+            start: "top top",
+            end: "bottom bottom",
+            scrub: 0.75,
+            invalidateOnRefresh: true,
+            onUpdate(self) {
+              if (self.progress > 0.015 && takeoverState === "locked") releaseTakeover();
+              if (self.progress > 0.015 && takeoverState === "idle") takeoverState = "released";
+            },
+            onLeave() {
+              takeoverState = "idle";
+              root.removeAttribute("data-mk-spatial-loop-locked");
+            },
+            onLeaveBack() {
+              takeoverState = "idle";
+              root.removeAttribute("data-mk-spatial-loop-locked");
+            }
+          }
+        });
+        releaseTimeline.fromTo(
+          shell.layout,
+          { yPercent: 0, scale: 1 },
+          { yPercent: -8, scale: 0.975, ease: "none" }
+        );
+
+        // One-pixel trigger at the fully expanded position. It locks only here,
+        // so the approach and departure remain ordinary smooth vertical scroll.
+        lockTrigger = ScrollTrigger.create({
+          id: "mk-spatial-loop-lock",
           trigger: shell.section,
           start: "top top",
-          end: "bottom top",
-          invalidateOnRefresh: true,
-          onEnter() {
-            lockTakeover(1);
-          },
-          onEnterBack() {
-            lockTakeover(-1);
-          }
+          end: "+=2",
+          onEnter: lockTakeover,
+          onEnterBack: lockTakeover
         });
 
         rafId = requestAnimationFrame(animate);
@@ -665,7 +543,9 @@ export const spatialLoop = {
       destroyed = true;
       cancelAnimationFrame(rafId);
       clearTimeout(inputTimeout);
-      pageTrigger?.kill?.();
+      lockTrigger?.kill?.();
+      releaseTimeline?.scrollTrigger?.kill?.();
+      releaseTimeline?.kill?.();
       window.removeEventListener("wheel", onWheel, true);
       window.removeEventListener("touchstart", onTouchStart, true);
       window.removeEventListener("touchmove", onTouchMove, true);
@@ -674,7 +554,7 @@ export const spatialLoop = {
       window.removeEventListener("keydown", onKeyDown, true);
       window.removeEventListener("resize", onResize);
       root.removeAttribute("data-mk-spatial-loop-locked");
-      gsap.set(shell.layout, { clearProps: "transform,borderRadius" });
+      gsap.set(shell.layout, { clearProps: "transform" });
 
       slides.forEach((slide) => {
         slide.video?.pause?.();
