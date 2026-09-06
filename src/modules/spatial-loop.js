@@ -7,18 +7,7 @@ const STYLE_ID = "motion-kit-spatial-loop-styles";
 const WIDTH = 8;
 const HEIGHT = 4.5;
 const GAP = 0.35;
-const SCROLL_SPEED = -0.01;
-const TOUCH_SCROLL_SPEED_MULTIPLIER = 2.6;
 const SCROLL_LERP = 0.1;
-const TOUCH_SCROLL_LERP = 0.28;
-const SNAP_DELAY = 500;
-const SNAP_TRAILING_DELAY = 80;
-const SNAP_TRAILING_DELTA = 4;
-const SNAP_SMOOTHING = 0.055;
-const TOUCH_SNAP_DELAY = 400;
-const TOUCH_SNAP_SMOOTHING = 0.12;
-const TOUCH_SNAP_VELOCITY_THRESHOLD = 0.04;
-const SNAP_LOCK_EPSILON = 0.001;
 const FOV = 75;
 const SHORT_LANDSCAPE_QUERY = "(orientation: landscape) and (max-width: 1180px) and (max-height: 600px)";
 
@@ -33,13 +22,13 @@ function ensureStyles(doc) {
   style.textContent = `
     [data-mk-spatial-loop-section] {
       position: relative !important;
-      min-height: 360svh !important;
+      min-height: var(--mk-spatial-loop-height, 260svh) !important;
       overflow: visible !important;
     }
     [data-mk-spatial-loop-container] {
       position: relative !important;
       width: 100% !important;
-      min-height: 360svh !important;
+      min-height: var(--mk-spatial-loop-height, 260svh) !important;
       padding-left: 0 !important;
       padding-right: 0 !important;
     }
@@ -112,30 +101,14 @@ function ensureStyles(doc) {
     }
     @media screen and (max-width: 767px) {
       [data-mk-spatial-loop-section],
-      [data-mk-spatial-loop-container] { min-height: 300svh !important; }
+      [data-mk-spatial-loop-container] {
+        min-height: var(--mk-spatial-loop-height-mobile, 240svh) !important;
+      }
       [data-mk-spatial-loop-title] { bottom: 6svh; }
       [data-mk-spatial-loop-title-item] { font-size: 1.35rem; }
     }
   `;
   doc.head.appendChild(style);
-}
-
-export function nearestSpatialSnap(targetScrollPosition, itemStride, totalWidth, slides) {
-  if (!slides?.length || !Number.isFinite(totalWidth) || totalWidth <= 0) return null;
-  let nearest = null;
-  let distance = Infinity;
-
-  slides.forEach((slide) => {
-    const anchor = slide.index * itemStride;
-    const candidate = anchor + Math.round((targetScrollPosition - anchor) / totalWidth) * totalWidth;
-    const delta = Math.abs(candidate - targetScrollPosition);
-    if (delta < distance) {
-      distance = delta;
-      nearest = candidate;
-    }
-  });
-
-  return nearest;
 }
 
 function isShortLandscapeViewport() {
@@ -188,66 +161,6 @@ function curveGeometry(slide, worldOffsetX) {
   position.needsUpdate = true;
 }
 
-class SchemeVirtualScroll {
-  constructor(onChange) {
-    this.onChange = onChange;
-    this.x = 0;
-    this.y = 0;
-    this.mouseMultiplier = 1;
-    this.firefoxMultiplier = 15;
-    this.keyStep = 120;
-    this._onWheel = this._onWheel.bind(this);
-    this._onMouseWheel = this._onMouseWheel.bind(this);
-    this._onKeyDown = this._onKeyDown.bind(this);
-    this.bind();
-  }
-
-  emit(deltaX, deltaY, originalEvent) {
-    this.x += deltaX;
-    this.y += deltaY;
-    this.onChange({ x: this.x, y: this.y, deltaX, deltaY, originalEvent });
-  }
-
-  _onWheel(event) {
-    let deltaX = event.wheelDeltaX || -event.deltaX;
-    let deltaY = event.wheelDeltaY || -event.deltaY;
-    if (event.deltaMode === 1) {
-      deltaX *= this.firefoxMultiplier;
-      deltaY *= this.firefoxMultiplier;
-    }
-    this.emit(deltaX * this.mouseMultiplier, deltaY * this.mouseMultiplier, event);
-  }
-
-  _onMouseWheel(event) {
-    const deltaX = event.wheelDeltaX ? event.wheelDeltaX : 0;
-    const deltaY = event.wheelDeltaY ? event.wheelDeltaY : event.wheelDelta;
-    this.emit(deltaX * this.mouseMultiplier, deltaY * this.mouseMultiplier, event);
-  }
-
-  _onKeyDown(event) {
-    switch (event.keyCode) {
-      case 37: this.emit(this.keyStep, 0, event); return;
-      case 39: this.emit(-this.keyStep, 0, event); return;
-      case 38: this.emit(0, this.keyStep, event); return;
-      case 40: this.emit(0, -this.keyStep, event); return;
-      case 32: this.emit(0, event.shiftKey ? this.keyStep : -this.keyStep, event); return;
-      default: return;
-    }
-  }
-
-  bind() {
-    window.addEventListener("wheel", this._onWheel, { passive: true });
-    window.addEventListener("mousewheel", this._onMouseWheel, { passive: true });
-    window.addEventListener("keydown", this._onKeyDown, { passive: true });
-  }
-
-  destroy() {
-    window.removeEventListener("wheel", this._onWheel);
-    window.removeEventListener("mousewheel", this._onMouseWheel);
-    window.removeEventListener("keydown", this._onKeyDown);
-  }
-}
-
 function findSceneShell(root) {
   const layout = root.parentElement;
   const container = layout?.parentElement;
@@ -270,13 +183,15 @@ export const spatialLoop = {
   category: "composition",
   selector: '[data-motion~="spatial-loop"]',
 
-  mount(root, { gsap, reducedMotion }) {
+  mount(root, { gsap, ScrollTrigger, reducedMotion }) {
     if (reducedMotion()) return;
 
     ensureStyles(root.ownerDocument);
 
     const itemSelector = readString(root, "motion-item-selector", ".work-item");
     const mediaSelector = readString(root, "motion-media-selector", ".work-image");
+    const sectionHeight = readString(root, "motion-section-height", "260svh");
+    const mobileSectionHeight = readString(root, "motion-mobile-section-height", "240svh");
     const sourceItems = Array.from(root.querySelectorAll(itemSelector));
     if (sourceItems.length < 2) return;
 
@@ -285,6 +200,10 @@ export const spatialLoop = {
     shell.container?.setAttribute("data-mk-spatial-loop-container", "");
     shell.layout?.setAttribute("data-mk-spatial-loop-layout", "");
     shell.heading?.setAttribute("data-mk-spatial-loop-heading", "");
+    shell.section?.style.setProperty("--mk-spatial-loop-height", sectionHeight);
+    shell.section?.style.setProperty("--mk-spatial-loop-height-mobile", mobileSectionHeight);
+    shell.container?.style.setProperty("--mk-spatial-loop-height", sectionHeight);
+    shell.container?.style.setProperty("--mk-spatial-loop-height-mobile", mobileSectionHeight);
 
     const titleHost = root.ownerDocument.createElement("div");
     titleHost.setAttribute("data-mk-spatial-loop-title", "");
@@ -315,31 +234,9 @@ export const spatialLoop = {
     let targetScrollPosition = 0;
     let previousScrollPosition = 0;
     let currentCenterIndex = 0;
-    let lastFrameScrollDelta = 0;
-    let isScrolling = false;
-    let scrollStopTimeout = null;
-    let pointerIsDown = false;
-    let touchActive = false;
-    let lastScrollInputWasTouch = false;
     let destroyed = false;
     let rafId = null;
-    let sceneActive = false;
-    let sceneObserver = null;
-    const isCoarsePointer = !!(window.matchMedia?.("(pointer: coarse)")?.matches || navigator.maxTouchPoints > 0);
-
-    const isTouchInput = () => isCoarsePointer || lastScrollInputWasTouch;
-    const isTouchGlideActive = () => isTouchInput() && Math.abs(lastFrameScrollDelta) > TOUCH_SNAP_VELOCITY_THRESHOLD;
-    const canApplyScrollSnap = () => !isScrolling && !pointerIsDown && !touchActive && !isTouchGlideActive() && slides.length >= 2 && !!totalWidth;
-
-    const applyScrollSnap = () => {
-      const nearest = nearestSpatialSnap(targetScrollPosition, stride, totalWidth, slides);
-      if (nearest === null) return;
-      targetScrollPosition = nearest;
-      const smoothing = isTouchInput() ? TOUCH_SNAP_SMOOTHING : SNAP_SMOOTHING;
-      const delta = nearest - scrollPosition;
-      if (Math.abs(delta) < SNAP_LOCK_EPSILON) scrollPosition = nearest;
-      else scrollPosition += delta * smoothing;
-    };
+    let pageTrigger = null;
 
     const showTitle = (nextIndex) => {
       if (nextIndex === currentCenterIndex || !titleItems.length) return;
@@ -377,15 +274,8 @@ export const spatialLoop = {
     };
 
     const updateInfiniteScroll = () => {
-      const previous = scrollPosition;
-      if (canApplyScrollSnap()) {
-        applyScrollSnap();
-      } else {
-        const lerp = isTouchInput() ? TOUCH_SCROLL_LERP : SCROLL_LERP;
-        scrollPosition += (targetScrollPosition - scrollPosition) * lerp;
-      }
+      scrollPosition += (targetScrollPosition - scrollPosition) * SCROLL_LERP;
 
-      lastFrameScrollDelta = scrollPosition - previous;
       const halfWidth = totalWidth / 2;
       let nearestIndex = 0;
       let nearestDistance = Infinity;
@@ -422,36 +312,6 @@ export const spatialLoop = {
       rafId = requestAnimationFrame(animate);
     };
 
-    const scroller = new SchemeVirtualScroll((event) => {
-      if (!sceneActive) return;
-      const type = event.originalEvent?.type || "";
-      const touch = type.startsWith("touch");
-      lastScrollInputWasTouch = touch;
-      const deltaX = event.deltaX || 0;
-      const deltaY = event.deltaY || 0;
-      const dominantDelta = Math.abs(deltaX) > Math.abs(deltaY) ? deltaX : deltaY;
-      const speed = SCROLL_SPEED * (touch ? TOUCH_SCROLL_SPEED_MULTIPLIER : 1);
-      targetScrollPosition += dominantDelta * speed;
-      isScrolling = true;
-      clearTimeout(scrollStopTimeout);
-      const delay = touch
-        ? TOUCH_SNAP_DELAY
-        : Math.abs(dominantDelta) < SNAP_TRAILING_DELTA
-          ? SNAP_TRAILING_DELAY
-          : SNAP_DELAY;
-      scrollStopTimeout = setTimeout(() => {
-        isScrolling = false;
-      }, delay);
-    });
-
-    const canvas = renderer.domElement;
-    const onPointerDown = () => { pointerIsDown = true; };
-    const onPointerUp = () => { pointerIsDown = false; };
-    const onTouchStart = () => {
-      touchActive = true;
-      lastScrollInputWasTouch = true;
-    };
-    const onTouchEnd = () => { touchActive = false; };
     const onResize = () => {
       const width = window.innerWidth;
       const height = Math.max(1, window.innerHeight);
@@ -460,25 +320,9 @@ export const spatialLoop = {
       camera.updateProjectionMatrix();
       camera.position.z = getCameraZ(nextAspect);
       renderer.setSize(width, height);
+      ScrollTrigger.refresh?.();
     };
-
-    canvas.addEventListener("pointerdown", onPointerDown);
-    canvas.addEventListener("pointerup", onPointerUp);
-    canvas.addEventListener("pointercancel", onPointerUp);
-    canvas.addEventListener("pointerleave", onPointerUp, { passive: true });
-    canvas.addEventListener("touchstart", onTouchStart, { passive: true });
-    canvas.addEventListener("touchend", onTouchEnd, { passive: true });
-    canvas.addEventListener("touchcancel", onTouchEnd, { passive: true });
     window.addEventListener("resize", onResize);
-
-    if (shell.section) {
-      sceneObserver = new IntersectionObserver((entries) => {
-        sceneActive = entries.some((entry) => entry.isIntersecting && entry.intersectionRatio > 0.15);
-      }, { threshold: [0, 0.15, 0.5] });
-      sceneObserver.observe(shell.section);
-    } else {
-      sceneActive = true;
-    }
 
     (async () => {
       try {
@@ -536,26 +380,32 @@ export const spatialLoop = {
         titleItems = slides.map((slide) => slide.title);
         totalWidth = slides.length * stride;
         sourceItems.forEach((item) => item.setAttribute("data-mk-spatial-loop-source-hidden", ""));
+
+        const travel = stride * Math.max(1, slides.length - 1);
+        pageTrigger = ScrollTrigger.create({
+          id: "mk-spatial-loop-page-flow",
+          trigger: shell.section || root,
+          start: "top top",
+          end: "bottom bottom",
+          invalidateOnRefresh: true,
+          onUpdate(self) {
+            targetScrollPosition = self.progress * travel;
+          }
+        });
+        targetScrollPosition = pageTrigger.progress * travel;
+
         rafId = requestAnimationFrame(animate);
+        ScrollTrigger.refresh?.();
       } catch (error) {
-        console.error("[MotionKit spatial-loop] Unable to initialize Scheme-style WebGPU gallery", error);
+        console.error("[MotionKit spatial-loop] Unable to initialize page-directed WebGPU gallery", error);
       }
     })();
 
     return () => {
       destroyed = true;
       cancelAnimationFrame(rafId);
-      clearTimeout(scrollStopTimeout);
-      scroller.destroy();
-      sceneObserver?.disconnect();
+      pageTrigger?.kill?.();
       window.removeEventListener("resize", onResize);
-      canvas.removeEventListener("pointerdown", onPointerDown);
-      canvas.removeEventListener("pointerup", onPointerUp);
-      canvas.removeEventListener("pointercancel", onPointerUp);
-      canvas.removeEventListener("pointerleave", onPointerUp);
-      canvas.removeEventListener("touchstart", onTouchStart);
-      canvas.removeEventListener("touchend", onTouchEnd);
-      canvas.removeEventListener("touchcancel", onTouchEnd);
 
       slides.forEach((slide) => {
         slide.video?.pause?.();
@@ -566,13 +416,17 @@ export const spatialLoop = {
       });
 
       renderer.dispose();
-      canvas.remove();
+      renderer.domElement.remove();
       titleHost.remove();
       sourceItems.forEach((item) => item.removeAttribute("data-mk-spatial-loop-source-hidden"));
       shell.section?.removeAttribute("data-mk-spatial-loop-section");
       shell.container?.removeAttribute("data-mk-spatial-loop-container");
       shell.layout?.removeAttribute("data-mk-spatial-loop-layout");
       shell.heading?.removeAttribute("data-mk-spatial-loop-heading");
+      shell.section?.style.removeProperty("--mk-spatial-loop-height");
+      shell.section?.style.removeProperty("--mk-spatial-loop-height-mobile");
+      shell.container?.style.removeProperty("--mk-spatial-loop-height");
+      shell.container?.style.removeProperty("--mk-spatial-loop-height-mobile");
     };
   }
 };
