@@ -1,6 +1,7 @@
 import { accordionMedia } from "./accordion-media.js";
 import { blurReveal } from "./blur-reveal.js";
 import { brandLoad } from "./brand-load.js";
+import { characterScatterTitle } from "./character-scatter-title.js";
 import { cursor } from "./cursor.js";
 import { flipRelocation } from "./flip-relocation.js";
 import { heroFrameTransition } from "./hero-frame-transition.js";
@@ -61,5 +62,6 @@ export const modules = [
   themeSwitch,
   morphNarrative,
   tagsGlitch,
+  characterScatterTitle,
   heroSlitTransition
 ];
