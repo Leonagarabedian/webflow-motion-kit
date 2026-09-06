@@ -58,21 +58,7 @@ export function nearestSpatialSnap(targetScrollPosition, itemStride, totalWidth,
 
 function sourceUrl(media) {
   if (!media) return null;
-  if (media instanceof HTMLVideoElement) return media.currentSrc || media.src || media.getAttribute("src");
   return media.currentSrc || media.src || media.getAttribute("src");
-}
-
-function curveGeometry(geometry, amount = 0.075) {
-  const position = geometry.attributes.position;
-  if (!position) return geometry;
-  for (let index = 0; index < position.count; index += 1) {
-    const x = position.getX(index);
-    const y = position.getY(index);
-    position.setY(index, y * (1 + Math.sin(x * 2) * amount));
-  }
-  position.needsUpdate = true;
-  geometry.computeVertexNormals();
-  return geometry;
 }
 
 async function buildTexture(media) {
@@ -106,11 +92,12 @@ export const spatialLoop = {
 
     ensureStyles(root.ownerDocument);
 
+    const ScrollTrigger = plugins?.ScrollTrigger;
     const itemSelector = readString(root, "motion-item-selector", "[data-spatial-loop-item]");
     const mediaSelector = readString(root, "motion-media-selector", "img, video");
     const titleSelector = readString(root, "motion-title-selector", "[data-spatial-loop-title]");
     const titleHostSelector = readString(root, "motion-title-host-selector", null);
-    const inputMode = readString(root, "motion-input-mode", "page");
+    const inputMode = readString(root, "motion-input-mode", "pinned-page");
 
     const planeWidth = readNumber(root, "motion-plane-width", 8);
     const planeHeight = readNumber(root, "motion-plane-height", 4.5);
@@ -124,7 +111,7 @@ export const spatialLoop = {
     const snapDelay = readNumber(root, "motion-snap-delay", 500);
     const snapSmoothing = readNumber(root, "motion-snap-smoothing", 0.055);
     const touchSnapSmoothing = readNumber(root, "motion-touch-snap-smoothing", 0.12);
-    const curveAmount = readNumber(root, "motion-curve", 0.075);
+    const pinDistanceVh = readNumber(root, "motion-pin-distance-vh", 100);
 
     const sourceItems = Array.from(root.querySelectorAll(itemSelector));
     if (sourceItems.length < 2) return;
@@ -141,12 +128,10 @@ export const spatialLoop = {
         })
       : sourceTitles;
 
-    if (titleClones.length) {
-      titleClones.forEach((title, index) => {
-        if (!title) return;
-        gsap.set(title, { yPercent: index === 0 ? 0 : 30, opacity: index === 0 ? 1 : 0 });
-      });
-    }
+    titleClones.forEach((title, index) => {
+      if (!title) return;
+      gsap.set(title, { yPercent: index === 0 ? 0 : 30, opacity: index === 0 ? 1 : 0 });
+    });
 
     const canvas = root.ownerDocument.createElement("canvas");
     canvas.setAttribute("data-mk-spatial-loop-canvas", `mk-spatial-loop-${++sequence}`);
@@ -171,11 +156,10 @@ export const spatialLoop = {
     let pointerDown = false;
     let scrolling = false;
     let scrollStopTimer = null;
-    let lastPageY = window.scrollY;
+    let pinnedTrigger = null;
 
     const stride = planeWidth + gap;
     const totalWidth = stride * sourceItems.length;
-
     const cleanups = [];
 
     const animateTitles = (nextIndex) => {
@@ -194,14 +178,18 @@ export const spatialLoop = {
     };
 
     const updateSlides = () => {
-      const lerp = lastInputWasTouch ? touchLerp : desktopLerp;
-      if (scrolling || pointerDown) {
-        scrollPosition += (targetScrollPosition - scrollPosition) * lerp;
+      if (inputMode !== "pinned-page") {
+        const lerp = lastInputWasTouch ? touchLerp : desktopLerp;
+        if (scrolling || pointerDown) {
+          scrollPosition += (targetScrollPosition - scrollPosition) * lerp;
+        } else {
+          const nearest = nearestSpatialSnap(targetScrollPosition, stride, totalWidth, slides.length);
+          if (nearest !== null) targetScrollPosition = nearest;
+          const smoothing = lastInputWasTouch ? touchSnapSmoothing : snapSmoothing;
+          scrollPosition += (targetScrollPosition - scrollPosition) * smoothing;
+        }
       } else {
-        const nearest = nearestSpatialSnap(targetScrollPosition, stride, totalWidth, slides.length);
-        if (nearest !== null) targetScrollPosition = nearest;
-        const smoothing = lastInputWasTouch ? touchSnapSmoothing : snapSmoothing;
-        scrollPosition += (targetScrollPosition - scrollPosition) * smoothing;
+        scrollPosition += (targetScrollPosition - scrollPosition) * desktopLerp;
       }
 
       let nearestIndex = 0;
@@ -242,65 +230,50 @@ export const spatialLoop = {
       scheduleStop();
     };
 
-    const onWheel = (event) => {
-      const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
-      if (inputMode === "capture") event.preventDefault();
-      applyDelta(delta, false);
-    };
-
-    const onTouchStart = () => {
-      pointerDown = true;
-      lastInputWasTouch = true;
-    };
-    let touchX = 0;
-    let touchY = 0;
-    const onTouchBegin = (event) => {
-      onTouchStart();
-      const point = event.touches[0];
-      touchX = point?.clientX ?? 0;
-      touchY = point?.clientY ?? 0;
-    };
-    const onTouchMove = (event) => {
-      const point = event.touches[0];
-      if (!point) return;
-      const dx = touchX - point.clientX;
-      const dy = touchY - point.clientY;
-      touchX = point.clientX;
-      touchY = point.clientY;
-      const delta = Math.abs(dx) > Math.abs(dy) ? dx : dy;
-      if (inputMode === "capture") event.preventDefault();
-      applyDelta(delta, true);
-    };
-    const onTouchEnd = () => {
-      pointerDown = false;
-      scheduleStop();
-    };
-
-    const onPageScroll = () => {
-      if (inputMode !== "page") return;
-      const nextY = window.scrollY;
-      applyDelta(nextY - lastPageY, false);
-      lastPageY = nextY;
-    };
-
-    root.addEventListener("wheel", onWheel, { passive: inputMode !== "capture" });
-    root.addEventListener("touchstart", onTouchBegin, { passive: true });
-    root.addEventListener("touchmove", onTouchMove, { passive: inputMode !== "capture" });
-    root.addEventListener("touchend", onTouchEnd, { passive: true });
-    window.addEventListener("scroll", onPageScroll, { passive: true });
-
-    cleanups.push(() => root.removeEventListener("wheel", onWheel));
-    cleanups.push(() => root.removeEventListener("touchstart", onTouchBegin));
-    cleanups.push(() => root.removeEventListener("touchmove", onTouchMove));
-    cleanups.push(() => root.removeEventListener("touchend", onTouchEnd));
-    cleanups.push(() => window.removeEventListener("scroll", onPageScroll));
+    if (inputMode === "capture") {
+      const onWheel = (event) => {
+        const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+        event.preventDefault();
+        applyDelta(delta, false);
+      };
+      let touchX = 0;
+      let touchY = 0;
+      const onTouchBegin = (event) => {
+        pointerDown = true;
+        lastInputWasTouch = true;
+        const point = event.touches[0];
+        touchX = point?.clientX ?? 0;
+        touchY = point?.clientY ?? 0;
+      };
+      const onTouchMove = (event) => {
+        const point = event.touches[0];
+        if (!point) return;
+        const dx = touchX - point.clientX;
+        const dy = touchY - point.clientY;
+        touchX = point.clientX;
+        touchY = point.clientY;
+        event.preventDefault();
+        applyDelta(Math.abs(dx) > Math.abs(dy) ? dx : dy, true);
+      };
+      const onTouchEnd = () => {
+        pointerDown = false;
+        scheduleStop();
+      };
+      root.addEventListener("wheel", onWheel, { passive: false });
+      root.addEventListener("touchstart", onTouchBegin, { passive: true });
+      root.addEventListener("touchmove", onTouchMove, { passive: false });
+      root.addEventListener("touchend", onTouchEnd, { passive: true });
+      cleanups.push(() => root.removeEventListener("wheel", onWheel));
+      cleanups.push(() => root.removeEventListener("touchstart", onTouchBegin));
+      cleanups.push(() => root.removeEventListener("touchmove", onTouchMove));
+      cleanups.push(() => root.removeEventListener("touchend", onTouchEnd));
+    }
 
     (async () => {
       try {
         scene = new THREE.Scene();
         const rect = root.getBoundingClientRect();
-        const aspect = Math.max(1, rect.width) / Math.max(1, rect.height);
-        camera = new THREE.PerspectiveCamera(cameraFov, aspect, 0.1, 100);
+        camera = new THREE.PerspectiveCamera(cameraFov, Math.max(1, rect.width) / Math.max(1, rect.height), 0.1, 100);
         camera.position.z = cameraZ;
         scene.add(camera);
 
@@ -314,7 +287,7 @@ export const spatialLoop = {
           const media = item.querySelector(mediaSelector);
           const asset = await buildTexture(media);
           if (!asset || destroyed) return null;
-          const geometry = curveGeometry(new THREE.PlaneGeometry(planeWidth, planeHeight, 24, 24), curveAmount);
+          const geometry = new THREE.PlaneGeometry(planeWidth, planeHeight, 24, 24);
           const material = new THREE.MeshBasicMaterial({ map: asset.texture, transparent: true, side: THREE.DoubleSide });
           const mesh = new THREE.Mesh(geometry, material);
           const originalPosition = index * stride;
@@ -325,6 +298,27 @@ export const spatialLoop = {
 
         slides = built.filter(Boolean);
         if (slides.length < 2) return;
+
+        if (inputMode === "pinned-page" && ScrollTrigger) {
+          const travel = stride * Math.max(1, slides.length - 1);
+          pinnedTrigger = ScrollTrigger.create({
+            trigger: root,
+            start: "top top",
+            end: () => `+=${window.innerHeight * (pinDistanceVh / 100) * Math.max(1, slides.length - 1)}`,
+            pin: true,
+            anticipatePin: 1,
+            invalidateOnRefresh: true,
+            snap: slides.length > 1 ? {
+              snapTo: 1 / (slides.length - 1),
+              duration: { min: 0.12, max: 0.35 },
+              delay: 0.05,
+              ease: "power2.out"
+            } : false,
+            onUpdate: (self) => {
+              targetScrollPosition = self.progress * travel;
+            }
+          });
+        }
 
         const onResize = () => {
           if (!renderer || !camera) return;
@@ -345,6 +339,7 @@ export const spatialLoop = {
       destroyed = true;
       cancelAnimationFrame(raf);
       clearTimeout(scrollStopTimer);
+      pinnedTrigger?.kill?.();
       resizeObserver?.disconnect();
       cleanups.forEach((cleanup) => cleanup());
       slides.forEach((slide) => {
