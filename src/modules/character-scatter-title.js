@@ -69,6 +69,15 @@ function between(random, min, max) {
   return min + (max - min) * random();
 }
 
+function clamp01(value) {
+  return Math.max(0, Math.min(1, value));
+}
+
+function rangeProgress(progress, start, end) {
+  if (end <= start) return progress >= end ? 1 : 0;
+  return clamp01((progress - start) / (end - start));
+}
+
 function splitCharacters(element) {
   const originalHTML = element.innerHTML;
   const originalLabel = element.getAttribute("aria-label");
@@ -126,13 +135,6 @@ function createFallbackClusters(field, chips, count, doc) {
   });
 
   return clusters;
-}
-
-function containedStagger(windowDuration, count, characterDurationRatio) {
-  const duration = Math.max(0.01, windowDuration * characterDurationRatio);
-  const remaining = Math.max(0, windowDuration - duration);
-  const each = count > 1 ? remaining / (count - 1) : 0;
-  return { duration, each };
 }
 
 export const characterScatterTitle = {
@@ -199,22 +201,41 @@ export const characterScatterTitle = {
       rotation: between(random, -rotation, rotation)
     }));
 
-    gsap.set(titleSplit.characters, {
-      autoAlpha: reducedMotion() ? 1 : 0,
-      y: reducedMotion() ? 0 : titleRevealY
-    });
-    gsap.set(chipCharacters, {
-      x: 0,
-      y: 0,
-      rotation: 0,
-      autoAlpha: reducedMotion() ? 0 : 1
-    });
+    const render = (progress) => {
+      const move = rangeProgress(progress, 0, scatterMoveEnd);
+      const fade = rangeProgress(progress, scatterFadeStart, scatterFadeEnd);
+
+      gsap.set(chipCharacters, {
+        x: (index) => destinations[index].x * move,
+        y: (index) => destinations[index].y * move,
+        rotation: (index) => destinations[index].rotation * move,
+        autoAlpha: 1 - fade
+      });
+
+      const titleWindow = Math.max(0.01, titleEnd - titleStart);
+      const staggerSpan = titleWindow * 0.42;
+      const charDuration = Math.max(0.01, titleWindow - staggerSpan);
+      const count = Math.max(1, titleSplit.characters.length - 1);
+
+      gsap.set(titleSplit.characters, {
+        autoAlpha: (index) => {
+          const charStart = titleStart + staggerSpan * (index / count);
+          return rangeProgress(progress, charStart, charStart + charDuration);
+        },
+        y: (index) => {
+          const charStart = titleStart + staggerSpan * (index / count);
+          const reveal = rangeProgress(progress, charStart, charStart + charDuration);
+          return titleRevealY * (1 - reveal);
+        }
+      });
+    };
 
     let timeline = null;
-    if (!reducedMotion()) {
-      const titleWindow = titleEnd - titleStart;
-      const reveal = containedStagger(titleWindow, titleSplit.characters.length, 0.56);
-
+    if (reducedMotion()) {
+      render(1);
+    } else {
+      const state = { progress: 0 };
+      render(0);
       timeline = gsap.timeline({
         defaults: { ease: "none" },
         scrollTrigger: {
@@ -227,35 +248,11 @@ export const characterScatterTitle = {
           markers: readString(section, "motion-markers", "false") === "true"
         }
       });
-
-      timeline.to({}, { duration: 1 }, 0);
-
-      timeline.to(chipCharacters, {
-        x: (index) => destinations[index].x,
-        y: (index) => destinations[index].y,
-        rotation: (index) => destinations[index].rotation,
-        duration: scatterMoveEnd,
-        stagger: {
-          each: scatterMoveEnd / Math.max(1, chipCharacters.length * 4.5),
-          from: "random"
-        }
+      timeline.to(state, {
+        progress: 1,
+        duration: 1,
+        onUpdate: () => render(state.progress)
       }, 0);
-
-      timeline.to(chipCharacters, {
-        autoAlpha: 0,
-        duration: scatterFadeEnd - scatterFadeStart,
-        stagger: {
-          each: (scatterFadeEnd - scatterFadeStart) / Math.max(1, chipCharacters.length * 6),
-          from: "random"
-        }
-      }, scatterFadeStart);
-
-      timeline.to(titleSplit.characters, {
-        autoAlpha: 1,
-        y: 0,
-        duration: reveal.duration,
-        stagger: { each: reveal.each, from: "start" }
-      }, titleStart);
     }
 
     let resizeTimer = 0;
