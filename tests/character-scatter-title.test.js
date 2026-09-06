@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { characterScatterTitle } from "../src/modules/character-scatter-title.js";
 
 describe("character scatter title", () => {
-  it("keeps source characters visible while the title begins revealing", () => {
+  it("matches the Nothin source trigger and character-fall choreography", () => {
     document.body.innerHTML = `
       <section data-motion="character-scatter-title"
                data-motion-field-selector=".field"
@@ -16,16 +16,33 @@ describe("character scatter title", () => {
       </section>
     `;
 
-    let triggerConfig;
-    const setCalls = [];
-    const gsap = {
-      set: vi.fn((targets, vars) => {
-        setCalls.push({ targets: Array.isArray(targets) ? targets : [targets], vars });
-      })
+    const velocityTriggers = [];
+    const timelineConfigs = [];
+    const tweenCalls = [];
+
+    const timeline = {
+      scrollTrigger: { progress: 0 },
+      to: vi.fn((target, vars, position) => {
+        tweenCalls.push({ target, vars, position });
+        return timeline;
+      }),
+      kill: vi.fn()
     };
+
+    const gsap = {
+      set: vi.fn(),
+      timeline: vi.fn((config) => {
+        timelineConfigs.push(config);
+        return timeline;
+      }),
+      utils: {
+        random: vi.fn((min, max) => (min + max) / 2)
+      }
+    };
+
     const ScrollTrigger = {
       create: vi.fn((config) => {
-        triggerConfig = config;
+        velocityTriggers.push(config);
         return { kill: vi.fn() };
       }),
       refresh: vi.fn()
@@ -38,33 +55,36 @@ describe("character scatter title", () => {
       reducedMotion: () => false
     });
 
-    expect(triggerConfig.start).toBe("top top");
-    expect(triggerConfig.end).toBe("bottom bottom");
-    expect(triggerConfig.scrub).toBe(1);
+    expect(velocityTriggers).toHaveLength(1);
+    expect(velocityTriggers[0].start).toBe("top bottom");
+    expect(velocityTriggers[0].end).toBe("bottom top");
+    expect(velocityTriggers[0].onEnter).toEqual(expect.any(Function));
+    expect(velocityTriggers[0].onEnterBack).toEqual(expect.any(Function));
+    expect(velocityTriggers[0].onLeave).toEqual(expect.any(Function));
+    expect(velocityTriggers[0].onLeaveBack).toEqual(expect.any(Function));
+    expect(velocityTriggers[0].onUpdate).toEqual(expect.any(Function));
 
-    setCalls.length = 0;
-    triggerConfig.onUpdate({ progress: 0.2 });
+    expect(timelineConfigs).toHaveLength(1);
+    expect(timelineConfigs[0].scrollTrigger.start).toBe("top top");
+    expect(timelineConfigs[0].scrollTrigger.end).toBe("center 30%");
+    expect(timelineConfigs[0].scrollTrigger.scrub).toBe(2);
 
-    const sourceCall = setCalls[0];
-    const titleCall = setCalls[1];
+    expect(tweenCalls).toHaveLength(9);
+    tweenCalls.forEach(({ vars }) => {
+      expect(vars.y).toBe(100);
+      expect(vars.x).toBe(0);
+      expect(vars.rotation).toBe(0);
+      expect(vars.opacity).toBe(0);
+      expect(vars.ease).toBe("power2.in");
+      expect(vars.duration).toBe(0.475);
+    });
 
-    expect(sourceCall.vars.autoAlpha(0)).toBeGreaterThan(0.9);
-    expect(titleCall.vars.autoAlpha(0)).toBeGreaterThan(0);
+    expect(tweenCalls.slice(0, 5).every(({ position }) => position === 0.3)).toBe(true);
+    expect(tweenCalls.slice(5).every(({ position }) => position === 0.36)).toBe(true);
 
-    setCalls.length = 0;
-    triggerConfig.onUpdate({ progress: 0.7 });
-
-    const laterSource = setCalls[0];
-    const laterTitle = setCalls[1];
-
-    expect(laterTitle.vars.autoAlpha(0)).toBe(1);
-    expect(laterSource.vars.autoAlpha(0)).toBeGreaterThan(0);
-    expect(Math.abs(laterSource.vars.x(0)) + Math.abs(laterSource.vars.y(0))).toBeGreaterThan(0);
-
-    setCalls.length = 0;
-    triggerConfig.onUpdate({ progress: 1 });
-    expect(setCalls[0].vars.autoAlpha(0)).toBe(0);
-    expect(setCalls[1].vars.autoAlpha(0)).toBe(1);
+    const titleCharacters = [...root.querySelectorAll(".title [data-mk-character-scatter-title-char]")];
+    expect(titleCharacters.length).toBeGreaterThan(0);
+    expect(titleCharacters.every((char) => char.style.opacity === "0")).toBe(true);
 
     cleanup();
   });
