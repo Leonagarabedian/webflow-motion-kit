@@ -1,10 +1,9 @@
 import * as THREE from "three/webgpu";
-import { Fn, float, modelWorldMatrix, positionLocal, pow, sin } from "three/tsl";
 import { readString } from "../core/config.js";
 
 const STYLE_ID = "motion-kit-spatial-loop-styles";
 
-// Verified from Scheme Engine's Work gallery source.
+// Scheme Engine Work gallery source values.
 const WIDTH = 8;
 const HEIGHT = 4.5;
 const GAP = 0.35;
@@ -23,10 +22,10 @@ const SNAP_LOCK_EPSILON = 0.001;
 const FOV = 75;
 const SHORT_LANDSCAPE_QUERY = "(orientation: landscape) and (max-width: 1180px) and (max-height: 600px)";
 
-// Branda visual adaptation from the Scheme reference composition:
-// neighboring planes turn inward while the centered plane resolves to 0deg.
-const MAX_INWARD_ANGLE = THREE.MathUtils.degToRad(18);
-const ANGLE_LERP = 0.14;
+// Scheme uses sin(worldX) based vertex deformation. The original source factor is .075.
+// Branda renders the planes larger, so this preserves the same mechanism with enough amplitude
+// for the curve to read at this composition size.
+const CURVE_STRENGTH = 0.14;
 
 function ensureStyles(doc) {
   if (doc.getElementById(STYLE_ID)) return;
@@ -126,6 +125,7 @@ export function nearestSpatialSnap(targetScrollPosition, itemStride, totalWidth,
   if (!slides?.length || !Number.isFinite(totalWidth) || totalWidth <= 0) return null;
   let nearest = null;
   let distance = Infinity;
+
   slides.forEach((slide) => {
     const anchor = slide.index * itemStride;
     const candidate = anchor + Math.round((targetScrollPosition - anchor) / totalWidth) * totalWidth;
@@ -135,6 +135,7 @@ export function nearestSpatialSnap(targetScrollPosition, itemStride, totalWidth,
       nearest = candidate;
     }
   });
+
   return nearest;
 }
 
@@ -165,6 +166,7 @@ function createTexture(media) {
     texture.colorSpace = THREE.SRGBColorSpace;
     return { texture, video: media };
   }
+
   const url = sourceUrl(media);
   if (!url) return null;
   const texture = new THREE.TextureLoader().load(url);
@@ -172,30 +174,19 @@ function createTexture(media) {
   return { texture, video: null };
 }
 
-function createMaterial(texture) {
-  if (THREE.MeshBasicNodeMaterial) {
-    const material = new THREE.MeshBasicNodeMaterial({
-      map: texture,
-      side: THREE.DoubleSide,
-      transparent: true
-    });
+function curveGeometry(slide, worldOffsetX) {
+  const position = slide.geometry.attributes.position;
+  const baseX = slide.baseX;
+  const baseY = slide.baseY;
 
-    // Exact Scheme deformation: y *= 1 + pow(sin(worldX) * .075, 2)
-    material.positionNode = Fn(() => {
-      const position = positionLocal.xyz.toVar();
-      const worldX = modelWorldMatrix.mul(position).x;
-      const wave = sin(worldX);
-      position.y.mulAssign(float(1).add(pow(wave.mul(0.075), 2)));
-      return position;
-    })();
-    return material;
+  for (let index = 0; index < position.count; index += 1) {
+    const worldX = baseX[index] + worldOffsetX;
+    const wave = Math.sin(worldX) * CURVE_STRENGTH;
+    const scaleY = 1 + wave * wave;
+    position.setY(index, baseY[index] * scaleY);
   }
 
-  return new THREE.MeshBasicMaterial({
-    map: texture,
-    side: THREE.DoubleSide,
-    transparent: true
-  });
+  position.needsUpdate = true;
 }
 
 class SchemeVirtualScroll {
@@ -359,6 +350,7 @@ export const spatialLoop = {
       previousScrollPosition = scrollPosition;
       const outgoing = titleItems[previousIndex];
       const incoming = titleItems[nextIndex];
+
       if (outgoing) {
         gsap.to(outgoing, {
           yPercent: direction === "right" ? -30 : 30,
@@ -368,6 +360,7 @@ export const spatialLoop = {
           overwrite: true
         });
       }
+
       if (incoming) {
         gsap.set(incoming, {
           yPercent: direction === "right" ? 30 : -30,
@@ -410,13 +403,8 @@ export const spatialLoop = {
         }
 
         slide.mesh.position.x = x;
-
-        // Visual correction requested from the Scheme reference screenshot:
-        // the centered project remains straight-on while neighboring planes
-        // continuously turn inward toward the camera as they move away from center.
-        const normalizedX = THREE.MathUtils.clamp(x / stride, -1, 1);
-        const targetRotationY = -normalizedX * MAX_INWARD_ANGLE;
-        slide.mesh.rotation.y += (targetRotationY - slide.mesh.rotation.y) * ANGLE_LERP;
+        slide.mesh.rotation.set(0, 0, 0);
+        curveGeometry(slide, x);
 
         const distance = Math.abs(x);
         if (distance < nearestDistance) {
@@ -502,8 +490,21 @@ export const spatialLoop = {
           const media = item.querySelector(mediaSelector);
           const asset = createTexture(media);
           if (!asset) return null;
-          const geometry = new THREE.PlaneGeometry(WIDTH, HEIGHT, 10, 10);
-          const material = createMaterial(asset.texture);
+
+          const geometry = new THREE.PlaneGeometry(WIDTH, HEIGHT, 24, 12);
+          const position = geometry.attributes.position;
+          const baseX = new Float32Array(position.count);
+          const baseY = new Float32Array(position.count);
+          for (let vertex = 0; vertex < position.count; vertex += 1) {
+            baseX[vertex] = position.getX(vertex);
+            baseY[vertex] = position.getY(vertex);
+          }
+
+          const material = new THREE.MeshBasicMaterial({
+            map: asset.texture,
+            side: THREE.DoubleSide,
+            transparent: true
+          });
           const mesh = new THREE.Mesh(geometry, material);
           const originalPosition = index * stride;
           mesh.position.x = originalPosition;
@@ -526,7 +527,9 @@ export const spatialLoop = {
             texture: asset.texture,
             video: asset.video,
             originalPosition,
-            title
+            title,
+            baseX,
+            baseY
           };
         }).filter(Boolean);
 
@@ -554,6 +557,7 @@ export const spatialLoop = {
       canvas.removeEventListener("touchstart", onTouchStart);
       canvas.removeEventListener("touchend", onTouchEnd);
       canvas.removeEventListener("touchcancel", onTouchEnd);
+
       slides.forEach((slide) => {
         slide.video?.pause?.();
         slide.texture?.dispose?.();
@@ -561,6 +565,7 @@ export const spatialLoop = {
         slide.geometry?.dispose?.();
         scene.remove(slide.mesh);
       });
+
       renderer.dispose();
       canvas.remove();
       titleHost.remove();
