@@ -11,14 +11,13 @@ function ensureStyles(doc) {
     [data-mk-tags-glitch-section] { position: relative !important; min-height: var(--mk-tags-glitch-height, 200vh) !important; padding: 0 !important; overflow: clip !important; isolation: isolate; background: var(--mk-tags-glitch-background, #0a0a0a) !important; color: var(--mk-tags-glitch-color, #fff) !important; }
     [data-mk-tags-glitch-stage] { position: sticky; top: 0; width: 100%; height: 100svh; overflow: clip; }
     [data-mk-tags-glitch-field] { position: absolute !important; inset: 0 !important; z-index: 1; display: block !important; width: 100% !important; height: 100% !important; min-height: 0 !important; margin: 0 !important; }
-    [data-mk-tags-glitch-cluster] { position: absolute !important; left: var(--mk-cluster-x) !important; top: var(--mk-cluster-y) !important; display: block !important; width: min(15rem, 28vw) !important; max-width: none !important; line-height: 1.05; transform: translate(-50%, -50%); }
-    [data-mk-tags-glitch-chip] { position: static !important; display: inline !important; margin: 0 0.42em 0 0 !important; padding: 0 !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; color: inherit !important; font-size: clamp(0.72rem, 1.1vw, 1.125rem) !important; line-height: 1 !important; white-space: normal !important; }
-    [data-mk-tags-glitch-title] { position: absolute !important; z-index: 2; top: 50% !important; left: 50% !important; width: min(13rem, calc(100% - 2rem)) !important; margin: 0 !important; color: inherit !important; font-size: clamp(0.9rem, 1.1vw, 1.125rem) !important; line-height: 1.05 !important; text-align: left !important; transform: translate(-50%, -50%); pointer-events: none; will-change: transform; }
+    [data-mk-tags-glitch-cluster] { position: absolute !important; left: var(--mk-cluster-x) !important; top: var(--mk-cluster-y) !important; display: block !important; width: min(15rem, 28vw) !important; max-width: none !important; transform: translate(-50%, -50%); }
+    [data-mk-tags-glitch-chip] { position: static !important; display: inline !important; margin: 0 0.42em 0 0 !important; padding: 0 !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; color: inherit !important; white-space: normal !important; }
+    [data-mk-tags-glitch-title] { position: absolute !important; z-index: 2; top: 50% !important; left: 50% !important; width: min(13rem, calc(100% - 2rem)) !important; margin: 0 !important; color: inherit !important; text-align: left !important; transform: translate(-50%, -50%); pointer-events: none; will-change: transform; }
     [data-mk-tags-glitch-char] { display: inline-block; will-change: transform, opacity; }
     @media (max-width: 767px) {
       [data-mk-tags-glitch-section] { min-height: var(--mk-tags-glitch-height-mobile, 175vh) !important; }
       [data-mk-tags-glitch-cluster] { width: min(11rem, 42vw) !important; }
-      [data-mk-tags-glitch-chip] { font-size: 0.7rem !important; }
     }
   `;
   doc.head.appendChild(style);
