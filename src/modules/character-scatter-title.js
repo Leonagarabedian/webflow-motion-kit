@@ -10,7 +10,7 @@ function ensureStyles(doc) {
   style.textContent = `
     [data-mk-character-scatter-title-section] {
       position: relative !important;
-      min-height: var(--mk-character-scatter-title-height, 170vh) !important;
+      min-height: var(--mk-character-scatter-title-height, 200vh) !important;
       overflow: clip !important;
       isolation: isolate;
     }
@@ -19,18 +19,14 @@ function ensureStyles(doc) {
       top: 0;
       width: 100%;
       height: 100svh;
+      display: flex;
+      align-items: center;
       overflow: clip;
     }
     [data-mk-character-scatter-title-field] {
-      position: absolute !important;
-      inset: 0 !important;
+      position: relative !important;
       z-index: 1;
-    }
-    [data-mk-character-scatter-title-cluster] {
-      position: absolute !important;
-      left: var(--mk-scatter-cluster-x) !important;
-      top: var(--mk-scatter-cluster-y) !important;
-      transform: translate(-50%, -50%);
+      width: 100%;
     }
     [data-mk-character-scatter-title-title] {
       position: absolute !important;
@@ -39,7 +35,7 @@ function ensureStyles(doc) {
       left: 50% !important;
       transform: translate(-50%, -50%);
       pointer-events: none;
-      will-change: transform;
+      will-change: opacity;
     }
     [data-mk-character-scatter-title-char] {
       display: inline-block;
@@ -47,7 +43,7 @@ function ensureStyles(doc) {
     }
     @media (max-width: 767px) {
       [data-mk-character-scatter-title-section] {
-        min-height: var(--mk-character-scatter-title-height-mobile, 165vh) !important;
+        min-height: var(--mk-character-scatter-title-height-mobile, 180vh) !important;
       }
     }
   `;
@@ -78,14 +74,19 @@ function rangeProgress(progress, start, end) {
   return clamp01((progress - start) / (end - start));
 }
 
+function smooth(progress) {
+  const p = clamp01(progress);
+  return p * p * (3 - 2 * p);
+}
+
 function splitCharacters(element) {
   const originalHTML = element.innerHTML;
   const originalLabel = element.getAttribute("aria-label");
-  const label = element.textContent.trim();
+  const text = element.textContent.trim();
   const fragment = element.ownerDocument.createDocumentFragment();
   const characters = [];
 
-  for (const character of Array.from(label)) {
+  for (const character of Array.from(text)) {
     const span = element.ownerDocument.createElement("span");
     span.setAttribute("data-mk-character-scatter-title-char", "");
     span.setAttribute("aria-hidden", "true");
@@ -95,7 +96,7 @@ function splitCharacters(element) {
   }
 
   element.replaceChildren(fragment);
-  element.setAttribute("aria-label", label);
+  element.setAttribute("aria-label", text);
 
   return {
     characters,
@@ -107,46 +108,16 @@ function splitCharacters(element) {
   };
 }
 
-function layoutClusters(clusters, seed) {
-  const mobile = window.innerWidth <= 767;
-  const random = seededRandom(seed + (mobile ? 91 : 0));
-  const positions = mobile
-    ? [[25, 15], [73, 24], [27, 41], [72, 54], [27, 72], [72, 82]]
-    : [[17, 23], [50, 16], [82, 27], [22, 70], [52, 61], [81, 76]];
-
-  clusters.forEach((cluster, index) => {
-    const base = positions[index % positions.length];
-    cluster.style.setProperty("--mk-scatter-cluster-x", `${(base[0] + between(random, -2.2, 2.2)).toFixed(3)}%`);
-    cluster.style.setProperty("--mk-scatter-cluster-y", `${(base[1] + between(random, -1.8, 1.8)).toFixed(3)}%`);
-  });
-}
-
-function createFallbackClusters(field, chips, count, doc) {
-  const clusters = Array.from({ length: count }, () => {
-    const cluster = doc.createElement("div");
-    cluster.setAttribute("data-mk-character-scatter-title-generated", "");
-    field.appendChild(cluster);
-    return cluster;
-  });
-
-  chips.forEach((chip, index) => {
-    const clusterIndex = Math.min(count - 1, Math.floor((index * count) / chips.length));
-    clusters[clusterIndex].appendChild(chip);
-  });
-
-  return clusters;
-}
-
 export const characterScatterTitle = {
   name: "character-scatter-title",
   category: "composition",
   selector: '[data-motion~="character-scatter-title"]',
+
   mount(section, { gsap, ScrollTrigger, reducedMotion }) {
     ensureStyles(section.ownerDocument);
 
     const fieldSelector = readString(section, "motion-field-selector", ".ns-chip-row");
     const chipSelector = readString(section, "motion-chip-selector", ".ns-chip");
-    const clusterSelector = readString(section, "motion-cluster-selector", ".ns-tag-cluster");
     const titleSelector = readString(section, "motion-title-selector", ".ns-tags-title");
     const field = section.querySelector(fieldSelector);
     const title = section.querySelector(titleSelector);
@@ -164,108 +135,104 @@ export const characterScatterTitle = {
     field.setAttribute("data-mk-character-scatter-title-field", "");
     title.setAttribute("data-mk-character-scatter-title-title", "");
 
-    let clusters = [...field.querySelectorAll(clusterSelector)];
-    const usesExistingClusters = clusters.length > 0;
-    if (!usesExistingClusters) {
-      const count = Math.max(1, Math.min(chips.length, readNumber(section, "motion-cluster-count", 6)));
-      clusters = createFallbackClusters(field, chips, count, section.ownerDocument);
-    }
-    clusters.forEach((cluster) => cluster.setAttribute("data-mk-character-scatter-title-cluster", ""));
-
-    section.style.setProperty("--mk-character-scatter-title-height", readString(section, "motion-section-height", "170vh"));
-    section.style.setProperty("--mk-character-scatter-title-height-mobile", readString(section, "motion-mobile-section-height", "165vh"));
-
-    const seed = readNumber(section, "motion-seed", 2604);
-    layoutClusters(clusters, seed);
+    section.style.setProperty(
+      "--mk-character-scatter-title-height",
+      readString(section, "motion-section-height", "200vh")
+    );
+    section.style.setProperty(
+      "--mk-character-scatter-title-height-mobile",
+      readString(section, "motion-mobile-section-height", "180vh")
+    );
 
     const chipSplits = chips.map(splitCharacters);
     const titleSplit = splitCharacters(title);
-    const chipCharacters = chipSplits.flatMap((split) => split.characters);
+    const sourceCharacters = chipSplits.flatMap((split) => split.characters);
+    const titleCharacters = titleSplit.characters;
 
-    const random = seededRandom(seed + 41);
-    const scatterX = readNumber(section, "motion-scatter-x", 18);
-    const scatterYMin = readNumber(section, "motion-scatter-y-min", 35);
-    const scatterYMax = readNumber(section, "motion-scatter-y-max", 120);
-    const rotation = readNumber(section, "motion-rotation", 18);
-    const titleRevealY = readNumber(section, "motion-title-reveal-y", 6);
+    const seed = readNumber(section, "motion-seed", 2604);
+    const random = seededRandom(seed);
+    const scatterX = readNumber(section, "motion-scatter-x", 90);
+    const scatterY = readNumber(section, "motion-scatter-y", 70);
+    const rotation = readNumber(section, "motion-rotation", 6);
 
-    const scatterMoveEnd = Math.min(1, Math.max(0.01, readNumber(section, "motion-scatter-move-end", 0.95)));
-    const scatterFadeStart = Math.min(0.98, Math.max(0, readNumber(section, "motion-scatter-fade-start", 0.28)));
-    const scatterFadeEnd = Math.min(1, Math.max(scatterFadeStart + 0.01, readNumber(section, "motion-scatter-fade-end", 0.94)));
-    const titleStart = Math.min(0.98, Math.max(0, readNumber(section, "motion-title-start", 0.12)));
-    const titleEnd = Math.min(1, Math.max(titleStart + 0.01, readNumber(section, "motion-title-end", 0.48)));
+    const scatterStart = clamp01(readNumber(section, "motion-scatter-start", 0.05));
+    const scatterEnd = clamp01(readNumber(section, "motion-scatter-end", 0.9));
+    const fadeStart = clamp01(readNumber(section, "motion-scatter-fade-start", 0.52));
+    const fadeEnd = clamp01(readNumber(section, "motion-scatter-fade-end", 0.96));
+    const titleStart = clamp01(readNumber(section, "motion-title-start", 0.12));
+    const titleEnd = clamp01(readNumber(section, "motion-title-end", 0.46));
+    const titleStagger = Math.max(
+      0,
+      Math.min(titleEnd - titleStart - 0.01, readNumber(section, "motion-title-stagger", 0.14))
+    );
 
-    const destinations = chipCharacters.map(() => ({
+    const destinations = sourceCharacters.map(() => ({
       x: between(random, -scatterX, scatterX),
-      y: between(random, scatterYMin, scatterYMax),
-      rotation: between(random, -rotation, rotation)
+      y: between(random, -scatterY, scatterY),
+      rotation: between(random, -rotation, rotation),
+      moveDelay: between(random, 0, 0.14),
+      fadeDelay: between(random, 0, 0.08)
     }));
 
     const render = (progress) => {
-      const move = rangeProgress(progress, 0, scatterMoveEnd);
-      const fade = rangeProgress(progress, scatterFadeStart, scatterFadeEnd);
-
-      gsap.set(chipCharacters, {
-        x: (index) => destinations[index].x * move,
-        y: (index) => destinations[index].y * move,
-        rotation: (index) => destinations[index].rotation * move,
-        autoAlpha: 1 - fade
-      });
-
-      const titleWindow = Math.max(0.01, titleEnd - titleStart);
-      const staggerSpan = titleWindow * 0.42;
-      const charDuration = Math.max(0.01, titleWindow - staggerSpan);
-      const count = Math.max(1, titleSplit.characters.length - 1);
-
-      gsap.set(titleSplit.characters, {
-        autoAlpha: (index) => {
-          const charStart = titleStart + staggerSpan * (index / count);
-          return rangeProgress(progress, charStart, charStart + charDuration);
+      gsap.set(sourceCharacters, {
+        x: (index) => {
+          const destination = destinations[index];
+          const move = smooth(rangeProgress(progress, scatterStart + destination.moveDelay, scatterEnd));
+          return destination.x * move;
         },
         y: (index) => {
-          const charStart = titleStart + staggerSpan * (index / count);
-          const reveal = rangeProgress(progress, charStart, charStart + charDuration);
-          return titleRevealY * (1 - reveal);
+          const destination = destinations[index];
+          const move = smooth(rangeProgress(progress, scatterStart + destination.moveDelay, scatterEnd));
+          return destination.y * move;
+        },
+        rotation: (index) => {
+          const destination = destinations[index];
+          const move = smooth(rangeProgress(progress, scatterStart + destination.moveDelay, scatterEnd));
+          return destination.rotation * move;
+        },
+        autoAlpha: (index) => {
+          const destination = destinations[index];
+          const start = Math.min(fadeEnd - 0.01, fadeStart + destination.fadeDelay);
+          return 1 - smooth(rangeProgress(progress, start, fadeEnd));
         }
+      });
+
+      const count = Math.max(1, titleCharacters.length - 1);
+      const revealDuration = Math.max(0.01, titleEnd - titleStart - titleStagger);
+
+      gsap.set(titleCharacters, {
+        autoAlpha: (index) => {
+          const start = titleStart + titleStagger * (index / count);
+          return smooth(rangeProgress(progress, start, start + revealDuration));
+        },
+        x: 0,
+        y: 0,
+        rotation: 0
       });
     };
 
-    let timeline = null;
+    let trigger = null;
+
     if (reducedMotion()) {
       render(1);
     } else {
-      const state = { progress: 0 };
       render(0);
-      timeline = gsap.timeline({
-        defaults: { ease: "none" },
-        scrollTrigger: {
-          id: `mk-character-scatter-title-${++sequence}`,
-          trigger: section,
-          start: readString(section, "motion-start", "top 100%"),
-          end: readString(section, "motion-end", "bottom bottom"),
-          scrub: readNumber(section, "motion-scrub", 0.15),
-          invalidateOnRefresh: true,
-          markers: readString(section, "motion-markers", "false") === "true"
-        }
+      trigger = ScrollTrigger.create({
+        id: `mk-character-scatter-title-${++sequence}`,
+        trigger: section,
+        start: readString(section, "motion-start", "top top"),
+        end: readString(section, "motion-end", "bottom bottom"),
+        scrub: readNumber(section, "motion-scrub", 1),
+        invalidateOnRefresh: true,
+        markers: readString(section, "motion-markers", "false") === "true",
+        onUpdate: (self) => render(self.progress)
       });
-      timeline.to(state, {
-        progress: 1,
-        duration: 1,
-        onUpdate: () => render(state.progress)
-      }, 0);
     }
 
-    let resizeTimer = 0;
-    const onResize = () => {
-      clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(() => {
-        layoutClusters(clusters, seed);
-        ScrollTrigger.refresh();
-      }, 150);
-    };
-
+    const onResize = () => ScrollTrigger.refresh?.();
     window.addEventListener("resize", onResize);
-    section.ownerDocument.fonts?.ready?.then(() => ScrollTrigger.refresh());
+    section.ownerDocument.fonts?.ready?.then(() => ScrollTrigger.refresh?.());
 
     const restoreNode = (node, nextSibling) => {
       if (nextSibling && nextSibling.parentNode === section) section.insertBefore(node, nextSibling);
@@ -274,21 +241,12 @@ export const characterScatterTitle = {
 
     return () => {
       window.removeEventListener("resize", onResize);
-      clearTimeout(resizeTimer);
-      timeline?.scrollTrigger?.kill();
-      timeline?.kill();
-      gsap.set([...chipCharacters, ...titleSplit.characters], { clearProps: "transform,opacity,visibility" });
+      trigger?.kill?.();
+      gsap.set([...sourceCharacters, ...titleCharacters], {
+        clearProps: "transform,opacity,visibility"
+      });
       chipSplits.forEach((split) => split.restore());
       titleSplit.restore();
-      clusters.forEach((cluster) => {
-        cluster.removeAttribute("data-mk-character-scatter-title-cluster");
-        cluster.style.removeProperty("--mk-scatter-cluster-x");
-        cluster.style.removeProperty("--mk-scatter-cluster-y");
-      });
-      if (!usesExistingClusters) {
-        chips.forEach((chip) => field.appendChild(chip));
-        clusters.forEach((cluster) => cluster.remove());
-      }
       field.removeAttribute("data-mk-character-scatter-title-field");
       title.removeAttribute("data-mk-character-scatter-title-title");
       section.removeAttribute("data-mk-character-scatter-title-section");
