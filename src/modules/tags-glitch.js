@@ -8,7 +8,7 @@ function ensureStyles(doc) {
   const style = doc.createElement("style");
   style.id = STYLE_ID;
   style.textContent = `
-    [data-mk-tags-glitch-section] { position: relative !important; min-height: var(--mk-tags-glitch-height, 200vh) !important; padding: 0 !important; overflow: clip !important; isolation: isolate; background: var(--mk-tags-glitch-background, #0a0a0a) !important; color: var(--mk-tags-glitch-color, #fff) !important; }
+    [data-mk-tags-glitch-section] { position: relative !important; min-height: var(--mk-tags-glitch-height, 200vh) !important; padding: 0 !important; overflow: clip !important; isolation: isolate; }
     [data-mk-tags-glitch-stage] { position: sticky; top: 0; width: 100%; height: 100svh; overflow: clip; }
     [data-mk-tags-glitch-field] { position: absolute !important; inset: 0 !important; z-index: 1; display: block !important; width: 100% !important; height: 100% !important; min-height: 0 !important; margin: 0 !important; }
     [data-mk-tags-glitch-cluster] { position: absolute !important; left: var(--mk-cluster-x) !important; top: var(--mk-cluster-y) !important; display: block !important; width: min(15rem, 28vw) !important; max-width: none !important; transform: translate(-50%, -50%); }
@@ -129,8 +129,10 @@ export const tagsGlitch = {
 
     section.style.setProperty("--mk-tags-glitch-height", readString(section, "motion-section-height", "200vh"));
     section.style.setProperty("--mk-tags-glitch-height-mobile", readString(section, "motion-mobile-section-height", "175vh"));
-    section.style.setProperty("--mk-tags-glitch-background", readString(section, "motion-background-color", "#0a0a0a"));
-    section.style.setProperty("--mk-tags-glitch-color", readString(section, "motion-text-color", "#ffffff"));
+    const backgroundColor = section.getAttribute("data-motion-background-color");
+    const textColor = section.getAttribute("data-motion-text-color");
+    if (backgroundColor) section.style.setProperty("background", backgroundColor);
+    if (textColor) section.style.setProperty("color", textColor);
 
     const seed = readNumber(section, "motion-seed", 2604);
     layoutClusters(clusters, seed);
@@ -232,8 +234,8 @@ export const tagsGlitch = {
       section.removeAttribute("data-mk-tags-glitch-section");
       section.style.removeProperty("--mk-tags-glitch-height");
       section.style.removeProperty("--mk-tags-glitch-height-mobile");
-      section.style.removeProperty("--mk-tags-glitch-background");
-      section.style.removeProperty("--mk-tags-glitch-color");
+      if (backgroundColor) section.style.removeProperty("background");
+      if (textColor) section.style.removeProperty("color");
       restoreNode(field, originalFieldNextSibling);
       restoreNode(title, originalTitleNextSibling);
       stage.remove();
