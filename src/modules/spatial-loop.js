@@ -22,10 +22,9 @@ const SNAP_LOCK_EPSILON = 0.001;
 const FOV = 75;
 const SHORT_LANDSCAPE_QUERY = "(orientation: landscape) and (max-width: 1180px) and (max-height: 600px)";
 
-// Scheme uses sin(worldX) based vertex deformation. The original source factor is .075.
-// Branda renders the planes larger, so this preserves the same mechanism with enough amplitude
-// for the curve to read at this composition size.
-const CURVE_STRENGTH = 0.14;
+// Exact Work-plane curve factor from Scheme's applyCurveNode():
+// y *= 1 + pow(worldX * .075, 2)
+const CURVE_FACTOR = 0.075;
 
 function ensureStyles(doc) {
   if (doc.getElementById(STYLE_ID)) return;
@@ -181,8 +180,8 @@ function curveGeometry(slide, worldOffsetX) {
 
   for (let index = 0; index < position.count; index += 1) {
     const worldX = baseX[index] + worldOffsetX;
-    const wave = Math.sin(worldX) * CURVE_STRENGTH;
-    const scaleY = 1 + wave * wave;
+    const scaled = worldX * CURVE_FACTOR;
+    const scaleY = 1 + scaled * scaled;
     position.setY(index, baseY[index] * scaleY);
   }
 
