@@ -18,7 +18,9 @@ const CURVE_FACTOR = 0.075;
 // Works takeover choreography.
 const INPUT_SCALE = 0.01;
 const SNAP_DELAY = 140;
-const EXIT_INTENT_THRESHOLD = 160;
+const EXIT_INTENT_THRESHOLD = 560;
+const EXIT_INTENT_RESET_DELAY = 220;
+const EXIT_ARM_DELAY = 550;
 const ENTER_DURATION = 0.55;
 const RELEASE_DURATION = 0.8;
 
@@ -259,6 +261,9 @@ export const spatialLoop = {
     let inputTimeout = null;
     let takeoverState = "idle";
     let exitIntent = 0;
+    let exitIntentDirection = 0;
+    let lastExitIntentAt = 0;
+    let lockedAt = 0;
     let jumpGuard = false;
     let touchX = null;
     let touchY = null;
@@ -280,6 +285,12 @@ export const spatialLoop = {
       slides.forEach((slide) => {
         slide.originalPosition = slide.index * stride;
       });
+    };
+
+    const resetExitIntent = () => {
+      exitIntent = 0;
+      exitIntentDirection = 0;
+      lastExitIntentAt = 0;
     };
 
     const showTitle = (nextIndex) => {
@@ -362,14 +373,15 @@ export const spatialLoop = {
         0,
         maxTravel
       );
-      exitIntent = 0;
+      resetExitIntent();
     };
 
     const lockTakeover = (direction) => {
       if (destroyed || jumpGuard || takeoverState !== "idle" || !slides.length) return;
 
       takeoverState = "locked";
-      exitIntent = 0;
+      lockedAt = performance.now();
+      resetExitIntent();
       clearTimeout(inputTimeout);
       resetSlidePositions();
 
@@ -411,7 +423,7 @@ export const spatialLoop = {
       if (takeoverState !== "locked") return;
       takeoverState = "releasing";
       clearTimeout(inputTimeout);
-      exitIntent = 0;
+      resetExitIntent();
 
       const startY = getPageY();
       const sectionTop = getSectionTop();
@@ -452,28 +464,46 @@ export const spatialLoop = {
       });
     };
 
-    const handleInput = (delta) => {
+    const registerExitIntent = (delta) => {
+      const now = performance.now();
+      if (now - lockedAt < EXIT_ARM_DELAY) return false;
+
+      const direction = Math.sign(delta);
+      if (!direction) return false;
+
+      if (
+        direction !== exitIntentDirection ||
+        now - lastExitIntentAt > EXIT_INTENT_RESET_DELAY
+      ) {
+        exitIntent = Math.abs(delta);
+      } else {
+        exitIntent += Math.abs(delta);
+      }
+
+      exitIntentDirection = direction;
+      lastExitIntentAt = now;
+
+      if (exitIntent >= EXIT_INTENT_THRESHOLD) {
+        releaseTakeover(direction);
+        return true;
+      }
+
+      return false;
+    };
+
+    const handleInput = (delta, allowExitIntent = true) => {
       if (takeoverState !== "locked" || !Number.isFinite(delta) || delta === 0) return;
 
-      const nextTarget = targetScrollPosition + delta * INPUT_SCALE;
+      targetScrollPosition = clamp(
+        targetScrollPosition + delta * INPUT_SCALE,
+        0,
+        maxTravel
+      );
 
-      if (delta > 0 && nextTarget > maxTravel) {
-        targetScrollPosition = maxTravel;
-        exitIntent += delta;
-        if (exitIntent >= EXIT_INTENT_THRESHOLD) {
-          releaseTakeover(1);
-          return;
-        }
-      } else if (delta < 0 && nextTarget < 0) {
-        targetScrollPosition = 0;
-        exitIntent += Math.abs(delta);
-        if (exitIntent >= EXIT_INTENT_THRESHOLD) {
-          releaseTakeover(-1);
-          return;
-        }
+      if (allowExitIntent) {
+        if (registerExitIntent(delta)) return;
       } else {
-        targetScrollPosition = clamp(nextTarget, 0, maxTravel);
-        exitIntent = 0;
+        resetExitIntent();
       }
 
       clearTimeout(inputTimeout);
@@ -484,10 +514,15 @@ export const spatialLoop = {
       if (takeoverState !== "locked") return;
       event.preventDefault();
       event.stopPropagation();
-      const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY)
-        ? event.deltaX
-        : event.deltaY;
-      handleInput(delta);
+
+      const horizontal = Math.abs(event.deltaX);
+      const vertical = Math.abs(event.deltaY);
+      const useHorizontal = horizontal > vertical;
+      const delta = useHorizontal ? event.deltaX : event.deltaY;
+
+      // Horizontal gestures can browse indefinitely. A sustained vertical gesture
+      // means the visitor wants to continue down/up the page and releases Works.
+      handleInput(delta, !useHorizontal);
     };
 
     const onTouchStart = (event) => {
@@ -506,7 +541,8 @@ export const spatialLoop = {
       const deltaY = touchY == null ? 0 : touchY - nextY;
       touchX = nextX;
       touchY = nextY;
-      handleInput(Math.abs(deltaX) > Math.abs(deltaY) ? deltaX : deltaY);
+      const useHorizontal = Math.abs(deltaX) > Math.abs(deltaY);
+      handleInput(useHorizontal ? deltaX : deltaY, !useHorizontal);
     };
 
     const onTouchEnd = () => {
@@ -523,7 +559,8 @@ export const spatialLoop = {
       if (!delta) return;
       event.preventDefault();
       event.stopPropagation();
-      handleInput(delta);
+      const allowExitIntent = !["ArrowLeft", "ArrowRight"].includes(event.key);
+      handleInput(delta, allowExitIntent);
     };
 
     const onResize = () => {
