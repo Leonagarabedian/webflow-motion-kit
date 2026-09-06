@@ -4,7 +4,7 @@ import { readString } from "../core/config.js";
 
 const STYLE_ID = "motion-kit-spatial-loop-styles";
 
-// Source-port constants from Scheme Engine's Work gallery.
+// Verified from Scheme Engine's Work gallery source.
 const WIDTH = 8;
 const HEIGHT = 4.5;
 const GAP = 0.35;
@@ -28,9 +28,91 @@ function ensureStyles(doc) {
   const style = doc.createElement("style");
   style.id = STYLE_ID;
   style.textContent = `
-    [data-motion~="spatial-loop"] { position: relative; overflow: hidden; }
-    [data-mk-spatial-loop-canvas] { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-    [data-mk-spatial-loop-source-hidden] { visibility: hidden !important; pointer-events: none !important; }
+    [data-mk-spatial-loop-section] {
+      position: relative !important;
+      min-height: 360svh !important;
+      overflow: visible !important;
+    }
+    [data-mk-spatial-loop-container] {
+      position: relative !important;
+      width: 100% !important;
+      min-height: 360svh !important;
+      padding-left: 0 !important;
+      padding-right: 0 !important;
+    }
+    [data-mk-spatial-loop-layout] {
+      position: sticky !important;
+      top: 0 !important;
+      width: 100% !important;
+      height: 100svh !important;
+      min-height: 100svh !important;
+      padding-top: 0 !important;
+      padding-bottom: 0 !important;
+      overflow: hidden !important;
+    }
+    [data-mk-spatial-loop-heading] {
+      position: absolute !important;
+      width: 1px !important;
+      height: 1px !important;
+      margin: -1px !important;
+      padding: 0 !important;
+      overflow: hidden !important;
+      clip: rect(0 0 0 0) !important;
+      white-space: nowrap !important;
+    }
+    [data-motion~="spatial-loop"] {
+      position: absolute !important;
+      top: 0 !important;
+      left: 50% !important;
+      width: 100vw !important;
+      height: 100svh !important;
+      min-height: 100svh !important;
+      transform: translateX(-50%) !important;
+      overflow: hidden !important;
+      overscroll-behavior: contain;
+    }
+    [data-mk-spatial-loop-canvas] {
+      position: absolute !important;
+      inset: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      display: block !important;
+      touch-action: pan-x pan-y;
+      overscroll-behavior: contain;
+    }
+    [data-mk-spatial-loop-source-hidden] {
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
+    [data-mk-spatial-loop-title] {
+      position: absolute;
+      z-index: 3;
+      left: 50%;
+      bottom: clamp(2rem, 7svh, 4.5rem);
+      width: min(90vw, 44rem);
+      transform: translateX(-50%);
+      text-align: center;
+      pointer-events: none;
+    }
+    [data-mk-spatial-loop-title-item] {
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      width: 100%;
+      margin: 0;
+      font: inherit;
+      color: inherit;
+      font-size: clamp(1.35rem, 2.05vw, 2.15rem);
+      line-height: .95;
+      letter-spacing: -.035em;
+      text-transform: uppercase;
+    }
+    @media screen and (max-width: 767px) {
+      [data-mk-spatial-loop-section],
+      [data-mk-spatial-loop-container] { min-height: 300svh !important; }
+      [data-mk-spatial-loop-title] { bottom: 6svh; }
+      [data-mk-spatial-loop-title-item] { font-size: 1.35rem; }
+    }
   `;
   doc.head.appendChild(style);
 }
@@ -93,8 +175,7 @@ function createMaterial(texture) {
       transparent: true
     });
 
-    // Scheme source: local position is scaled vertically by
-    // 1 + pow(sin(worldX) * 0.075, 2).
+    // Exact Scheme deformation: y *= 1 + pow(sin(worldX) * .075, 2)
     material.positionNode = Fn(() => {
       const position = positionLocal.xyz.toVar();
       const worldX = modelWorldMatrix.mul(position).x;
@@ -149,16 +230,14 @@ class SchemeVirtualScroll {
   }
 
   _onKeyDown(event) {
-    let deltaY = 0;
     switch (event.keyCode) {
-      case 37: deltaY = 0; this.emit(this.keyStep, 0, event); return;
-      case 39: deltaY = 0; this.emit(-this.keyStep, 0, event); return;
-      case 38: deltaY = this.keyStep; break;
-      case 40: deltaY = -this.keyStep; break;
-      case 32: deltaY = event.shiftKey ? this.keyStep : -this.keyStep; break;
+      case 37: this.emit(this.keyStep, 0, event); return;
+      case 39: this.emit(-this.keyStep, 0, event); return;
+      case 38: this.emit(0, this.keyStep, event); return;
+      case 40: this.emit(0, -this.keyStep, event); return;
+      case 32: this.emit(0, event.shiftKey ? this.keyStep : -this.keyStep, event); return;
       default: return;
     }
-    this.emit(0, deltaY, event);
   }
 
   bind() {
@@ -174,12 +253,29 @@ class SchemeVirtualScroll {
   }
 }
 
+function findSceneShell(root) {
+  const layout = root.parentElement;
+  const container = layout?.parentElement;
+  const section = container?.parentElement;
+  const heading = layout?.querySelector(".work-title") || null;
+  return { layout, container, section, heading };
+}
+
+function titleFromItem(item, media, index) {
+  return (
+    item.getAttribute("data-spatial-title") ||
+    media?.getAttribute("alt") ||
+    media?.alt ||
+    `Project ${index + 1}`
+  ).trim();
+}
+
 export const spatialLoop = {
   name: "spatial-loop",
   category: "composition",
   selector: '[data-motion~="spatial-loop"]',
 
-  mount(root, { reducedMotion }) {
+  mount(root, { gsap, reducedMotion }) {
     if (reducedMotion()) return;
 
     ensureStyles(root.ownerDocument);
@@ -188,6 +284,16 @@ export const spatialLoop = {
     const mediaSelector = readString(root, "motion-media-selector", ".work-image");
     const sourceItems = Array.from(root.querySelectorAll(itemSelector));
     if (sourceItems.length < 2) return;
+
+    const shell = findSceneShell(root);
+    shell.section?.setAttribute("data-mk-spatial-loop-section", "");
+    shell.container?.setAttribute("data-mk-spatial-loop-container", "");
+    shell.layout?.setAttribute("data-mk-spatial-loop-layout", "");
+    shell.heading?.setAttribute("data-mk-spatial-loop-heading", "");
+
+    const titleHost = root.ownerDocument.createElement("div");
+    titleHost.setAttribute("data-mk-spatial-loop-title", "");
+    root.appendChild(titleHost);
 
     const scene = new THREE.Scene();
     const aspectRatio = window.innerWidth / Math.max(1, window.innerHeight);
@@ -208,9 +314,12 @@ export const spatialLoop = {
 
     const stride = WIDTH + GAP;
     let slides = [];
+    let titleItems = [];
     let totalWidth = 0;
     let scrollPosition = 0;
     let targetScrollPosition = 0;
+    let previousScrollPosition = 0;
+    let currentCenterIndex = 0;
     let lastFrameScrollDelta = 0;
     let isScrolling = false;
     let scrollStopTimeout = null;
@@ -219,6 +328,8 @@ export const spatialLoop = {
     let lastScrollInputWasTouch = false;
     let destroyed = false;
     let rafId = null;
+    let sceneActive = false;
+    let sceneObserver = null;
     const isCoarsePointer = !!(window.matchMedia?.("(pointer: coarse)")?.matches || navigator.maxTouchPoints > 0);
 
     const isTouchInput = () => isCoarsePointer || lastScrollInputWasTouch;
@@ -235,6 +346,39 @@ export const spatialLoop = {
       else scrollPosition += delta * smoothing;
     };
 
+    const showTitle = (nextIndex) => {
+      if (nextIndex === currentCenterIndex || !titleItems.length) return;
+      const previousIndex = currentCenterIndex;
+      currentCenterIndex = nextIndex;
+      const direction = scrollPosition > previousScrollPosition ? "right" : "left";
+      previousScrollPosition = scrollPosition;
+      const outgoing = titleItems[previousIndex];
+      const incoming = titleItems[nextIndex];
+      if (outgoing) {
+        gsap.to(outgoing, {
+          yPercent: direction === "right" ? -30 : 30,
+          opacity: 0,
+          duration: 0.15,
+          ease: "power2.out",
+          overwrite: true
+        });
+      }
+      if (incoming) {
+        gsap.set(incoming, {
+          yPercent: direction === "right" ? 30 : -30,
+          opacity: 0
+        });
+        gsap.to(incoming, {
+          yPercent: 0,
+          opacity: 1,
+          duration: 0.2,
+          delay: 0.05,
+          ease: "power2.out",
+          overwrite: true
+        });
+      }
+    };
+
     const updateInfiniteScroll = () => {
       const previous = scrollPosition;
       if (canApplyScrollSnap()) {
@@ -246,6 +390,9 @@ export const spatialLoop = {
 
       lastFrameScrollDelta = scrollPosition - previous;
       const halfWidth = totalWidth / 2;
+      let nearestIndex = 0;
+      let nearestDistance = Infinity;
+
       slides.forEach((slide) => {
         let x = slide.originalPosition - scrollPosition;
         if (x < -halfWidth) {
@@ -257,7 +404,14 @@ export const spatialLoop = {
           slide.originalPosition -= totalWidth;
         }
         slide.mesh.position.x = x;
+        const distance = Math.abs(x);
+        if (distance < nearestDistance) {
+          nearestDistance = distance;
+          nearestIndex = slide.index;
+        }
       });
+
+      showTitle(nearestIndex);
     };
 
     const animate = () => {
@@ -268,6 +422,7 @@ export const spatialLoop = {
     };
 
     const scroller = new SchemeVirtualScroll((event) => {
+      if (!sceneActive) return;
       const type = event.originalEvent?.type || "";
       const touch = type.startsWith("touch");
       lastScrollInputWasTouch = touch;
@@ -291,8 +446,7 @@ export const spatialLoop = {
     const canvas = renderer.domElement;
     const onPointerDown = () => { pointerIsDown = true; };
     const onPointerUp = () => { pointerIsDown = false; };
-    const onTouchStart = (event) => {
-      event.preventDefault();
+    const onTouchStart = () => {
       touchActive = true;
       lastScrollInputWasTouch = true;
     };
@@ -311,10 +465,19 @@ export const spatialLoop = {
     canvas.addEventListener("pointerup", onPointerUp);
     canvas.addEventListener("pointercancel", onPointerUp);
     canvas.addEventListener("pointerleave", onPointerUp, { passive: true });
-    canvas.addEventListener("touchstart", onTouchStart, { passive: false });
+    canvas.addEventListener("touchstart", onTouchStart, { passive: true });
     canvas.addEventListener("touchend", onTouchEnd, { passive: true });
     canvas.addEventListener("touchcancel", onTouchEnd, { passive: true });
     window.addEventListener("resize", onResize);
+
+    if (shell.section) {
+      sceneObserver = new IntersectionObserver((entries) => {
+        sceneActive = entries.some((entry) => entry.isIntersecting && entry.intersectionRatio > 0.15);
+      }, { threshold: [0, 0.15, 0.5] });
+      sceneObserver.observe(shell.section);
+    } else {
+      sceneActive = true;
+    }
 
     (async () => {
       try {
@@ -331,6 +494,16 @@ export const spatialLoop = {
           const originalPosition = index * stride;
           mesh.position.x = originalPosition;
           scene.add(mesh);
+
+          const title = root.ownerDocument.createElement("div");
+          title.setAttribute("data-mk-spatial-loop-title-item", "");
+          title.textContent = titleFromItem(item, media, index);
+          titleHost.appendChild(title);
+          gsap.set(title, {
+            yPercent: index === 0 ? 0 : 30,
+            opacity: index === 0 ? 1 : 0
+          });
+
           return {
             index,
             mesh,
@@ -338,11 +511,13 @@ export const spatialLoop = {
             material,
             texture: asset.texture,
             video: asset.video,
-            originalPosition
+            originalPosition,
+            title
           };
         }).filter(Boolean);
 
         if (slides.length < 2) return;
+        titleItems = slides.map((slide) => slide.title);
         totalWidth = slides.length * stride;
         sourceItems.forEach((item) => item.setAttribute("data-mk-spatial-loop-source-hidden", ""));
         rafId = requestAnimationFrame(animate);
@@ -356,6 +531,7 @@ export const spatialLoop = {
       cancelAnimationFrame(rafId);
       clearTimeout(scrollStopTimeout);
       scroller.destroy();
+      sceneObserver?.disconnect();
       window.removeEventListener("resize", onResize);
       canvas.removeEventListener("pointerdown", onPointerDown);
       canvas.removeEventListener("pointerup", onPointerUp);
@@ -373,7 +549,12 @@ export const spatialLoop = {
       });
       renderer.dispose();
       canvas.remove();
+      titleHost.remove();
       sourceItems.forEach((item) => item.removeAttribute("data-mk-spatial-loop-source-hidden"));
+      shell.section?.removeAttribute("data-mk-spatial-loop-section");
+      shell.container?.removeAttribute("data-mk-spatial-loop-container");
+      shell.layout?.removeAttribute("data-mk-spatial-loop-layout");
+      shell.heading?.removeAttribute("data-mk-spatial-loop-heading");
     };
   }
 };
