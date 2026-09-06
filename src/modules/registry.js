@@ -23,6 +23,7 @@ import { responsiveMenu } from "./responsive-menu.js";
 import { scrambleText } from "./scramble-text.js";
 import { scrollHighlight } from "./scroll-highlight.js";
 import { scrollTravel } from "./scroll-travel.js";
+import { spatialLoop } from "./spatial-loop.js";
 import { stackedCards } from "./stacked-cards.js";
 import { stackedImageHover } from "./stacked-image-hover.js";
 import { svgReveal } from "./svg-reveal.js";
@@ -63,5 +64,6 @@ export const modules = [
   morphNarrative,
   tagsGlitch,
   characterScatterTitle,
-  heroSlitTransition
+  heroSlitTransition,
+  spatialLoop
 ];
