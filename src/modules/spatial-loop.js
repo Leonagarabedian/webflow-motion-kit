@@ -23,6 +23,11 @@ const SNAP_LOCK_EPSILON = 0.001;
 const FOV = 75;
 const SHORT_LANDSCAPE_QUERY = "(orientation: landscape) and (max-width: 1180px) and (max-height: 600px)";
 
+// Branda visual adaptation from the Scheme reference composition:
+// neighboring planes turn inward while the centered plane resolves to 0deg.
+const MAX_INWARD_ANGLE = THREE.MathUtils.degToRad(18);
+const ANGLE_LERP = 0.14;
+
 function ensureStyles(doc) {
   if (doc.getElementById(STYLE_ID)) return;
   const style = doc.createElement("style");
@@ -403,7 +408,16 @@ export const spatialLoop = {
           x -= totalWidth;
           slide.originalPosition -= totalWidth;
         }
+
         slide.mesh.position.x = x;
+
+        // Visual correction requested from the Scheme reference screenshot:
+        // the centered project remains straight-on while neighboring planes
+        // continuously turn inward toward the camera as they move away from center.
+        const normalizedX = THREE.MathUtils.clamp(x / stride, -1, 1);
+        const targetRotationY = -normalizedX * MAX_INWARD_ANGLE;
+        slide.mesh.rotation.y += (targetRotationY - slide.mesh.rotation.y) * ANGLE_LERP;
+
         const distance = Math.abs(x);
         if (distance < nearestDistance) {
           nearestDistance = distance;
