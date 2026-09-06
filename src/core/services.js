@@ -1,20 +1,7 @@
-export function createServices({
-  DrawSVGPlugin,
-  gsap,
-  ScrollTrigger,
-  Flip,
-  MorphSVGPlugin,
-  ScrambleTextPlugin,
-  SplitText
-}) {
+export function createServices({ gsap, plugins }) {
   return {
-    DrawSVGPlugin,
-    Flip,
-    MorphSVGPlugin,
-    ScrambleTextPlugin,
-    ScrollTrigger,
-    SplitText,
     gsap,
+    ...plugins,
     logger: console,
     reducedMotion: () =>
       window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false,

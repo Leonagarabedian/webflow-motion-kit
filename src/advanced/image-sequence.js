@@ -46,6 +46,7 @@ function mount(element) {
   let drawWidth = 1;
   let drawHeight = 1;
   const crossOrigin = string(element, "advanced-crossorigin", "anonymous");
+  const activeClass = string(element, "advanced-active-class", "is-active");
 
   const updateStages = (index) => {
     if (!stages.length) return;
@@ -54,7 +55,7 @@ function mount(element) {
     activeStage = next;
     stages.forEach((stage, stageIndex) => {
       const active = stageIndex === next;
-      stage.classList.toggle("is-active", active);
+      stage.classList.toggle(activeClass, active);
       stage.setAttribute("aria-hidden", String(!active));
     });
   };
@@ -128,7 +129,7 @@ function mount(element) {
       image.src = "";
     });
     stages.forEach((stage) => {
-      stage.classList.remove("is-active");
+      stage.classList.remove(activeClass);
       stage.removeAttribute("aria-hidden");
     });
     if (createdCanvas) canvas.remove();

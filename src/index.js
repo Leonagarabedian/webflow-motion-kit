@@ -1,59 +1,21 @@
-import {
-  DrawSVGPlugin,
-  Flip,
-  gsap,
-  MorphSVGPlugin,
-  ScrambleTextPlugin,
-  ScrollSmoother,
-  ScrollToPlugin,
-  ScrollTrigger,
-  SplitText
-} from "gsap/all";
-
 import "./styles.css";
+import { gsap, plugins } from "./core/gsap.js";
+import {
+  destroyPageScroll,
+  getPageScroll,
+  initPageScroll
+} from "./core/page-scroll.js";
 import { createRuntime } from "./core/runtime.js";
 import { createServices } from "./core/services.js";
 import { motionTokens } from "./core/tokens.js";
 import { modules } from "./modules/registry.js";
 
-gsap.registerPlugin(
-  ScrollTrigger,
-  ScrollSmoother,
-  ScrollToPlugin,
-  Flip,
-  SplitText,
-  ScrambleTextPlugin,
-  DrawSVGPlugin,
-  MorphSVGPlugin
-);
-
-const services = createServices({
-  DrawSVGPlugin,
-  gsap,
-  ScrollTrigger,
-  Flip,
-  MorphSVGPlugin,
-  ScrambleTextPlugin,
-  SplitText
-});
+const services = createServices({ gsap, plugins });
 const runtime = createRuntime({ modules, services });
-
 let booted = false;
-let smoother = null;
 
 function boot() {
-  if (
-    !smoother &&
-    !window.matchMedia("(prefers-reduced-motion: reduce)").matches
-  ) {
-    smoother = ScrollSmoother.create({
-      content: ".page-wrapper",
-      smooth: 0.8,
-      effects: true,
-      smoothTouch: 0
-    });
-  }
-
+  initPageScroll({ ScrollSmoother: plugins.ScrollSmoother }, document);
   runtime.init(document);
 
   if (!booted) {
@@ -62,26 +24,55 @@ function boot() {
   }
 }
 
+function destroy(root = document) {
+  runtime.destroy(root);
+  if (root === document) destroyPageScroll();
+  return api;
+}
+
+function init(root = document) {
+  if (root === document) {
+    initPageScroll({ ScrollSmoother: plugins.ScrollSmoother }, document);
+  }
+  runtime.init(root);
+  return api;
+}
 
 const api = {
-  destroy: runtime.destroy,
-  init: runtime.init,
+  destroy,
+  init,
   moduleInventory: modules.map(({ category, name }) => ({ category, name })),
   modules: modules.map(({ name }) => name),
+  pluginInventory: Object.keys(plugins),
+  plugins,
   refresh: runtime.refresh,
+  scroll: {
+    destroy: destroyPageScroll,
+    get: getPageScroll,
+    init: (root = document) =>
+      initPageScroll({ ScrollSmoother: plugins.ScrollSmoother }, root)
+  },
   tokens: motionTokens,
-  version: "0.4.2"
+  version: "0.5.0"
 };
 
 window.WebflowMotionKit = api;
-window.Webflow = window.Webflow || [];
-window.Webflow.push(boot);
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", boot, { once: true });
-} else {
-  queueMicrotask(boot);
+function scheduleBoot() {
+  window.Webflow = window.Webflow || [];
+  if (typeof window.Webflow.push === "function") {
+    window.Webflow.push(boot);
+    return;
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot, { once: true });
+  } else {
+    queueMicrotask(boot);
+  }
 }
+
+scheduleBoot();
 
 window.addEventListener("motion:init", (event) =>
   api.init(event.detail?.root ?? document)

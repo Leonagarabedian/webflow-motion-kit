@@ -10,8 +10,10 @@ export const viewSwitch = {
     if (buttons.length < 2 || !items.length) return;
 
     const initialView = element.getAttribute("data-motion-view-state");
-    const initiallyGrid = element.classList.contains("is-grid");
-    const initiallySlider = element.classList.contains("is-slider");
+    const gridClass = readString(element, "motion-grid-class", "is-grid");
+    const sliderClass = readString(element, "motion-slider-class", "is-slider");
+    const initiallyGrid = element.classList.contains(gridClass);
+    const initiallySlider = element.classList.contains(sliderClass);
     const originalPressed = buttons.map((button) => button.getAttribute("aria-pressed"));
     const originalItemStyles = items.map((item) => item.getAttribute("style"));
     let activeView = readString(element, "motion-default-view", "grid");
@@ -21,8 +23,8 @@ export const viewSwitch = {
       if (view === activeView && animate) return;
       const state = animate && !reducedMotion() ? Flip.getState(items) : null;
       activeView = view;
-      element.classList.toggle("is-grid", view === "grid");
-      element.classList.toggle("is-slider", view === "slider");
+      element.classList.toggle(gridClass, view === "grid");
+      element.classList.toggle(sliderClass, view === "slider");
       element.setAttribute("data-motion-view-state", view);
       buttons.forEach((button) => {
         button.setAttribute("aria-pressed", String(button.dataset.motionView === view));
@@ -59,8 +61,8 @@ export const viewSwitch = {
         if (originalItemStyles[index] == null) item.removeAttribute("style");
         else item.setAttribute("style", originalItemStyles[index]);
       });
-      element.classList.toggle("is-grid", initiallyGrid);
-      element.classList.toggle("is-slider", initiallySlider);
+      element.classList.toggle(gridClass, initiallyGrid);
+      element.classList.toggle(sliderClass, initiallySlider);
       if (initialView == null) element.removeAttribute("data-motion-view-state");
       else element.setAttribute("data-motion-view-state", initialView);
     };

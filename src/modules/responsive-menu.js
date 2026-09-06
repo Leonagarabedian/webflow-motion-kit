@@ -21,6 +21,8 @@ export const responsiveMenu = {
     const initialExpanded = toggle.getAttribute("aria-expanded");
     const initialHidden = panel.getAttribute("aria-hidden");
     const initialBodyOverflow = document.body.style.overflow;
+    const openClass = readString(element, "motion-open-class", "is-open");
+    const initiallyOpen = element.classList.contains(openClass);
     const duration = reducedMotion() ? 0 : readNumber(element, "motion-duration", 0.75);
     let open = false;
 
@@ -49,7 +51,7 @@ export const responsiveMenu = {
       toggle.setAttribute("aria-expanded", String(isOpen));
       panel.setAttribute("aria-hidden", String(!isOpen));
       panel.style.pointerEvents = isOpen ? "auto" : "none";
-      element.classList.toggle("is-open", isOpen);
+      element.classList.toggle(openClass, isOpen);
       if (readBoolean(element, "motion-lock-scroll", true)) {
         document.body.style.overflow = isOpen ? "hidden" : initialBodyOverflow;
       }
@@ -87,7 +89,7 @@ export const responsiveMenu = {
       document.removeEventListener("keydown", onKeydown);
       timeline.kill();
       document.body.style.overflow = initialBodyOverflow;
-      element.classList.remove("is-open");
+      element.classList.toggle(openClass, initiallyOpen);
       if (initialPanelStyle == null) panel.removeAttribute("style");
       else panel.setAttribute("style", initialPanelStyle);
       items.forEach((item, index) => {

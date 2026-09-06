@@ -1,4 +1,4 @@
-import { readNumber } from "../core/config.js";
+import { readNumber, readString } from "../core/config.js";
 
 export const accordionMedia = {
   name: "accordion-media",
@@ -15,6 +15,8 @@ export const accordionMedia = {
     const panels = items.map((item) =>
       item.querySelector("[data-motion-accordion-panel]")
     );
+    const activeClass = readString(element, "motion-active-class", "is-active");
+    const initialActiveClasses = items.map((item) => item.classList.contains(activeClass));
     const duration = reducedMotion()
       ? 0
       : readNumber(element, "motion-duration", 0.65);
@@ -27,7 +29,7 @@ export const accordionMedia = {
       active = index;
       items.forEach((item, itemIndex) => {
         const open = itemIndex === index;
-        item.classList.toggle("is-active", open);
+        item.classList.toggle(activeClass, open);
         triggers[itemIndex]?.setAttribute("aria-expanded", String(open));
         panels[itemIndex]?.setAttribute("aria-hidden", String(!open));
 
@@ -68,7 +70,7 @@ export const accordionMedia = {
       });
       gsap.killTweensOf([...panels.filter(Boolean), ...media]);
       gsap.set([...panels.filter(Boolean), ...media], { clearProps: "all" });
-      items.forEach((item) => item.classList.remove("is-active"));
+      items.forEach((item, index) => item.classList.toggle(activeClass, initialActiveClasses[index]));
     };
   }
 };

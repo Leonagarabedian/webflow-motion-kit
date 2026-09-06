@@ -1,4 +1,4 @@
-import { ScrollTrigger } from "gsap/all";
+import { gsap, ScrollTrigger } from "gsap/all";
 import * as THREE from "three";
 import "./advanced.css";
 import { clamp, number, reducedMotion, string, target } from "./shared/config.js";
