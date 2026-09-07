@@ -200,11 +200,13 @@ export const spatialLoop = {
     const mediaSelector = readString(root, "motion-media-selector", ".work-image");
     const sectionHeight = readString(root, "motion-section-height", "160svh");
     const mobileSectionHeight = readString(root, "motion-mobile-section-height", "150svh");
+    const nextRise = readString(root, "motion-next-rise", "false") === "true";
     const sourceItems = Array.from(root.querySelectorAll(itemSelector));
     if (sourceItems.length < 2) return;
 
     const shell = findSceneShell(root);
     if (!shell.layout || !shell.section) return;
+    const nextSection = nextRise ? shell.section.nextElementSibling : null;
 
     shell.section.setAttribute("data-mk-spatial-loop-section", "");
     shell.container?.setAttribute("data-mk-spatial-loop-container", "");
@@ -214,6 +216,20 @@ export const spatialLoop = {
     shell.section.style.setProperty("--mk-spatial-loop-height-mobile", mobileSectionHeight);
     shell.container?.style.setProperty("--mk-spatial-loop-height", sectionHeight);
     shell.container?.style.setProperty("--mk-spatial-loop-height-mobile", mobileSectionHeight);
+
+    const previousNextStyles = nextSection ? {
+      marginTop: nextSection.style.marginTop,
+      position: nextSection.style.position,
+      zIndex: nextSection.style.zIndex,
+      willChange: nextSection.style.willChange
+    } : null;
+
+    if (nextSection) {
+      nextSection.style.marginTop = "-100svh";
+      nextSection.style.position = "relative";
+      nextSection.style.zIndex = "30";
+      nextSection.style.willChange = "transform";
+    }
 
     const titleHost = root.ownerDocument.createElement("div");
     titleHost.setAttribute("data-mk-spatial-loop-title", "");
@@ -491,8 +507,6 @@ export const spatialLoop = {
         maxTravel = stride * Math.max(1, slides.length - 1);
         sourceItems.forEach((item) => item.setAttribute("data-mk-spatial-loop-source-hidden", ""));
 
-        // Natural scroll now owns the transition out. No scrollTop tween and no
-        // synthetic jump. The scene simply eases back while the page advances.
         releaseTimeline = gsap.timeline({
           scrollTrigger: {
             id: "mk-spatial-loop-release",
@@ -515,14 +529,21 @@ export const spatialLoop = {
             }
           }
         });
-        releaseTimeline.fromTo(
-          shell.layout,
-          { yPercent: 0, scale: 1 },
-          { yPercent: -8, scale: 0.975, ease: "none" }
-        );
 
-        // One-pixel trigger at the fully expanded position. It locks only here,
-        // so the approach and departure remain ordinary smooth vertical scroll.
+        if (nextSection) {
+          releaseTimeline.fromTo(
+            nextSection,
+            { y: () => window.innerHeight },
+            { y: 0, ease: "none" }
+          );
+        } else {
+          releaseTimeline.fromTo(
+            shell.layout,
+            { yPercent: 0, scale: 1 },
+            { yPercent: -8, scale: 0.975, ease: "none" }
+          );
+        }
+
         lockTrigger = ScrollTrigger.create({
           id: "mk-spatial-loop-lock",
           trigger: shell.section,
@@ -555,6 +576,7 @@ export const spatialLoop = {
       window.removeEventListener("resize", onResize);
       root.removeAttribute("data-mk-spatial-loop-locked");
       gsap.set(shell.layout, { clearProps: "transform" });
+      if (nextSection) gsap.set(nextSection, { clearProps: "transform" });
 
       slides.forEach((slide) => {
         slide.video?.pause?.();
@@ -576,6 +598,13 @@ export const spatialLoop = {
       shell.section.style.removeProperty("--mk-spatial-loop-height-mobile");
       shell.container?.style.removeProperty("--mk-spatial-loop-height");
       shell.container?.style.removeProperty("--mk-spatial-loop-height-mobile");
+
+      if (nextSection && previousNextStyles) {
+        nextSection.style.marginTop = previousNextStyles.marginTop;
+        nextSection.style.position = previousNextStyles.position;
+        nextSection.style.zIndex = previousNextStyles.zIndex;
+        nextSection.style.willChange = previousNextStyles.willChange;
+      }
     };
   }
 };
