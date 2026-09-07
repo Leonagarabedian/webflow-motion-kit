@@ -1,14 +1,43 @@
 import { readNumber, readString, resolveTrigger } from "../core/config.js";
 
+const VISIBLE_PROPS = [
+  "position",
+  "width",
+  "height",
+  "margin",
+  "padding",
+  "overflow",
+  "clip",
+  "white-space",
+  "z-index"
+];
+
+function forceVisible(element) {
+  element.style.setProperty("position", "relative", "important");
+  element.style.setProperty("width", "auto", "important");
+  element.style.setProperty("height", "auto", "important");
+  element.style.setProperty("padding", "0", "important");
+  element.style.setProperty("overflow", "visible", "important");
+  element.style.setProperty("clip", "auto", "important");
+  element.style.setProperty("white-space", "normal", "important");
+  element.style.setProperty("z-index", "30", "important");
+}
+
+function clearVisibleOverrides(element) {
+  VISIBLE_PROPS.forEach((prop) => element.style.removeProperty(prop));
+}
+
 export const characterConverge = {
   name: "character-converge",
   category: "primitive",
   selector: '[data-motion~="character-converge"]',
 
   mount(element, { gsap, SplitText, reducedMotion }) {
+    forceVisible(element);
+
     if (reducedMotion()) {
       gsap.set(element, { autoAlpha: 1 });
-      return;
+      return () => clearVisibleOverrides(element);
     }
 
     const trigger = resolveTrigger(element);
@@ -66,6 +95,7 @@ export const characterConverge = {
       gsap.set(chars, { clearProps: "transform,opacity,visibility,willChange" });
       split.revert();
       element.style.willChange = "";
+      clearVisibleOverrides(element);
     };
   }
 };
