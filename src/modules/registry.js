@@ -1,6 +1,7 @@
 import { accordionMedia } from "./accordion-media.js";
 import { blurReveal } from "./blur-reveal.js";
 import { brandLoad } from "./brand-load.js";
+import { characterConverge } from "./character-converge.js";
 import { characterScatterTitle } from "./character-scatter-title.js";
 import { cursor } from "./cursor.js";
 import { flipRelocation } from "./flip-relocation.js";
@@ -42,6 +43,7 @@ export const modules = [
   imageClip,
   parallax,
   scrollTravel,
+  characterConverge,
   liquidFill,
   magnetic,
   cursor,
