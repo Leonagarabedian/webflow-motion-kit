@@ -19,11 +19,24 @@ function interpolate(from, to, progress) {
   return from + (to - from) * progress;
 }
 
-function createHeartOverlay(element, color, sizePx) {
+function fadeBetween(progress, start, end) {
+  if (progress <= start) return 0;
+  if (progress >= end) return 1;
+  return (progress - start) / Math.max(end - start, 0.0001);
+}
+
+function fadeOutBetween(progress, start, end) {
+  if (progress <= start) return 1;
+  if (progress >= end) return 0;
+  return 1 - (progress - start) / Math.max(end - start, 0.0001);
+}
+
+function createHeartOverlay(element, color, sizePx, strokeWidth) {
   const ns = "http://www.w3.org/2000/svg";
   const wrapper = document.createElement("div");
   const svg = document.createElementNS(ns, "svg");
-  const path = document.createElementNS(ns, "path");
+  const fillPath = document.createElementNS(ns, "path");
+  const outlinePath = document.createElementNS(ns, "path");
 
   wrapper.setAttribute("data-motion-generated", "hero-heart-shape");
   wrapper.setAttribute("aria-hidden", "true");
@@ -48,12 +61,22 @@ function createHeartOverlay(element, color, sizePx) {
   svg.style.display = "block";
   svg.style.overflow = "visible";
 
-  path.setAttribute("fill", color);
-  svg.appendChild(path);
+  fillPath.setAttribute("fill", color);
+  fillPath.setAttribute("stroke", "none");
+
+  outlinePath.setAttribute("fill", "none");
+  outlinePath.setAttribute("stroke", color);
+  outlinePath.setAttribute("stroke-width", String(strokeWidth));
+  outlinePath.setAttribute("stroke-linejoin", "round");
+  outlinePath.setAttribute("stroke-linecap", "round");
+  outlinePath.setAttribute("vector-effect", "non-scaling-stroke");
+
+  svg.appendChild(fillPath);
+  svg.appendChild(outlinePath);
   wrapper.appendChild(svg);
   element.appendChild(wrapper);
 
-  return { wrapper, path };
+  return { wrapper, fillPath, outlinePath };
 }
 
 export const heroHeartTransition = {
@@ -90,12 +113,32 @@ export const heroHeartTransition = {
     const morphStart = readNumber(element, "motion-heart-start", 0.56);
     const morphEnd = readNumber(element, "motion-heart-end", 0.63);
     const settleEnd = readNumber(element, "motion-heart-settle-end", 0.65);
+    const outlineStart = readNumber(
+      element,
+      "motion-heart-outline-start",
+      settleEnd
+    );
+    const outlineEnd = readNumber(
+      element,
+      "motion-heart-outline-end",
+      0.72
+    );
+    const disappearEnd = readNumber(
+      element,
+      "motion-heart-disappear-end",
+      0.78
+    );
     const handoffScale = readNumber(element, "motion-heart-handoff-scale", 1);
     const heartScale = readNumber(element, "motion-heart-scale", 1);
     const heartSettleFrom = readNumber(element, "motion-heart-settle-from", 0.94);
     const heartRotation = readNumber(element, "motion-heart-rotation", 0);
     const heartColor = readString(element, "motion-heart-color", "#000000");
     const heartSize = readNumber(element, "motion-heart-size", 160);
+    const heartOutlineWidth = readNumber(
+      element,
+      "motion-heart-outline-width",
+      6
+    );
 
     const copyStartWidth = readNumber(element, "motion-copy-start-width", 30);
     const copyEndWidth = readNumber(element, "motion-copy-end-width", 20);
@@ -117,19 +160,32 @@ export const heroHeartTransition = {
       element.style.position = "relative";
     }
 
-    const { wrapper: heartShape, path: heartPath } = createHeartOverlay(
+    const {
+      wrapper: heartShape,
+      fillPath: heartFillPath,
+      outlinePath: heartOutlinePath
+    } = createHeartOverlay(
       element,
       heartColor,
-      heartSize
+      heartSize,
+      heartOutlineWidth
     );
 
     const slitD = "M48 0 H52 V100 H48 Z";
     const heartD =
       "M50 90 C46 85 17 64 10 47 C2 28 14 10 31 10 C41 10 48 16 50 26 C52 16 59 10 69 10 C86 10 98 28 90 47 C83 64 54 85 50 90 Z";
 
-    heartPath.setAttribute("d", slitD);
+    heartFillPath.setAttribute("d", slitD);
+    heartOutlinePath.setAttribute("d", slitD);
 
-    const morphTween = gsap.to(heartPath, {
+    const fillMorphTween = gsap.to(heartFillPath, {
+      morphSVG: { shape: heartD },
+      duration: 1,
+      ease: "none",
+      paused: true
+    });
+
+    const outlineMorphTween = gsap.to(heartOutlinePath, {
       morphSVG: { shape: heartD },
       duration: 1,
       ease: "none",
@@ -207,11 +263,14 @@ export const heroHeartTransition = {
         gsap.set(heartShape, {
           rotation: rotateTo,
           scale: handoffScale,
-          opacity: 0,
+          opacity: 1,
           visibility: "hidden",
           transformOrigin: "50% 50%",
           willChange: "transform, opacity"
         });
+
+        gsap.set(heartFillPath, { opacity: 0 });
+        gsap.set(heartOutlinePath, { opacity: 0 });
 
         function render(scrollProgress) {
           const phase1 = phaseProgress(scrollProgress, 0, clipEnd, clamp);
@@ -307,7 +366,8 @@ export const heroHeartTransition = {
             morphEnd,
             clamp
           );
-          morphTween.progress(morphProgress);
+          fillMorphTween.progress(morphProgress);
+          outlineMorphTween.progress(morphProgress);
 
           const settleProgress = phaseProgress(
             scrollProgress,
@@ -333,11 +393,30 @@ export const heroHeartTransition = {
             morphProgress
           );
 
+          const fillOpacity = scrollProgress < outlineStart
+            ? 1
+            : fadeOutBetween(scrollProgress, outlineStart, outlineEnd);
+
+          const outlineOpacity = scrollProgress < outlineStart
+            ? 0
+            : scrollProgress < outlineEnd
+              ? fadeBetween(scrollProgress, outlineStart, outlineEnd)
+              : fadeOutBetween(scrollProgress, outlineEnd, disappearEnd);
+
+          const heartVisible = handoffReached && scrollProgress < disappearEnd;
+
           gsap.set(heartShape, {
             scale: shapeScale,
             rotation: shapeRotation,
-            opacity: handoffReached ? 1 : 0,
-            visibility: handoffReached ? "visible" : "hidden"
+            visibility: heartVisible ? "visible" : "hidden"
+          });
+
+          gsap.set(heartFillPath, {
+            opacity: heartVisible ? fillOpacity : 0
+          });
+
+          gsap.set(heartOutlinePath, {
+            opacity: heartVisible ? outlineOpacity : 0
           });
         }
 
@@ -361,7 +440,8 @@ export const heroHeartTransition = {
 
     return () => {
       mm.revert();
-      morphTween.kill();
+      fillMorphTween.kill();
+      outlineMorphTween.kill();
       heartShape.remove();
       element.style.position = originalElementPosition;
       for (const [target, originalStyle] of originalStyles) {
