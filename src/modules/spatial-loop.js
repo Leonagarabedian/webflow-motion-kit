@@ -242,6 +242,16 @@ export const spatialLoop = {
     renderer.domElement.setAttribute("aria-hidden", "true");
     renderer.domElement.style.overscrollBehavior = "contain";
     root.prepend(renderer.domElement);
+    // FIX 4: world units covered by one screen pixel at the current camera
+    // distance. A finger drag should move the slide it is touching by exactly
+    // that much, so the gallery tracks the finger 1:1 on every viewport.
+    // (On a desktop viewport this evaluates to ~0.0104, which is why the fixed
+    // INPUT_SCALE of 0.01 always felt right for a wheel and wrong for a thumb.)
+    const worldUnitsPerPixel = () => {
+      const visibleHeight = 2 * Math.tan(THREE.MathUtils.degToRad(FOV) / 2) * camera.position.z;
+      const visibleWidth = visibleHeight * camera.aspect;
+      return visibleWidth / Math.max(1, window.innerWidth);
+    };
     const stride = WIDTH + GAP;
     let slides = [];
     let titleItems = [];
@@ -375,9 +385,13 @@ export const spatialLoop = {
       }
       return false;
     };
-    const handleInput = (delta, allowExitIntent = true) => {
+    // FIX 4: `scale` is now explicit so touch can track the finger while wheel
+    // and keyboard keep their tuned constant. `delta` stays in pixels either
+    // way, which is what keeps EXIT_INTENT_THRESHOLD meaningful as a pixel
+    // distance across every input device.
+    const handleInput = (delta, allowExitIntent = true, scale = INPUT_SCALE) => {
       if (takeoverState !== "locked" || !Number.isFinite(delta) || delta === 0) return;
-      targetScrollPosition = clamp(targetScrollPosition + delta * INPUT_SCALE, 0, maxTravel);
+      targetScrollPosition = clamp(targetScrollPosition + delta * scale, 0, maxTravel);
       if (allowExitIntent) {
         if (registerExitIntent(delta)) return;
       } else {
@@ -416,7 +430,10 @@ export const spatialLoop = {
       touchX = nextX;
       touchY = nextY;
       const useHorizontal = Math.abs(deltaX) > Math.abs(deltaY);
-      handleInput(useHorizontal ? deltaX : deltaY, !useHorizontal);
+      // FIX 4: drag the gallery 1:1 with the finger instead of at the wheel's
+      // scale, which required ~835px of drag per slide — more than two full
+      // swipes on a phone.
+      handleInput(useHorizontal ? deltaX : deltaY, !useHorizontal, worldUnitsPerPixel());
     };
     const onTouchEnd = () => {
       touchX = null;
