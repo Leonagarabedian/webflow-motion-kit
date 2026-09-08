@@ -25,6 +25,12 @@ function resolveContainer(element) {
   return element.closest("section") ?? element.parentElement;
 }
 
+function resolveOptionalTarget(element, attributeName) {
+  const selector = readString(element, attributeName, null);
+  if (!selector) return null;
+  return element.closest(selector) ?? element.ownerDocument.querySelector(selector);
+}
+
 function contentHost(element) {
   return element.querySelector(":scope > [data-mk-scroll-travel-layer]") ?? element;
 }
@@ -94,6 +100,7 @@ export const liquidFill = {
 
     const container = resolveContainer(element);
     if (!container) return;
+    const endTrigger = resolveOptionalTarget(element, "motion-end-trigger");
     ensureStyles(element.ownerDocument);
 
     const structure = createStructure(element);
@@ -125,19 +132,23 @@ export const liquidFill = {
     };
     render();
 
+    const scrollTriggerConfig = {
+      id: `mk-liquid-fill-${++sequence}`,
+      trigger: container,
+      start: readString(element, "motion-start", "top top"),
+      end: readString(element, "motion-end", `+=${Math.max(1, container.offsetHeight)}`),
+      scrub: readNumber(element, "motion-scrub", 1),
+      invalidateOnRefresh: true,
+      markers: readString(element, "motion-markers", "false") === "true"
+    };
+
+    if (endTrigger) scrollTriggerConfig.endTrigger = endTrigger;
+
     const tween = gsap.to(state, {
       progress: 1,
       ease: "none",
       onUpdate: render,
-      scrollTrigger: {
-        id: `mk-liquid-fill-${++sequence}`,
-        trigger: container,
-        start: readString(element, "motion-start", "top top"),
-        end: readString(element, "motion-end", `+=${Math.max(1, container.offsetHeight)}`),
-        scrub: readNumber(element, "motion-scrub", 1),
-        invalidateOnRefresh: true,
-        markers: readString(element, "motion-markers", "false") === "true"
-      }
+      scrollTrigger: scrollTriggerConfig
     });
 
     ScrollTrigger.refresh();
