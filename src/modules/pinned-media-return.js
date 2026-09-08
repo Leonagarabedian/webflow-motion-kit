@@ -27,19 +27,22 @@ export const pinnedMediaReturn = {
         const win = element.ownerDocument.defaultView;
         if (!win) return;
 
+        const ScrollTrigger = gsap.core.globals().ScrollTrigger;
         const activeScale = readNumber(element, "motion-scale-mid", 0.8);
         const restScale = readNumber(element, "motion-scale-to", 1);
-        const inDuration = readNumber(element, "motion-active-duration", 0.18);
-        const outDuration = readNumber(element, "motion-release-duration", 0.28);
-        const stopDelay = readNumber(element, "motion-stop-delay", 110);
-        const easeIn = readString(element, "motion-scale-ease-in", "power4.out");
-        const easeOut = readString(element, "motion-scale-ease-out", "power4.out");
+        const inDuration = readNumber(element, "motion-active-duration", 0.2);
+        const outDuration = readNumber(element, "motion-release-duration", 0.3);
+        const easeIn = readString(element, "motion-scale-ease-in", "power3.inOut");
+        const easeOut = readString(element, "motion-scale-ease-out", "power3.inOut");
 
         media.style.willChange = "transform";
-        gsap.set(media, { scale: restScale });
+        gsap.set(media, {
+          scale: restScale,
+          transformOrigin: "50% 50%"
+        });
 
-        let stopTimer = 0;
         let scrolling = false;
+        let fallbackRelease = null;
 
         const shrink = () => {
           if (scrolling) return;
@@ -48,31 +51,37 @@ export const pinnedMediaReturn = {
             scale: activeScale,
             duration: inDuration,
             ease: easeIn,
-            overwrite: "auto"
+            overwrite: true
           });
         };
 
         const release = () => {
+          if (!scrolling) return;
           scrolling = false;
           gsap.to(media, {
             scale: restScale,
             duration: outDuration,
             ease: easeOut,
-            overwrite: "auto"
+            overwrite: true
           });
         };
 
+        if (!ScrollTrigger) {
+          fallbackRelease = gsap.delayedCall(0.14, release).pause();
+        }
+
         const onScroll = () => {
           shrink();
-          win.clearTimeout(stopTimer);
-          stopTimer = win.setTimeout(release, stopDelay);
+          if (fallbackRelease) fallbackRelease.restart(true);
         };
 
         win.addEventListener("scroll", onScroll, { passive: true });
+        ScrollTrigger?.addEventListener("scrollEnd", release);
 
         return () => {
           win.removeEventListener("scroll", onScroll);
-          win.clearTimeout(stopTimer);
+          ScrollTrigger?.removeEventListener("scrollEnd", release);
+          fallbackRelease?.kill();
           gsap.killTweensOf(media);
           gsap.set(media, { clearProps: "transform" });
           media.style.willChange = "";
