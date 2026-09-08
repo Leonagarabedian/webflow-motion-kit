@@ -19,6 +19,7 @@ import { navFlip } from "./nav-flip.js";
 import { pageTransition } from "./page-transition.js";
 import { parallax } from "./parallax.js";
 import { pinnedMedia } from "./pinned-media.js";
+import { pinnedMediaReturn } from "./pinned-media-return.js";
 import { pinnedSteps } from "./pinned-steps.js";
 import { responsiveMenu } from "./responsive-menu.js";
 import { scrambleText } from "./scramble-text.js";
@@ -62,6 +63,7 @@ export const modules = [
   flipRelocation,
   heroFrameTransition,
   pinnedMedia,
+  pinnedMediaReturn,
   pinnedSteps,
   accordionMedia,
   themeSwitch,
