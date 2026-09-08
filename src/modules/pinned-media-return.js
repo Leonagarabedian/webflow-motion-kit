@@ -31,6 +31,8 @@ export const pinnedMediaReturn = {
         const scaleFrom = readNumber(element, "motion-scale-from", 1);
         const scaleMid = readNumber(element, "motion-scale-mid", 0.8);
         const scaleTo = readNumber(element, "motion-scale-to", 1);
+        const easeIn = readString(element, "motion-scale-ease-in", "power4.inOut");
+        const easeOut = readString(element, "motion-scale-ease-out", "power4.inOut");
 
         gsap.set(media, { scale: scaleFrom });
 
@@ -46,16 +48,10 @@ export const pinnedMediaReturn = {
         });
 
         timeline
-          .to(media, {
-            ease: "none",
-            scale: scaleMid,
-            duration: 0.5
-          })
-          .to(media, {
-            ease: "none",
-            scale: scaleTo,
-            duration: 0.5
-          });
+          .to(media, { scale: scaleFrom, duration: 0.2, ease: "none" })
+          .to(media, { scale: scaleMid, duration: 0.3, ease: easeIn })
+          .to(media, { scale: scaleTo, duration: 0.3, ease: easeOut })
+          .to(media, { scale: scaleTo, duration: 0.2, ease: "none" });
 
         return () => {
           timeline.scrollTrigger?.kill();
