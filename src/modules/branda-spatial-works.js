@@ -21,7 +21,8 @@ const DEFAULTS = Object.freeze({
   edgeMargin: 1.15,
   maxPixelRatio: 2,
   scrollDistanceScale: 1,
-  settleProgress: 0.96
+  settleProgress: 0.96,
+  titleZone: 0.55
 });
 
 function ensureStyles(doc) {
@@ -242,6 +243,10 @@ export const brandaSpatialWorks = {
       0.8,
       1
     );
+    const titleZone = Math.max(
+      0.05,
+      readNumber(root, "motion-title-zone", DEFAULTS.titleZone)
+    );
 
     const sourceItems = Array.from(root.querySelectorAll(itemSelector));
     if (!sourceItems.length) return;
@@ -292,16 +297,18 @@ export const brandaSpatialWorks = {
       if (suppressed === titlesSuppressed || !titleItems.length) return;
       titlesSuppressed = suppressed;
 
-      titleItems.forEach((title, index) => {
-        const isCurrent = index === currentCenterIndex;
-        gsap.to(title, {
-          yPercent: suppressed ? -18 : isCurrent ? 0 : 30,
-          opacity: suppressed ? 0 : isCurrent ? 1 : 0,
-          duration: 0.18,
-          ease: "power2.out",
-          overwrite: true
+      if (suppressed) {
+        titleItems.forEach((title) => {
+          gsap.to(title, {
+            yPercent: -18,
+            opacity: 0,
+            duration: 0.18,
+            ease: "power2.out",
+            overwrite: true
+          });
         });
-      });
+        currentCenterIndex = -1;
+      }
     };
 
     const showTitle = (nextIndex) => {
@@ -379,7 +386,8 @@ export const brandaSpatialWorks = {
       if (Math.abs(targetProgress - progress) < 0.0001) progress = targetProgress;
 
       const offset = progress * travelDistance;
-      let centeredIndex = -1;
+      let activeTitleIndex = -1;
+      let activeTitleDistance = Infinity;
       let lastSlideX = 0;
 
       slides.forEach((slide) => {
@@ -387,7 +395,12 @@ export const brandaSpatialWorks = {
         slide.mesh.position.x = x;
         deformGeometry(slide, x, curve);
 
-        if (x >= 0) centeredIndex = slide.order;
+        const centerDistance = Math.abs(x);
+        if (centerDistance <= titleZone && centerDistance < activeTitleDistance) {
+          activeTitleDistance = centerDistance;
+          activeTitleIndex = slide.order;
+        }
+
         if (slide.order === slides.length - 1) lastSlideX = x;
       });
 
@@ -395,8 +408,13 @@ export const brandaSpatialWorks = {
       const lastSlideClearedCenter =
         Boolean(lastSlide) && lastSlideX - lastSlide.width / 2 > 0;
 
-      setTitlesSuppressed(lastSlideClearedCenter);
-      showTitle(centeredIndex);
+      if (lastSlideClearedCenter) {
+        setTitlesSuppressed(true);
+      } else {
+        titlesSuppressed = false;
+        showTitle(activeTitleIndex);
+      }
+
       return Math.abs(progress - before) > 0.000001;
     };
 
