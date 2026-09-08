@@ -23,6 +23,7 @@ import { pinnedSteps } from "./pinned-steps.js";
 import { responsiveMenu } from "./responsive-menu.js";
 import { scrambleText } from "./scramble-text.js";
 import { scrollHighlight } from "./scroll-highlight.js";
+import { scrollSync } from "./scroll-sync.js";
 import { scrollTravel } from "./scroll-travel.js";
 import { spatialLoop } from "./spatial-loop.js";
 import { stackedCards } from "./stacked-cards.js";
@@ -43,6 +44,7 @@ export const modules = [
   imageClip,
   parallax,
   scrollTravel,
+  scrollSync,
   characterConverge,
   liquidFill,
   magnetic,
