@@ -1,6 +1,7 @@
 import { accordionMedia } from "./accordion-media.js";
 import { blurReveal } from "./blur-reveal.js";
 import { brandLoad } from "./brand-load.js";
+import { brandaSpatialShell } from "./branda-spatial-shell.js";
 import { brandaSpatialWorks } from "./branda-spatial-works.js";
 import { characterConverge } from "./character-converge.js";
 import { characterScatterTitle } from "./character-scatter-title.js";
@@ -73,5 +74,6 @@ export const modules = [
   characterScatterTitle,
   heroSlitTransition,
   spatialLoop,
-  brandaSpatialWorks
+  brandaSpatialWorks,
+  brandaSpatialShell
 ];
