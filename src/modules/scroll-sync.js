@@ -15,12 +15,16 @@ export const scrollSync = {
     const triggerSelector = readString(element, "motion-sync-trigger-selector", "[data-motion-sync-trigger]");
     const navSelector = readString(element, "motion-sync-nav-selector", "[data-motion-sync-nav]");
     const mediaSelector = readString(element, "motion-sync-media-selector", "[data-motion-sync-media]");
+    const mediaInnerSelector = readString(element, "motion-sync-media-inner-selector", null);
     const sourceLinkSelector = readString(element, "motion-sync-source-link-selector", "[data-motion-sync-source-link]");
     const targetLinkSelector = readString(element, "motion-sync-target-link-selector", "[data-motion-sync-target-link]");
 
     const triggers = [...element.querySelectorAll(triggerSelector)];
     const navItems = [...element.querySelectorAll(navSelector)];
     const mediaItems = [...element.querySelectorAll(mediaSelector)];
+    const mediaInnerItems = mediaInnerSelector
+      ? mediaItems.map((item) => item.querySelector(mediaInnerSelector))
+      : [];
     const targetLink = element.querySelector(targetLinkSelector);
 
     if (triggers.length < 2) return;
@@ -35,11 +39,14 @@ export const scrollSync = {
     const activation = Math.max(5, Math.min(95, readNumber(element, "motion-activation", 55)));
     const mediaY = readNumber(element, "motion-media-y", 3);
     const inactiveOpacity = Math.max(0, Math.min(1, readNumber(element, "motion-inactive-opacity", 0.32)));
+    const mediaScaleFrom = readNumber(element, "motion-media-scale-from", 1);
+    const mediaScaleTo = readNumber(element, "motion-media-scale-to", 1.1);
 
     const originalNavClasses = navItems.map((item) => item.classList.contains(navActiveClass));
     const originalNavStyles = navItems.map((item) => item.getAttribute("style"));
     const originalMediaClasses = mediaItems.map((item) => item.classList.contains(mediaActiveClass));
     const originalMediaStyles = mediaItems.map((item) => item.getAttribute("style"));
+    const originalMediaInnerStyles = mediaInnerItems.map((item) => item?.getAttribute("style") ?? null);
     const originalHref = targetLink?.getAttribute("href") ?? null;
     const originalAriaCurrent = navItems.map((item) => item.getAttribute("aria-current"));
 
@@ -52,6 +59,18 @@ export const scrollSync = {
       const href = sourceLink?.getAttribute("href");
       if (href) targetLink.setAttribute("href", href);
       else targetLink.removeAttribute("href");
+    };
+
+    const updateMediaScale = (index) => {
+      const inner = mediaInnerItems[index];
+      const trigger = triggers[index];
+      if (!inner || !trigger || reducedMotion()) return;
+
+      const rect = trigger.getBoundingClientRect();
+      const activationY = window.innerHeight * (activation / 100);
+      const progress = Math.max(0, Math.min(1, (activationY - rect.top) / Math.max(1, rect.height)));
+      const scale = mediaScaleFrom + (mediaScaleTo - mediaScaleFrom) * progress;
+      gsap.set(inner, { scale });
     };
 
     const apply = (index, animate = true) => {
@@ -67,6 +86,7 @@ export const scrollSync = {
       });
 
       syncLink(index);
+      updateMediaScale(index);
 
       if (reducedMotion() || !animate) {
         navItems.forEach((item, itemIndex) => {
@@ -115,6 +135,9 @@ export const scrollSync = {
         item.classList.toggle(navActiveClass, index === 0);
         gsap.set(item, { opacity: index === 0 ? 1 : inactiveOpacity });
       });
+      mediaInnerItems.forEach((item) => {
+        if (item) gsap.set(item, { scale: mediaScaleFrom, willChange: "transform" });
+      });
       apply(0, false);
 
       const line = `${activation}%`;
@@ -124,7 +147,10 @@ export const scrollSync = {
           start: `top ${line}`,
           end: `bottom ${line}`,
           onEnter: () => apply(index),
-          onEnterBack: () => apply(index)
+          onEnterBack: () => apply(index),
+          onUpdate: () => {
+            if (index === activeIndex) updateMediaScale(index);
+          }
         })
       );
 
@@ -142,6 +168,7 @@ export const scrollSync = {
           }
         });
         apply(bestIndex, false);
+        updateMediaScale(bestIndex);
       };
       refreshActive();
       ScrollTrigger.addEventListener("refresh", refreshActive);
@@ -164,6 +191,9 @@ export const scrollSync = {
       mediaItems.forEach((item, index) => {
         item.classList.toggle(mediaActiveClass, originalMediaClasses[index]);
         restoreAttribute(item, "style", originalMediaStyles[index]);
+      });
+      mediaInnerItems.forEach((item, index) => {
+        restoreAttribute(item, "style", originalMediaInnerStyles[index]);
       });
       restoreAttribute(targetLink, "href", originalHref);
     };
