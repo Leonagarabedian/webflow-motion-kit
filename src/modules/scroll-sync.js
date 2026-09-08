@@ -28,16 +28,17 @@ export const scrollSync = {
     if (count < 2) return;
 
     const minWidth = readNumber(element, "motion-min-width", 992);
-    const activeClass = readString(element, "motion-active-class", "is-active");
+    const navActiveClass = readString(element, "motion-nav-active-class", "is-active");
+    const mediaActiveClass = readString(element, "motion-media-active-class", navActiveClass);
     const duration = readNumber(element, "motion-duration", 0.45);
     const ease = readString(element, "motion-ease", "power3.out");
     const activation = Math.max(5, Math.min(95, readNumber(element, "motion-activation", 55)));
     const mediaY = readNumber(element, "motion-media-y", 3);
     const inactiveOpacity = Math.max(0, Math.min(1, readNumber(element, "motion-inactive-opacity", 0.32)));
 
-    const originalNavClasses = navItems.map((item) => item.classList.contains(activeClass));
+    const originalNavClasses = navItems.map((item) => item.classList.contains(navActiveClass));
     const originalNavStyles = navItems.map((item) => item.getAttribute("style"));
-    const originalMediaClasses = mediaItems.map((item) => item.classList.contains(activeClass));
+    const originalMediaClasses = mediaItems.map((item) => item.classList.contains(mediaActiveClass));
     const originalMediaStyles = mediaItems.map((item) => item.getAttribute("style"));
     const originalHref = targetLink?.getAttribute("href") ?? null;
     const originalAriaCurrent = navItems.map((item) => item.getAttribute("aria-current"));
@@ -60,7 +61,7 @@ export const scrollSync = {
 
       navItems.forEach((item, itemIndex) => {
         const active = itemIndex === index;
-        item.classList.toggle(activeClass, active);
+        item.classList.toggle(navActiveClass, active);
         if (active) item.setAttribute("aria-current", "true");
         else item.removeAttribute("aria-current");
       });
@@ -73,7 +74,7 @@ export const scrollSync = {
         });
         mediaItems.forEach((item, itemIndex) => {
           const active = itemIndex === index;
-          item.classList.toggle(activeClass, active);
+          item.classList.toggle(mediaActiveClass, active);
           gsap.set(item, { autoAlpha: active ? 1 : 0, yPercent: 0, zIndex: active ? 2 : 1 });
         });
         return;
@@ -87,12 +88,12 @@ export const scrollSync = {
       });
 
       if (previous >= 0 && mediaItems[previous]) {
-        mediaItems[previous].classList.remove(activeClass);
+        mediaItems[previous].classList.remove(mediaActiveClass);
         transitionTimeline.to(mediaItems[previous], { autoAlpha: 0, duration, ease, yPercent: -mediaY, zIndex: 1 }, 0);
       }
 
       if (mediaItems[index]) {
-        mediaItems[index].classList.add(activeClass);
+        mediaItems[index].classList.add(mediaActiveClass);
         transitionTimeline.fromTo(
           mediaItems[index],
           { autoAlpha: 0, yPercent: mediaY, zIndex: 2 },
@@ -107,9 +108,11 @@ export const scrollSync = {
       if (!conditions.desktop) return;
 
       mediaItems.forEach((item, index) => {
+        item.classList.toggle(mediaActiveClass, index === 0);
         gsap.set(item, { autoAlpha: index === 0 ? 1 : 0, yPercent: 0, zIndex: index === 0 ? 2 : 1 });
       });
       navItems.forEach((item, index) => {
+        item.classList.toggle(navActiveClass, index === 0);
         gsap.set(item, { opacity: index === 0 ? 1 : inactiveOpacity });
       });
       apply(0, false);
@@ -154,12 +157,12 @@ export const scrollSync = {
       mm.revert();
       transitionTimeline?.kill();
       navItems.forEach((item, index) => {
-        item.classList.toggle(activeClass, originalNavClasses[index]);
+        item.classList.toggle(navActiveClass, originalNavClasses[index]);
         restoreAttribute(item, "style", originalNavStyles[index]);
         restoreAttribute(item, "aria-current", originalAriaCurrent[index]);
       });
       mediaItems.forEach((item, index) => {
-        item.classList.toggle(activeClass, originalMediaClasses[index]);
+        item.classList.toggle(mediaActiveClass, originalMediaClasses[index]);
         restoreAttribute(item, "style", originalMediaStyles[index]);
       });
       restoreAttribute(targetLink, "href", originalHref);
