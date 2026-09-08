@@ -1,4 +1,3 @@
-
 import * as THREE from "three/webgpu";
 import { readString } from "../core/config.js";
 const STYLE_ID = "motion-kit-spatial-loop-styles";
@@ -17,6 +16,11 @@ const SNAP_DELAY = 140;
 const EXIT_INTENT_THRESHOLD = 560;
 const EXIT_INTENT_RESET_DELAY = 220;
 const EXIT_ARM_DELAY = 550;
+// FIX 3: an input arriving more than EXIT_INTENT_RESET_DELAY after the last one
+// is not part of a flick — it is a deliberate discrete push (key press, mouse
+// wheel notch). Credit it a quarter of the threshold so four deliberate pushes
+// always escape, no matter how slowly they are made.
+const EXIT_INTENT_STEP = EXIT_INTENT_THRESHOLD / 4;
 // FIX 1: wheel delta normalization.
 // WheelEvent.deltaY is only in pixels when deltaMode === 0. Firefox on
 // Windows/Linux reports deltaMode 1 (lines, ~3 per notch) and some setups
@@ -324,9 +328,13 @@ export const spatialLoop = {
       renderer.renderAsync(scene, camera);
       rafId = requestAnimationFrame(animate);
     };
+    // FIX 3: snapping no longer clears exit intent. Snapping is a gallery
+    // position concern; exit intent is a navigation concern. Because this ran
+    // SNAP_DELAY (140ms) after every input, it wiped the accumulator before
+    // EXIT_INTENT_RESET_DELAY (220ms) could ever apply — so the real window was
+    // 140ms, and any input spaced wider than that could never accumulate at all.
     const snapGallery = () => {
       targetScrollPosition = clamp(Math.round(targetScrollPosition / stride) * stride, 0, maxTravel);
-      resetExitIntent();
     };
     const lockTakeover = () => {
       if (destroyed || takeoverState === "locked" || !slides.length) return;
@@ -348,11 +356,17 @@ export const spatialLoop = {
       if (now - lockedAt < EXIT_ARM_DELAY) return false;
       const direction = Math.sign(delta);
       if (!direction) return false;
-      if (direction !== exitIntentDirection || now - lastExitIntentAt > EXIT_INTENT_RESET_DELAY) {
-        exitIntent = Math.abs(delta);
-      } else {
-        exitIntent += Math.abs(delta);
+      // FIX 3: a long gap no longer discards the accumulated push. Only a
+      // reversal does — that is the one signal that unambiguously means the
+      // user changed their mind. Everything else is still the same push,
+      // whether it arrives as a 16ms trackpad stream or one keypress a second.
+      if (direction !== exitIntentDirection) {
+        exitIntent = 0;
       }
+      const idle = lastExitIntentAt ? now - lastExitIntentAt : Infinity;
+      exitIntent += idle > EXIT_INTENT_RESET_DELAY
+        ? Math.max(Math.abs(delta), EXIT_INTENT_STEP)
+        : Math.abs(delta);
       exitIntentDirection = direction;
       lastExitIntentAt = now;
       if (exitIntent >= EXIT_INTENT_THRESHOLD) {
@@ -410,6 +424,14 @@ export const spatialLoop = {
     };
     const onKeyDown = (event) => {
       if (takeoverState !== "locked") return;
+      // FIX 3: unconditional escape hatch. Anything that seizes the page's
+      // scroll must be dismissible by one deliberate key, bypassing both the
+      // arm delay and the accumulator. Left un-prevented and un-stopped so the
+      // key can still reach a nav or overlay that also listens for it.
+      if (event.key === "Escape") {
+        releaseTakeover();
+        return;
+      }
       let delta = 0;
       if (["ArrowDown", "ArrowRight", "PageDown"].includes(event.key)) delta = 120;
       if (["ArrowUp", "ArrowLeft", "PageUp"].includes(event.key)) delta = -120;
