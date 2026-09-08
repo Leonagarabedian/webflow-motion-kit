@@ -10,6 +10,9 @@ import { cursor } from "./cursor.js";
 import { flipRelocation } from "./flip-relocation.js";
 import { heroFrameTransition } from "./hero-frame-transition.js";
 import { heroSlitTransition } from "./hero-slit-transition.js";
+import { hoverBackgroundSwap } from "./hover-background-swap.js";
+import { hoverHighlightBox } from "./hover-highlight-box.js";
+import { hoverLinkedIlluminate } from "./hover-linked-illuminate.js";
 import { imageClip } from "./image-clip.js";
 import { lineReveal } from "./line-reveal.js";
 import { linkSwap } from "./link-swap.js";
@@ -63,6 +66,9 @@ export const modules = [
   loopingLabels,
   stackedCards,
   stackedImageHover,
+  hoverHighlightBox,
+  hoverBackgroundSwap,
+  hoverLinkedIlluminate,
   flipRelocation,
   heroFrameTransition,
   pinnedMedia,
