@@ -1,5 +1,4 @@
 import {
-  readBoolean,
   readNumber,
   readString,
   selectTarget
@@ -10,8 +9,7 @@ export const pinnedMediaReturn = {
   category: "component",
   selector: '[data-motion~="pinned-media-return"]',
   mount(element, { gsap }) {
-    const sticky = selectTarget(element, "sticky", element);
-    const media = selectTarget(element, "media", sticky);
+    const media = selectTarget(element, "media", element);
     const minWidth = readNumber(element, "motion-min-width", 992);
     const mm = gsap.matchMedia();
 
@@ -26,36 +24,56 @@ export const pinnedMediaReturn = {
           return;
         }
 
+        const win = element.ownerDocument.defaultView;
+        if (!win) return;
+
+        const activeScale = readNumber(element, "motion-scale-mid", 0.8);
+        const restScale = readNumber(element, "motion-scale-to", 1);
+        const inDuration = readNumber(element, "motion-active-duration", 0.18);
+        const outDuration = readNumber(element, "motion-release-duration", 0.28);
+        const stopDelay = readNumber(element, "motion-stop-delay", 110);
+        const easeIn = readString(element, "motion-scale-ease-in", "power4.out");
+        const easeOut = readString(element, "motion-scale-ease-out", "power4.out");
+
         media.style.willChange = "transform";
+        gsap.set(media, { scale: restScale });
 
-        const scaleFrom = readNumber(element, "motion-scale-from", 1);
-        const scaleMid = readNumber(element, "motion-scale-mid", 0.8);
-        const scaleTo = readNumber(element, "motion-scale-to", 1);
-        const easeIn = readString(element, "motion-scale-ease-in", "power4.inOut");
-        const easeOut = readString(element, "motion-scale-ease-out", "power4.inOut");
+        let stopTimer = 0;
+        let scrolling = false;
 
-        gsap.set(media, { scale: scaleFrom });
+        const shrink = () => {
+          if (scrolling) return;
+          scrolling = true;
+          gsap.to(media, {
+            scale: activeScale,
+            duration: inDuration,
+            ease: easeIn,
+            overwrite: "auto"
+          });
+        };
 
-        const timeline = gsap.timeline({
-          scrollTrigger: {
-            end: readString(element, "motion-end", "bottom bottom"),
-            pin: readBoolean(element, "motion-pin", false) ? sticky : false,
-            scrub: readNumber(element, "motion-scrub", 1),
-            start: readString(element, "motion-start", "top top"),
-            trigger: element,
-            invalidateOnRefresh: true
-          }
-        });
+        const release = () => {
+          scrolling = false;
+          gsap.to(media, {
+            scale: restScale,
+            duration: outDuration,
+            ease: easeOut,
+            overwrite: "auto"
+          });
+        };
 
-        timeline
-          .to(media, { scale: scaleFrom, duration: 0.2, ease: "none" })
-          .to(media, { scale: scaleMid, duration: 0.3, ease: easeIn })
-          .to(media, { scale: scaleTo, duration: 0.3, ease: easeOut })
-          .to(media, { scale: scaleTo, duration: 0.2, ease: "none" });
+        const onScroll = () => {
+          shrink();
+          win.clearTimeout(stopTimer);
+          stopTimer = win.setTimeout(release, stopDelay);
+        };
+
+        win.addEventListener("scroll", onScroll, { passive: true });
 
         return () => {
-          timeline.scrollTrigger?.kill();
-          timeline.kill();
+          win.removeEventListener("scroll", onScroll);
+          win.clearTimeout(stopTimer);
+          gsap.killTweensOf(media);
           gsap.set(media, { clearProps: "transform" });
           media.style.willChange = "";
         };
