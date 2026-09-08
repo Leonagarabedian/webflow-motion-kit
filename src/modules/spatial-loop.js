@@ -242,15 +242,27 @@ export const spatialLoop = {
     renderer.domElement.setAttribute("aria-hidden", "true");
     renderer.domElement.style.overscrollBehavior = "contain";
     root.prepend(renderer.domElement);
+    const visibleWorldWidth = (z, aspect) =>
+      2 * Math.tan(THREE.MathUtils.degToRad(FOV) / 2) * z * aspect;
     // FIX 4: world units covered by one screen pixel at the current camera
     // distance. A finger drag should move the slide it is touching by exactly
     // that much, so the gallery tracks the finger 1:1 on every viewport.
     // (On a desktop viewport this evaluates to ~0.0104, which is why the fixed
     // INPUT_SCALE of 0.01 always felt right for a wheel and wrong for a thumb.)
-    const worldUnitsPerPixel = () => {
-      const visibleHeight = 2 * Math.tan(THREE.MathUtils.degToRad(FOV) / 2) * camera.position.z;
-      const visibleWidth = visibleHeight * camera.aspect;
-      return visibleWidth / Math.max(1, window.innerWidth);
+    const worldUnitsPerPixel = () =>
+      visibleWorldWidth(camera.position.z, camera.aspect) / Math.max(1, window.innerWidth);
+    // FIX 5: widest frame this scene can ever be asked to fill, including the
+    // other orientation, so the strip is built long enough once at init rather
+    // than needing meshes added on rotate.
+    const worstCaseVisibleWidth = () => {
+      const width = window.innerWidth;
+      const height = Math.max(1, window.innerHeight);
+      const upright = width / height;
+      const turned = height / width;
+      return Math.max(
+        visibleWorldWidth(getCameraZ(upright), upright),
+        visibleWorldWidth(getCameraZ(turned), turned)
+      );
     };
     const stride = WIDTH + GAP;
     let slides = [];
@@ -500,31 +512,55 @@ export const spatialLoop = {
           }
           resolvedItems.push({ item, media, asset });
         });
-        slides = resolvedItems.map(({ item, media, asset }, index) => {
-          const geometry = new THREE.PlaneGeometry(WIDTH, HEIGHT, 24, 12);
-          const position = geometry.attributes.position;
-          const baseX = new Float32Array(position.count);
-          const baseY = new Float32Array(position.count);
-          for (let vertex = 0; vertex < position.count; vertex += 1) {
-            baseX[vertex] = position.getX(vertex);
-            baseY[vertex] = position.getY(vertex);
-          }
-          const material = new THREE.MeshBasicMaterial({ map: asset.texture, side: THREE.DoubleSide, transparent: true });
-          const mesh = new THREE.Mesh(geometry, material);
-          const originalPosition = index * stride;
-          mesh.position.x = originalPosition;
-          scene.add(mesh);
+        const baseCount = resolvedItems.length;
+        if (baseCount < 2) return;
+        titleItems = resolvedItems.map(({ item, media }, index) => {
           const title = root.ownerDocument.createElement("div");
           title.setAttribute("data-mk-spatial-loop-title-item", "");
           title.textContent = titleFromItem(item, media, index);
           titleHost.appendChild(title);
           gsap.set(title, { yPercent: index === 0 ? 0 : 30, opacity: index === 0 ? 1 : 0 });
-          return { index, mesh, geometry, material, texture: asset.texture, video: asset.video, originalPosition, title, baseX, baseY };
+          return title;
         });
-        if (slides.length < 2) return;
-        titleItems = slides.map((slide) => slide.title);
-        totalWidth = slides.length * stride;
-        maxTravel = stride * Math.max(1, slides.length - 1);
+        // FIX 5: the seam only hides if the strip's period exceeds the visible
+        // frame plus one whole slide. With the source set alone that was false
+        // for small galleries — at 2 items the wrap fired at x = ±8.35 while the
+        // camera still saw out to ±7.5, so a slide teleported while a quarter of
+        // it was on screen. Repeating the set lengthens the period without
+        // touching maxTravel, so the travel range stays over the source items
+        // and only the wrap gets somewhere to hide.
+        const requiredPeriod = worstCaseVisibleWidth() + WIDTH * 2;
+        const copies = Math.max(1, Math.ceil(requiredPeriod / (baseCount * stride)));
+        slides = [];
+        for (let copy = 0; copy < copies; copy += 1) {
+          resolvedItems.forEach(({ asset }, index) => {
+            const geometry = new THREE.PlaneGeometry(WIDTH, HEIGHT, 24, 12);
+            const position = geometry.attributes.position;
+            const baseX = new Float32Array(position.count);
+            const baseY = new Float32Array(position.count);
+            for (let vertex = 0; vertex < position.count; vertex += 1) {
+              baseX[vertex] = position.getX(vertex);
+              baseY[vertex] = position.getY(vertex);
+            }
+            // Copies share one texture and one material; only the first copy
+            // owns them, so cleanup disposes each exactly once.
+            const owned = copy === 0;
+            const material = owned
+              ? new THREE.MeshBasicMaterial({ map: asset.texture, side: THREE.DoubleSide, transparent: true })
+              : slides[index].material;
+            const mesh = new THREE.Mesh(geometry, material);
+            const originalPosition = (copy * baseCount + index) * stride;
+            mesh.position.x = originalPosition;
+            scene.add(mesh);
+            slides.push({
+              index, mesh, geometry, material, owned,
+              texture: asset.texture, video: asset.video,
+              originalPosition, baseX, baseY
+            });
+          });
+        }
+        totalWidth = baseCount * copies * stride;
+        maxTravel = stride * (baseCount - 1);
         sourceItems.forEach((item) => item.setAttribute("data-mk-spatial-loop-source-hidden", ""));
         // Natural scroll now owns the transition out. No scrollTop tween and no
         // synthetic jump. The scene simply eases back while the page advances.
@@ -588,9 +624,13 @@ export const spatialLoop = {
       root.removeAttribute("data-mk-spatial-loop-locked");
       gsap.set(shell.layout, { clearProps: "transform" });
       slides.forEach((slide) => {
-        slide.video?.pause?.();
-        slide.texture?.dispose?.();
-        slide.material?.dispose?.();
+        // FIX 5: geometry is per-mesh, but texture and material are shared
+        // across repeated copies — dispose those only from the owning copy.
+        if (slide.owned) {
+          slide.video?.pause?.();
+          slide.texture?.dispose?.();
+          slide.material?.dispose?.();
+        }
         slide.geometry?.dispose?.();
         scene.remove(slide.mesh);
       });
@@ -609,4 +649,3 @@ export const spatialLoop = {
     };
   }
 };
- 
