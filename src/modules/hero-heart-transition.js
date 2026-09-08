@@ -125,7 +125,7 @@ export const heroHeartTransition = {
 
     const slitD = "M48 0 H52 V100 H48 Z";
     const heartD =
-      "M50 90 C45 84 12 62 12 35 C12 19 23 10 37 10 C44 10 49 13 50 21 C51 13 56 10 63 10 C77 10 88 19 88 35 C88 62 55 84 50 90 Z";
+      "M50 92 C42 84 10 64 10 38 C10 21 22 10 38 10 C45 10 49 14 50 29 C51 14 55 10 62 10 C78 10 90 21 90 38 C90 64 58 84 50 92 Z";
 
     heartPath.setAttribute("d", slitD);
 
