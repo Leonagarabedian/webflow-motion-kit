@@ -1,3 +1,4 @@
+
 import * as THREE from "three/webgpu";
 import { readString } from "../core/config.js";
 const STYLE_ID = "motion-kit-spatial-loop-styles";
@@ -439,10 +440,28 @@ export const spatialLoop = {
       try {
         await renderer.init();
         if (destroyed) return;
-        slides = sourceItems.map((item, index) => {
+        // FIX 2: resolve every texture BEFORE assigning any layout position.
+        // Previously `originalPosition` and the title index both came from the
+        // pre-filter index, so one item whose media failed to resolve left a
+        // stride-wide hole in the strip, desynced `totalWidth` from the real
+        // extent (slides overlapped and teleported mid-view), and pushed
+        // `slide.index` past the end of `titleItems` so titles stopped
+        // appearing at all. Positions are now derived from the surviving list,
+        // which is the same list `titleItems` is built from.
+        const resolvedItems = [];
+        sourceItems.forEach((item) => {
           const media = item.querySelector(mediaSelector);
           const asset = createTexture(media);
-          if (!asset) return null;
+          if (!asset) {
+            console.warn(
+              `[MotionKit spatial-loop] Skipping item: no resolvable "${mediaSelector}" media`,
+              item
+            );
+            return;
+          }
+          resolvedItems.push({ item, media, asset });
+        });
+        slides = resolvedItems.map(({ item, media, asset }, index) => {
           const geometry = new THREE.PlaneGeometry(WIDTH, HEIGHT, 24, 12);
           const position = geometry.attributes.position;
           const baseX = new Float32Array(position.count);
@@ -462,7 +481,7 @@ export const spatialLoop = {
           titleHost.appendChild(title);
           gsap.set(title, { yPercent: index === 0 ? 0 : 30, opacity: index === 0 ? 1 : 0 });
           return { index, mesh, geometry, material, texture: asset.texture, video: asset.video, originalPosition, title, baseX, baseY };
-        }).filter(Boolean);
+        });
         if (slides.length < 2) return;
         titleItems = slides.map((slide) => slide.title);
         totalWidth = slides.length * stride;
