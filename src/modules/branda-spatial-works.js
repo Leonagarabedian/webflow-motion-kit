@@ -265,6 +265,7 @@ export const brandaSpatialWorks = {
     let progress = 0;
     let previousProgress = 0;
     let currentCenterIndex = -1;
+    let titlesSuppressed = false;
     let rafId = null;
     let destroyed = false;
     let scrollTrigger = null;
@@ -285,6 +286,22 @@ export const brandaSpatialWorks = {
         window.innerHeight,
         (horizontalPixels * scrollDistanceScale) / settleProgress
       );
+    };
+
+    const setTitlesSuppressed = (suppressed) => {
+      if (suppressed === titlesSuppressed || !titleItems.length) return;
+      titlesSuppressed = suppressed;
+
+      titleItems.forEach((title, index) => {
+        const isCurrent = index === currentCenterIndex;
+        gsap.to(title, {
+          yPercent: suppressed ? -18 : isCurrent ? 0 : 30,
+          opacity: suppressed ? 0 : isCurrent ? 1 : 0,
+          duration: 0.18,
+          ease: "power2.out",
+          overwrite: true
+        });
+      });
     };
 
     const showTitle = (nextIndex) => {
@@ -308,7 +325,7 @@ export const brandaSpatialWorks = {
         });
       }
 
-      if (incoming) {
+      if (incoming && !titlesSuppressed) {
         gsap.set(incoming, {
           yPercent: direction === "right" ? 30 : -30,
           opacity: 0
@@ -364,11 +381,14 @@ export const brandaSpatialWorks = {
       const offset = progress * travelDistance;
       let nearestIndex = currentCenterIndex < 0 ? 0 : currentCenterIndex;
       let nearestDistance = Infinity;
+      let lastSlideX = 0;
 
       slides.forEach((slide) => {
         const x = slide.startX + offset;
         slide.mesh.position.x = x;
         deformGeometry(slide, x, curve);
+
+        if (slide.order === slides.length - 1) lastSlideX = x;
 
         const distance = Math.abs(x);
         if (distance < nearestDistance) {
@@ -377,7 +397,12 @@ export const brandaSpatialWorks = {
         }
       });
 
+      const lastSlide = slides[slides.length - 1];
+      const lastSlideClearedCenter =
+        Boolean(lastSlide) && lastSlideX - lastSlide.width / 2 > 0;
+
       showTitle(nearestIndex);
+      setTitlesSuppressed(lastSlideClearedCenter);
       return Math.abs(progress - before) > 0.000001;
     };
 
