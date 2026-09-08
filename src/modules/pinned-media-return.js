@@ -20,7 +20,7 @@ export const pinnedMediaReturn = {
       },
       ({ conditions }) => {
         if (!conditions.desktop || conditions.reduceMotion) {
-          gsap.set(media, { clearProps: "transform" });
+          gsap.set(media, { clearProps: "clipPath,webkitClipPath" });
           return;
         }
 
@@ -28,38 +28,42 @@ export const pinnedMediaReturn = {
         if (!win) return;
 
         const ScrollTrigger = gsap.core.globals().ScrollTrigger;
-        const activeScale = readNumber(element, "motion-scale-mid", 0.8);
-        const restScale = readNumber(element, "motion-scale-to", 1);
+        const inset = readNumber(element, "motion-crop-inset", 6);
         const inDuration = readNumber(element, "motion-active-duration", 0.2);
         const outDuration = readNumber(element, "motion-release-duration", 0.3);
-        const easeIn = readString(element, "motion-scale-ease-in", "power3.inOut");
-        const easeOut = readString(element, "motion-scale-ease-out", "power3.inOut");
+        const easeIn = readString(element, "motion-crop-ease-in", "power4.out");
+        const easeOut = readString(element, "motion-crop-ease-out", "power3.inOut");
 
-        media.style.willChange = "transform";
+        const openClip = "inset(0% 0% 0% 0%)";
+        const activeClip = `inset(${inset}% ${inset}% ${inset}% ${inset}%)`;
+
+        media.style.willChange = "clip-path";
         gsap.set(media, {
-          scale: restScale,
-          transformOrigin: "50% 50%"
+          clipPath: openClip,
+          webkitClipPath: openClip
         });
 
         let scrolling = false;
         let fallbackRelease = null;
 
-        const shrink = () => {
+        const cropIn = () => {
           if (scrolling) return;
           scrolling = true;
           gsap.to(media, {
-            scale: activeScale,
+            clipPath: activeClip,
+            webkitClipPath: activeClip,
             duration: inDuration,
             ease: easeIn,
             overwrite: true
           });
         };
 
-        const release = () => {
+        const cropOut = () => {
           if (!scrolling) return;
           scrolling = false;
           gsap.to(media, {
-            scale: restScale,
+            clipPath: openClip,
+            webkitClipPath: openClip,
             duration: outDuration,
             ease: easeOut,
             overwrite: true
@@ -67,23 +71,23 @@ export const pinnedMediaReturn = {
         };
 
         if (!ScrollTrigger) {
-          fallbackRelease = gsap.delayedCall(0.14, release).pause();
+          fallbackRelease = gsap.delayedCall(0.14, cropOut).pause();
         }
 
         const onScroll = () => {
-          shrink();
+          cropIn();
           if (fallbackRelease) fallbackRelease.restart(true);
         };
 
         win.addEventListener("scroll", onScroll, { passive: true });
-        ScrollTrigger?.addEventListener("scrollEnd", release);
+        ScrollTrigger?.addEventListener("scrollEnd", cropOut);
 
         return () => {
           win.removeEventListener("scroll", onScroll);
-          ScrollTrigger?.removeEventListener("scrollEnd", release);
+          ScrollTrigger?.removeEventListener("scrollEnd", cropOut);
           fallbackRelease?.kill();
           gsap.killTweensOf(media);
-          gsap.set(media, { clearProps: "transform" });
+          gsap.set(media, { clearProps: "clipPath,webkitClipPath" });
           media.style.willChange = "";
         };
       }
