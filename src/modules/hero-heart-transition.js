@@ -19,7 +19,7 @@ function interpolate(from, to, progress) {
   return from + (to - from) * progress;
 }
 
-function createHeartOverlay(element, color) {
+function createHeartOverlay(element, color, sizePx) {
   const ns = "http://www.w3.org/2000/svg";
   const wrapper = document.createElement("div");
   const svg = document.createElementNS(ns, "svg");
@@ -32,8 +32,8 @@ function createHeartOverlay(element, color) {
     position: "absolute",
     left: "50%",
     top: "50%",
-    width: "100%",
-    height: "100%",
+    width: `${sizePx}px`,
+    height: `${sizePx}px`,
     transform: "translate(-50%, -50%)",
     transformOrigin: "50% 50%",
     pointerEvents: "none",
@@ -42,7 +42,7 @@ function createHeartOverlay(element, color) {
   });
 
   svg.setAttribute("viewBox", "0 0 100 100");
-  svg.setAttribute("preserveAspectRatio", "none");
+  svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
   svg.setAttribute("width", "100%");
   svg.setAttribute("height", "100%");
   svg.style.display = "block";
@@ -86,16 +86,16 @@ export const heroHeartTransition = {
     const rotateEnd = readNumber(element, "motion-rotate-end", 0.45);
     const rotateTo = readNumber(element, "motion-rotate", 65);
 
-    // Phase 3 keeps the original slit/copy convergence, but stops before zero.
     const scaleStart = readNumber(element, "motion-scale-start", 0.45);
     const morphStart = readNumber(element, "motion-heart-start", 0.56);
     const morphEnd = readNumber(element, "motion-heart-end", 0.63);
     const settleEnd = readNumber(element, "motion-heart-settle-end", 0.65);
-    const handoffScale = readNumber(element, "motion-heart-handoff-scale", 0.18);
-    const heartScale = readNumber(element, "motion-heart-scale", 0.16);
+    const handoffScale = readNumber(element, "motion-heart-handoff-scale", 1);
+    const heartScale = readNumber(element, "motion-heart-scale", 1);
     const heartSettleFrom = readNumber(element, "motion-heart-settle-from", 0.94);
     const heartRotation = readNumber(element, "motion-heart-rotation", 0);
     const heartColor = readString(element, "motion-heart-color", "#000000");
+    const heartSize = readNumber(element, "motion-heart-size", 160);
 
     const copyStartWidth = readNumber(element, "motion-copy-start-width", 30);
     const copyEndWidth = readNumber(element, "motion-copy-end-width", 20);
@@ -119,15 +119,13 @@ export const heroHeartTransition = {
 
     const { wrapper: heartShape, path: heartPath } = createHeartOverlay(
       element,
-      heartColor
+      heartColor,
+      heartSize
     );
 
-    // Both paths live in the same 100x100 coordinate space.
-    // The slit is deliberately narrow and full-height so the generated SVG
-    // can take over from the clipped frame at the handoff point.
     const slitD = "M48 0 H52 V100 H48 Z";
     const heartD =
-      "M50 88 C43 80 16 62 16 37 C16 21 27 12 40 12 C47 12 52 16 50 22 C48 16 53 12 60 12 C73 12 84 21 84 37 C84 62 57 80 50 88 Z";
+      "M50 90 C45 84 12 62 12 35 C12 19 23 10 37 10 C44 10 49 13 50 21 C51 13 56 10 63 10 C77 10 88 19 88 35 C88 62 55 84 50 90 Z";
 
     heartPath.setAttribute("d", slitD);
 
@@ -260,7 +258,7 @@ export const heroHeartTransition = {
             morphStart,
             clamp
           );
-          const frameScale = interpolate(1, handoffScale, shrinkProgress);
+          const frameScale = interpolate(1, 0.18, shrinkProgress);
           const handoffReached = scrollProgress >= morphStart;
 
           gsap.set(frame, {
