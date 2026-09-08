@@ -379,8 +379,7 @@ export const brandaSpatialWorks = {
       if (Math.abs(targetProgress - progress) < 0.0001) progress = targetProgress;
 
       const offset = progress * travelDistance;
-      let nearestIndex = currentCenterIndex < 0 ? 0 : currentCenterIndex;
-      let nearestDistance = Infinity;
+      let centeredIndex = -1;
       let lastSlideX = 0;
 
       slides.forEach((slide) => {
@@ -388,21 +387,16 @@ export const brandaSpatialWorks = {
         slide.mesh.position.x = x;
         deformGeometry(slide, x, curve);
 
+        if (x >= 0) centeredIndex = slide.order;
         if (slide.order === slides.length - 1) lastSlideX = x;
-
-        const distance = Math.abs(x);
-        if (distance < nearestDistance) {
-          nearestDistance = distance;
-          nearestIndex = slide.order;
-        }
       });
 
       const lastSlide = slides[slides.length - 1];
       const lastSlideClearedCenter =
         Boolean(lastSlide) && lastSlideX - lastSlide.width / 2 > 0;
 
-      showTitle(nearestIndex);
       setTitlesSuppressed(lastSlideClearedCenter);
+      showTitle(centeredIndex);
       return Math.abs(progress - before) > 0.000001;
     };
 
