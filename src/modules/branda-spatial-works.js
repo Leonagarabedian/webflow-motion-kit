@@ -4,6 +4,7 @@ import { readNumber, readString } from "../core/config.js";
 
 const STYLE_ID = "motion-kit-branda-spatial-works-styles";
 const SECTION_SELECTOR = "[data-branda-spatial-section]";
+const PIN_SELECTOR = "[data-branda-spatial-pin]";
 const STAGE_SELECTOR = '[data-motion~="branda-spatial-works"]';
 
 const DEFAULTS = Object.freeze({
@@ -17,10 +18,10 @@ const DEFAULTS = Object.freeze({
   fov: 75,
   cameraZ: 6.15,
   mobileCameraZ: 12.5,
-  scrollPerItem: 42,
-  baseScroll: 100,
   edgeMargin: 1.15,
-  maxPixelRatio: 2
+  maxPixelRatio: 2,
+  scrollDistanceScale: 1,
+  settleProgress: 0.96
 });
 
 function ensureStyles(doc) {
@@ -31,12 +32,10 @@ function ensureStyles(doc) {
   style.textContent = `
     ${SECTION_SELECTOR} {
       position: relative;
-      min-height: var(--branda-spatial-height, 320svh);
     }
 
     ${STAGE_SELECTOR} {
-      position: sticky;
-      top: 0;
+      position: relative;
       width: 100%;
       height: 100svh;
       min-height: 100svh;
@@ -82,10 +81,6 @@ function ensureStyles(doc) {
     }
 
     @media screen and (max-width: 767px) {
-      ${SECTION_SELECTOR} {
-        min-height: var(--branda-spatial-height-mobile, var(--branda-spatial-height, 320svh));
-      }
-
       [data-branda-spatial-title-host] {
         bottom: 6svh;
       }
@@ -196,11 +191,6 @@ function deformGeometry(slide, worldX, curve) {
   position.needsUpdate = true;
 }
 
-function isVisibleInViewport(element) {
-  const rect = element.getBoundingClientRect();
-  return rect.bottom > 0 && rect.top < window.innerHeight;
-}
-
 export const brandaSpatialWorks = {
   name: "branda-spatial-works",
   category: "composition",
@@ -217,6 +207,8 @@ export const brandaSpatialWorks = {
       return;
     }
 
+    const pinTarget = root.closest(PIN_SELECTOR) || section.querySelector(PIN_SELECTOR) || root;
+
     ensureStyles(root.ownerDocument);
 
     const itemSelector = readString(root, "motion-item-selector", DEFAULTS.itemSelector);
@@ -232,14 +224,6 @@ export const brandaSpatialWorks = {
       1,
       readNumber(root, "motion-camera-z-mobile", DEFAULTS.mobileCameraZ)
     );
-    const scrollPerItem = Math.max(
-      10,
-      readNumber(root, "motion-scroll-per-item", DEFAULTS.scrollPerItem)
-    );
-    const baseScroll = Math.max(
-      100,
-      readNumber(root, "motion-base-scroll", DEFAULTS.baseScroll)
-    );
     const edgeMarginScale = Math.max(
       0,
       readNumber(root, "motion-edge-margin", DEFAULTS.edgeMargin)
@@ -249,18 +233,18 @@ export const brandaSpatialWorks = {
       1,
       2
     );
+    const scrollDistanceScale = Math.max(
+      0.25,
+      readNumber(root, "motion-scroll-distance-scale", DEFAULTS.scrollDistanceScale)
+    );
+    const settleProgress = clamp(
+      readNumber(root, "motion-settle-progress", DEFAULTS.settleProgress),
+      0.8,
+      1
+    );
 
     const sourceItems = Array.from(root.querySelectorAll(itemSelector));
     if (!sourceItems.length) return;
-
-    const sectionHeight = readString(root, "motion-section-height", "");
-    const mobileSectionHeight = readString(root, "motion-section-height-mobile", "");
-    const autoHeight = `${baseScroll + sourceItems.length * scrollPerItem}svh`;
-    section.style.setProperty("--branda-spatial-height", sectionHeight || autoHeight);
-    section.style.setProperty(
-      "--branda-spatial-height-mobile",
-      mobileSectionHeight || sectionHeight || autoHeight
-    );
 
     const titleHost = root.ownerDocument.createElement("div");
     titleHost.setAttribute("data-branda-spatial-title-host", "");
@@ -292,6 +276,16 @@ export const brandaSpatialWorks = {
 
     const visibleWorldWidth = () =>
       2 * Math.tan(THREE.MathUtils.degToRad(fov) / 2) * camera.position.z * camera.aspect;
+
+    const getScrollDistance = () => {
+      const worldWidth = Math.max(0.001, visibleWorldWidth());
+      const viewportWidth = Math.max(1, root.clientWidth || window.innerWidth);
+      const horizontalPixels = (travelDistance / worldWidth) * viewportWidth;
+      return Math.max(
+        window.innerHeight,
+        (horizontalPixels * scrollDistanceScale) / settleProgress
+      );
+    };
 
     const showTitle = (nextIndex) => {
       if (nextIndex === currentCenterIndex || !titleItems.length) return;
@@ -385,6 +379,20 @@ export const brandaSpatialWorks = {
 
       showTitle(nearestIndex);
       return Math.abs(progress - before) > 0.000001;
+    };
+
+    const renderNow = () => {
+      if (!renderer || destroyed) return;
+      updateSlides();
+      renderer.renderAsync?.(scene, camera) ?? renderer.render(scene, camera);
+      dirty = false;
+    };
+
+    const snapTo = (value) => {
+      targetProgress = value;
+      progress = value;
+      active = true;
+      renderNow();
     };
 
     const renderFrame = () => {
@@ -514,11 +522,16 @@ export const brandaSpatialWorks = {
         resizeObserver.observe(root);
         window.addEventListener("resize", resize, { passive: true });
 
+        resize();
+
         scrollTrigger = ScrollTrigger.create({
           id: "mk-branda-spatial-works",
-          trigger: section,
+          trigger: pinTarget,
           start: "top top",
-          end: "bottom bottom",
+          end: () => `+=${Math.round(getScrollDistance())}`,
+          pin: pinTarget,
+          pinSpacing: true,
+          anticipatePin: 1,
           invalidateOnRefresh: true,
           onEnter() {
             active = true;
@@ -529,30 +542,32 @@ export const brandaSpatialWorks = {
             requestRender();
           },
           onLeave() {
+            snapTo(1);
             active = false;
             if (rafId != null) cancelAnimationFrame(rafId);
             rafId = null;
           },
           onLeaveBack() {
+            snapTo(0);
             active = false;
             if (rafId != null) cancelAnimationFrame(rafId);
             rafId = null;
           },
           onUpdate(self) {
-            targetProgress = self.progress;
-            active = isVisibleInViewport(section);
+            targetProgress = clamp(self.progress / settleProgress, 0, 1);
+            active = true;
             requestRender();
           },
           onRefresh(self) {
-            targetProgress = self.progress;
-            progress = self.progress;
-            active = isVisibleInViewport(section);
-            requestRender();
+            targetProgress = clamp(self.progress / settleProgress, 0, 1);
+            progress = targetProgress;
+            active = self.isActive;
+            if (active) requestRender();
           }
         });
 
-        resize();
-        active = isVisibleInViewport(section);
+        ScrollTrigger.refresh?.();
+        active = scrollTrigger.isActive;
         requestRender();
       } catch (error) {
         console.error(
@@ -594,9 +609,6 @@ export const brandaSpatialWorks = {
       sourceItems.forEach((item) =>
         item.removeAttribute("data-branda-spatial-source-hidden")
       );
-
-      section.style.removeProperty("--branda-spatial-height");
-      section.style.removeProperty("--branda-spatial-height-mobile");
     };
   }
 };
