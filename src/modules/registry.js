@@ -9,6 +9,7 @@ import { characterScatterTitle } from "./character-scatter-title.js";
 import { cursor } from "./cursor.js";
 import { flipRelocation } from "./flip-relocation.js";
 import { heroFrameTransition } from "./hero-frame-transition.js";
+import { heroHeartTransition } from "./hero-heart-transition.js";
 import { heroSlitTransition } from "./hero-slit-transition.js";
 import { hoverBackgroundSwap } from "./hover-background-swap.js";
 import { hoverHighlightBox } from "./hover-highlight-box.js";
@@ -71,6 +72,7 @@ export const modules = [
   hoverLinkedIlluminate,
   flipRelocation,
   heroFrameTransition,
+  heroHeartTransition,
   pinnedMedia,
   pinnedMediaReturn,
   pinnedSteps,
