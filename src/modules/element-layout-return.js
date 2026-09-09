@@ -6,7 +6,8 @@ const DEFAULTS = Object.freeze({
   scrub: 1,
   ease: "none",
   progressStart: 0,
-  progressEnd: 1
+  progressEnd: 1,
+  axis: "both"
 });
 
 function clamp(value, min = 0, max = 1) {
@@ -30,6 +31,7 @@ export const elementLayoutReturn = {
     const end = readString(element, "motion-layout-return-end", DEFAULTS.end);
     const scrub = readNumber(element, "motion-layout-return-scrub", DEFAULTS.scrub);
     const ease = readString(element, "motion-layout-return-ease", DEFAULTS.ease);
+    const axis = readString(element, "motion-layout-return-axis", DEFAULTS.axis);
     const progressStart = clamp(
       readNumber(element, "motion-layout-return-progress-start", DEFAULTS.progressStart)
     );
@@ -92,14 +94,10 @@ export const elementLayoutReturn = {
       const deltaX = homeCenterX - elementCenterX;
       const deltaY = homeCenterY - elementCenterY;
 
-      // Move proportionally toward the real Webflow slot. Because this is
-      // recalculated every frame from the current geometry, reversing the
-      // scroll naturally moves the element back toward the stage position.
-      gsap.set(element, {
-        x: baseX + deltaX * p,
-        y: baseY + deltaY * p,
-        ease
-      });
+      const next = { ease };
+      if (axis === "x" || axis === "both") next.x = baseX + deltaX * p;
+      if (axis === "y" || axis === "both") next.y = baseY + deltaY * p;
+      gsap.set(element, next);
     };
 
     if (syncTriggerId) {
