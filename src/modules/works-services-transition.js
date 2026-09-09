@@ -5,8 +5,15 @@ const DEFAULTS = Object.freeze({
   introSelector: ".services-intro",
   syncTriggerId: "mk-branda-spatial-works",
   anchorY: 0.5,
+  scrollStart: 0.92,
+  scrollEnd: 0.995,
+  safeBottom: 24,
   zIndex: 0
 });
+
+function clamp(value, min = 0, max = 1) {
+  return Math.min(max, Math.max(min, value));
+}
 
 export const worksServicesTransition = {
   name: "works-services-transition",
@@ -31,9 +38,20 @@ export const worksServicesTransition = {
       "motion-services-sync-trigger-id",
       DEFAULTS.syncTriggerId
     );
-    const anchorY = Math.min(
-      1,
-      Math.max(0, readNumber(root, "motion-services-anchor-y", DEFAULTS.anchorY))
+    const anchorY = clamp(
+      readNumber(root, "motion-services-anchor-y", DEFAULTS.anchorY)
+    );
+    const scrollStart = clamp(
+      readNumber(root, "motion-services-scroll-start", DEFAULTS.scrollStart)
+    );
+    const scrollEnd = clamp(
+      readNumber(root, "motion-services-scroll-end", DEFAULTS.scrollEnd),
+      scrollStart + 0.0001,
+      1
+    );
+    const safeBottom = Math.max(
+      0,
+      readNumber(root, "motion-services-safe-bottom", DEFAULTS.safeBottom)
     );
     const zIndex = readNumber(root, "motion-services-z-index", DEFAULTS.zIndex);
 
@@ -43,30 +61,21 @@ export const worksServicesTransition = {
     const originalParent = servicesSection.parentElement;
     const originalNextSibling = servicesSection.nextSibling;
     const originalStyle = servicesSection.getAttribute("style");
-    const originalRect = servicesSection.getBoundingClientRect();
 
-    // Preserve the real Services section's place in document flow while the
-    // same DOM is temporarily staged inside the pinned Works composition.
-    const placeholder = document.createElement("div");
-    placeholder.setAttribute("data-works-services-placeholder", "");
-    placeholder.style.width = "100%";
-    placeholder.style.height = `${Math.max(1, originalRect.height)}px`;
-    placeholder.style.pointerEvents = "none";
-    placeholder.style.visibility = "hidden";
-    originalParent.insertBefore(placeholder, servicesSection);
+    // The actual Services section becomes the final state of the same pinned
+    // Works composition. It is intentionally removed from normal flow for the
+    // lifetime of the module, so it cannot reappear as a second section below.
+    root.appendChild(servicesSection);
 
-    let staged = false;
     let syncTrigger = null;
     let rafId = null;
     let destroyed = false;
-    let stageOffsetY = 0;
+    let startY = 0;
+    let endY = 0;
 
-    const restoreOriginalInlineStyle = () => {
-      if (originalStyle == null) servicesSection.removeAttribute("style");
-      else servicesSection.setAttribute("style", originalStyle);
-    };
+    const measure = () => {
+      if (!servicesSection.isConnected || servicesSection.parentElement !== root) return;
 
-    const applyStageStyle = () => {
       gsap.set(servicesSection, {
         position: "absolute",
         top: 0,
@@ -77,78 +86,55 @@ export const worksServicesTransition = {
         height: "auto",
         minHeight: "100%",
         margin: 0,
-        y: stageOffsetY,
+        y: 0,
         zIndex,
         backgroundColor: "transparent",
         backgroundImage: "none",
         pointerEvents: "auto",
         willChange: "transform"
       });
-    };
 
-    const measureStageOffset = () => {
-      if (servicesSection.parentElement !== root) return stageOffsetY;
-
-      gsap.set(servicesSection, { y: 0 });
       const stageRect = root.getBoundingClientRect();
       const intro = servicesSection.querySelector(introSelector);
-      if (!intro) return stageOffsetY;
+      if (!intro) return;
 
       const introRect = intro.getBoundingClientRect();
-      const desiredCenterY = stageRect.top + stageRect.height * anchorY;
+      const servicesRect = servicesSection.getBoundingClientRect();
+      const desiredIntroCenterY = stageRect.top + stageRect.height * anchorY;
       const introCenterY = introRect.top + introRect.height / 2;
-      stageOffsetY = desiredCenterY - introCenterY;
-      return stageOffsetY;
+
+      startY = desiredIntroCenterY - introCenterY;
+
+      const sectionBottomAtStart = startY + servicesRect.height;
+      const desiredBottom = stageRect.height - safeBottom;
+      endY = Math.min(startY, startY + (desiredBottom - sectionBottomAtStart));
+
+      gsap.set(servicesSection, { y: startY });
     };
 
-    const ensureStage = () => {
-      if (staged && servicesSection.parentElement === root) return;
+    const applyProgress = (rawProgress) => {
+      if (!servicesSection.isConnected || servicesSection.parentElement !== root) return;
 
-      placeholder.style.display = "block";
-      root.appendChild(servicesSection);
-      staged = true;
-      measureStageOffset();
-      applyStageStyle();
-    };
-
-    const ensureHome = () => {
-      if (!staged && servicesSection.parentElement === originalParent) return;
-
-      if (placeholder.parentNode === originalParent) {
-        originalParent.insertBefore(servicesSection, placeholder);
-      } else if (originalNextSibling?.parentNode === originalParent) {
-        originalParent.insertBefore(servicesSection, originalNextSibling);
-      } else {
-        originalParent.appendChild(servicesSection);
+      if (rawProgress <= scrollStart) {
+        gsap.set(servicesSection, { y: startY });
+        return;
       }
 
-      staged = false;
-      restoreOriginalInlineStyle();
-      placeholder.style.display = "none";
+      const p = clamp((rawProgress - scrollStart) / (scrollEnd - scrollStart));
+      gsap.set(servicesSection, {
+        y: startY + (endY - startY) * p
+      });
     };
 
-    const realignStage = () => {
-      if (!staged || servicesSection.parentElement !== root) return;
-      measureStageOffset();
-      applyStageStyle();
-    };
-
-    ensureStage();
-    requestAnimationFrame(realignStage);
-    window.addEventListener("resize", realignStage, { passive: true });
+    measure();
+    requestAnimationFrame(measure);
+    window.addEventListener("resize", measure, { passive: true });
 
     const update = () => {
       if (destroyed) return;
 
       syncTrigger = syncTrigger || ScrollTrigger.getById(syncTriggerId);
-      if (syncTrigger) {
-        // Keep Services staged throughout the Works pin. The moment the pin
-        // actually releases, return the same real section to its reserved flow
-        // position so scrolling continues through Services instead of showing
-        // a second copy or losing its lower rows/content.
-        if (syncTrigger.progress >= 0.9999 && !syncTrigger.isActive) ensureHome();
-        else ensureStage();
-      }
+      if (syncTrigger) applyProgress(syncTrigger.progress);
 
       rafId = requestAnimationFrame(update);
     };
@@ -158,9 +144,18 @@ export const worksServicesTransition = {
     return () => {
       destroyed = true;
       if (rafId != null) cancelAnimationFrame(rafId);
-      window.removeEventListener("resize", realignStage);
-      ensureHome();
-      placeholder.remove();
+      window.removeEventListener("resize", measure);
+
+      if (originalParent) {
+        if (originalNextSibling?.parentNode === originalParent) {
+          originalParent.insertBefore(servicesSection, originalNextSibling);
+        } else {
+          originalParent.appendChild(servicesSection);
+        }
+      }
+
+      if (originalStyle == null) servicesSection.removeAttribute("style");
+      else servicesSection.setAttribute("style", originalStyle);
     };
   }
 };
