@@ -4,6 +4,7 @@ import { brandLoad } from "./brand-load.js";
 import { brandaSpatialPinLayout } from "./branda-spatial-pin-layout.js";
 import { brandaSpatialShell } from "./branda-spatial-shell.js";
 import { brandaSpatialWorks } from "./branda-spatial-works.js";
+import { brandaWorksServicesTransition } from "./branda-works-services-transition.js";
 import { characterConverge } from "./character-converge.js";
 import { characterScatterTitle } from "./character-scatter-title.js";
 import { cursor } from "./cursor.js";
@@ -84,6 +85,7 @@ export const modules = [
   heroSlitTransition,
   spatialLoop,
   brandaSpatialWorks,
+  brandaWorksServicesTransition,
   brandaSpatialPinLayout,
   brandaSpatialShell
 ];
