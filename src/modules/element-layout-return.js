@@ -13,16 +13,6 @@ function clamp(value, min = 0, max = 1) {
   return Math.min(max, Math.max(min, value));
 }
 
-function restoreToHome(element, home) {
-  if (!home?.parent) return false;
-
-  if (home.placeholder?.parentNode === home.parent) home.parent.insertBefore(element, home.placeholder);
-  else if (home.nextSibling?.parentNode === home.parent) home.parent.insertBefore(element, home.nextSibling);
-  else home.parent.appendChild(element);
-
-  return true;
-}
-
 export const elementLayoutReturn = {
   name: "element-layout-return",
   category: "primitive",
@@ -32,7 +22,7 @@ export const elementLayoutReturn = {
     if (reducedMotion()) return;
 
     const home = element.__mkLayoutHome;
-    if (!home?.parent || !home.placeholder) return;
+    if (!home?.parent || !home.placeholder || !home.stage) return;
 
     const syncTriggerId = readString(element, "motion-layout-return-sync-trigger-id", "");
     const triggerSelector = readString(element, "motion-layout-return-trigger", "");
@@ -49,18 +39,46 @@ export const elementLayoutReturn = {
       1
     );
 
-    let completed = false;
     let destroyed = false;
     let syncTrigger = null;
     let syncRaf = null;
     let scrollTrigger = null;
+    let atHome = false;
 
-    const move = { progress: 0 };
+    const ensureStage = () => {
+      if (element.parentElement === home.stage) return;
+      home.stage.appendChild(element);
+      home.returnToStage?.();
+      atHome = false;
+    };
+
+    const ensureHome = () => {
+      if (element.parentElement === home.parent) return;
+      if (home.placeholder?.parentNode === home.parent) home.parent.insertBefore(element, home.placeholder);
+      else if (home.nextSibling?.parentNode === home.parent) home.parent.insertBefore(element, home.nextSibling);
+      else home.parent.appendChild(element);
+      gsap.set(element, { clearProps: "x,y,left,top,position,margin,pointerEvents,willChange,zIndex" });
+      atHome = true;
+    };
 
     const applyProgress = (progress) => {
-      if (completed || destroyed || !element.isConnected || !home.placeholder?.isConnected) return;
+      if (destroyed || !element.isConnected || !home.placeholder?.isConnected) return;
 
       const p = clamp(progress);
+
+      if (p <= 0.0001) {
+        ensureStage();
+        gsap.set(element, { x: 0, y: 0 });
+        return;
+      }
+
+      if (p >= 0.9999) {
+        ensureHome();
+        return;
+      }
+
+      if (atHome || element.parentElement !== home.stage) ensureStage();
+
       const elementRect = element.getBoundingClientRect();
       const homeRect = home.placeholder.getBoundingClientRect();
 
@@ -69,34 +87,27 @@ export const elementLayoutReturn = {
       const homeCenterX = homeRect.left + homeRect.width / 2;
       const homeCenterY = homeRect.top + homeRect.height / 2;
 
-      const currentX = gsap.getProperty(element, "x") || 0;
-      const currentY = gsap.getProperty(element, "y") || 0;
+      const baseX = Number(gsap.getProperty(element, "x")) || 0;
+      const baseY = Number(gsap.getProperty(element, "y")) || 0;
+      const deltaX = homeCenterX - elementCenterX;
+      const deltaY = homeCenterY - elementCenterY;
 
-      const remaining = Math.max(0.0001, 1 - p);
-      const targetX = Number(currentX) + (homeCenterX - elementCenterX) / remaining;
-      const targetY = Number(currentY) + (homeCenterY - elementCenterY) / remaining;
-
+      // Move proportionally toward the real Webflow slot. Because this is
+      // recalculated every frame from the current geometry, reversing the
+      // scroll naturally moves the element back toward the stage position.
       gsap.set(element, {
-        x: Number(currentX) + (targetX - Number(currentX)) * p,
-        y: Number(currentY) + (targetY - Number(currentY)) * p
+        x: baseX + deltaX * p,
+        y: baseY + deltaY * p,
+        ease
       });
-
-      if (p >= 0.9999) {
-        completed = true;
-        restoreToHome(element, home);
-        home.placeholder.remove();
-        delete element.__mkLayoutHome;
-        gsap.set(element, { clearProps: "x,y,left,top,position,margin,pointerEvents,willChange,zIndex" });
-      }
     };
 
     if (syncTriggerId) {
       const updateFromSync = () => {
         if (destroyed) return;
         syncTrigger = syncTrigger || ScrollTrigger.getById(syncTriggerId);
-        if (syncTrigger && !completed) {
+        if (syncTrigger) {
           const p = clamp((syncTrigger.progress - progressStart) / (progressEnd - progressStart));
-          move.progress = p;
           applyProgress(p);
         }
         syncRaf = requestAnimationFrame(updateFromSync);
@@ -114,7 +125,6 @@ export const elementLayoutReturn = {
         end,
         scrub,
         onUpdate(self) {
-          move.progress = self.progress;
           applyProgress(self.progress);
         }
       });
@@ -124,14 +134,9 @@ export const elementLayoutReturn = {
       destroyed = true;
       scrollTrigger?.kill();
       if (syncRaf != null) cancelAnimationFrame(syncRaf);
-
-      if (element.__mkLayoutHome) {
-        restoreToHome(element, home);
-        home.placeholder?.remove();
-        delete element.__mkLayoutHome;
-      }
-
-      gsap.set(element, { clearProps: "x,y,left,top,position,margin,pointerEvents,willChange,zIndex" });
+      ensureHome();
+      home.placeholder?.remove();
+      delete element.__mkLayoutHome;
     };
   }
 };
