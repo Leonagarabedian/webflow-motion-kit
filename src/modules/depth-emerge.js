@@ -5,6 +5,8 @@ const DEFAULTS = Object.freeze({
   scaleTo: 1,
   opacityFrom: 0,
   opacityTo: 1,
+  blurFrom: 0,
+  blurTo: 0,
   centerX: 0.5,
   centerY: 0.5,
   zIndex: 0,
@@ -40,14 +42,14 @@ export const depthEmerge = {
     const originalParent = element.parentElement;
     const originalNextSibling = element.nextSibling;
     const originalStyle = element.getAttribute("style");
+    const originalRect = element.getBoundingClientRect();
 
     const placeholder = document.createElement("div");
     placeholder.setAttribute("data-depth-emerge-placeholder", "");
 
     const computed = window.getComputedStyle(element);
-    const rect = element.getBoundingClientRect();
-    placeholder.style.width = `${rect.width}px`;
-    placeholder.style.height = `${rect.height}px`;
+    placeholder.style.width = `${originalRect.width}px`;
+    placeholder.style.height = `${originalRect.height}px`;
     placeholder.style.display = computed.display === "inline" ? "inline-block" : computed.display;
     placeholder.style.visibility = "hidden";
     placeholder.style.pointerEvents = "none";
@@ -62,10 +64,10 @@ export const depthEmerge = {
     const scaleTo = readNumber(element, "motion-scale-to", DEFAULTS.scaleTo);
     const opacityFrom = readNumber(element, "motion-opacity-from", DEFAULTS.opacityFrom);
     const opacityTo = readNumber(element, "motion-opacity-to", DEFAULTS.opacityTo);
+    const blurFrom = Math.max(0, readNumber(element, "motion-blur-from", DEFAULTS.blurFrom));
+    const blurTo = Math.max(0, readNumber(element, "motion-blur-to", DEFAULTS.blurTo));
     const centerX = readNumber(element, "motion-center-x", DEFAULTS.centerX);
     const centerY = readNumber(element, "motion-center-y", DEFAULTS.centerY);
-    const alignY = readString(element, "motion-align-y", "stage");
-    const alignYContextSelector = readString(element, "motion-align-y-context", "");
     const zIndex = readNumber(element, "motion-z-index", DEFAULTS.zIndex);
     const start = readString(element, "motion-start", DEFAULTS.start);
     const end = readString(element, "motion-end", DEFAULTS.end);
@@ -78,43 +80,35 @@ export const depthEmerge = {
       1
     );
 
-    const resolveHomeY = (elementRect, stageRect) => {
-      if (alignY === "home-local") {
-        const context = alignYContextSelector
-          ? placeholder.closest(alignYContextSelector) || document.querySelector(alignYContextSelector)
-          : placeholder.closest("section, .section") || originalParent;
-        const contextRect = context.getBoundingClientRect();
-        const homeRect = placeholder.getBoundingClientRect();
-        const localCenterY = homeRect.top - contextRect.top + homeRect.height / 2;
-        return localCenterY - elementRect.height / 2;
-      }
-
-      if (alignY === "home") {
-        const homeRect = placeholder.getBoundingClientRect();
-        return homeRect.top - stageRect.top + homeRect.height / 2 - elementRect.height / 2;
-      }
-
-      return stageRect.height * centerY - elementRect.height / 2;
-    };
-
     const setStagePosition = () => {
       if (element.parentElement !== stage) return;
       const stageRect = stage.getBoundingClientRect();
-      const elementRect = element.getBoundingClientRect();
-      const left = stageRect.width * centerX - elementRect.width / 2;
-      const top = resolveHomeY(elementRect, stageRect);
+      const lockedWidth = originalRect.width;
+      const lockedHeight = originalRect.height;
+      const left = stageRect.width * centerX - lockedWidth / 2;
+      const top = stageRect.height * centerY - lockedHeight / 2;
 
       gsap.set(element, {
         position: "absolute",
-        width: `${rect.width}px`,
+        width: `${lockedWidth}px`,
+        height: "auto",
         left,
         top,
+        x: 0,
+        y: 0,
         margin: 0,
         zIndex,
         transformOrigin: "center center",
         pointerEvents: "none",
-        willChange: "transform, opacity"
+        willChange: "transform, opacity, filter"
       });
+
+      if (element.__mkLayoutHome) {
+        element.__mkLayoutHome.stageLeft = left;
+        element.__mkLayoutHome.stageTop = top;
+        element.__mkLayoutHome.lockedWidth = lockedWidth;
+        element.__mkLayoutHome.lockedHeight = lockedHeight;
+      }
     };
 
     const returnToStage = () => {
@@ -128,15 +122,29 @@ export const depthEmerge = {
       placeholder,
       originalStyle,
       stage,
-      returnToStage
+      returnToStage,
+      lockedWidth: originalRect.width,
+      lockedHeight: originalRect.height,
+      stageLeft: 0,
+      stageTop: 0
     };
 
     returnToStage();
 
     const tween = gsap.fromTo(
       element,
-      { scale: scaleFrom, autoAlpha: opacityFrom },
-      { scale: scaleTo, autoAlpha: opacityTo, ease: "none", paused: true }
+      {
+        scale: scaleFrom,
+        autoAlpha: opacityFrom,
+        filter: `blur(${blurFrom}px)`
+      },
+      {
+        scale: scaleTo,
+        autoAlpha: opacityTo,
+        filter: `blur(${blurTo}px)`,
+        ease: "power2.in",
+        paused: true
+      }
     );
 
     gsap.set(element, { autoAlpha: 0 });
