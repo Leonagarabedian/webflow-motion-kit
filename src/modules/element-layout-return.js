@@ -49,21 +49,37 @@ export const elementLayoutReturn = {
     let scrollTrigger = null;
     let atHome = false;
 
+    const showPlaceholder = () => {
+      if (home.placeholder) home.placeholder.style.display = "";
+    };
+
+    const hidePlaceholder = () => {
+      if (home.placeholder) home.placeholder.style.display = "none";
+    };
+
     const ensureStage = () => {
       if (element.parentElement === home.stage) return;
+      showPlaceholder();
       home.stage.appendChild(element);
       home.returnToStage?.();
       atHome = false;
     };
 
     const ensureHome = () => {
-      if (element.parentElement === home.parent) return;
-      if (home.placeholder?.parentNode === home.parent) home.parent.insertBefore(element, home.placeholder);
-      else if (home.nextSibling?.parentNode === home.parent) home.parent.insertBefore(element, home.nextSibling);
-      else home.parent.appendChild(element);
+      if (element.parentElement !== home.parent) {
+        if (home.placeholder?.parentNode === home.parent) home.parent.insertBefore(element, home.placeholder);
+        else if (home.nextSibling?.parentNode === home.parent) home.parent.insertBefore(element, home.nextSibling);
+        else home.parent.appendChild(element);
+      }
+
       gsap.set(element, {
         clearProps: "x,y,left,top,position,margin,pointerEvents,willChange,zIndex,width,height,filter,transform"
       });
+
+      // Once the real intro is back in its CSS Grid cell, the placeholder must
+      // stop participating in layout. Leaving it visible creates an extra grid
+      // item and pushes the Services list into the next row/left column.
+      hidePlaceholder();
       atHome = true;
     };
 
