@@ -48,6 +48,7 @@ import { tagsGlitch } from "./tags-glitch.js";
 import { textReveal } from "./text-reveal.js";
 import { themeSwitch } from "./theme-switch.js";
 import { viewSwitch } from "./view-switch.js";
+import { worksServicesTransition } from "./works-services-transition.js";
 
 export const modules = [
   lineReveal,
@@ -79,6 +80,7 @@ export const modules = [
   hoverBackgroundSwap,
   hoverLinkedIlluminate,
   flipRelocation,
+  worksServicesTransition,
   depthEmerge,
   elementLayoutReturn,
   syncedFade,
