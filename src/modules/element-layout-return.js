@@ -59,8 +59,28 @@ export const elementLayoutReturn = {
       if (home.placeholder?.parentNode === home.parent) home.parent.insertBefore(element, home.placeholder);
       else if (home.nextSibling?.parentNode === home.parent) home.parent.insertBefore(element, home.nextSibling);
       else home.parent.appendChild(element);
-      gsap.set(element, { clearProps: "x,y,left,top,position,margin,pointerEvents,willChange,zIndex" });
+      gsap.set(element, {
+        clearProps: "x,y,left,top,position,margin,pointerEvents,willChange,zIndex,width,height,filter,transform"
+      });
       atHome = true;
+    };
+
+    const getStableDelta = () => {
+      const stageRect = home.stage.getBoundingClientRect();
+      const homeRect = home.placeholder.getBoundingClientRect();
+      const stagedWidth = home.lockedWidth || homeRect.width;
+      const stagedHeight = home.lockedHeight || homeRect.height;
+      const stageLeft = home.stageLeft ?? stageRect.width / 2 - stagedWidth / 2;
+      const stageTop = home.stageTop ?? stageRect.height / 2 - stagedHeight / 2;
+      const stagedCenterX = stageRect.left + stageLeft + stagedWidth / 2;
+      const stagedCenterY = stageRect.top + stageTop + stagedHeight / 2;
+      const homeCenterX = homeRect.left + homeRect.width / 2;
+      const homeCenterY = homeRect.top + homeRect.height / 2;
+
+      return {
+        x: homeCenterX - stagedCenterX,
+        y: homeCenterY - stagedCenterY
+      };
     };
 
     const applyProgress = (progress) => {
@@ -68,35 +88,21 @@ export const elementLayoutReturn = {
 
       const p = clamp(progress);
 
-      if (p <= 0.0001) {
-        ensureStage();
-        gsap.set(element, { x: 0, y: 0 });
-        return;
-      }
-
       if (p >= 0.9999) {
         ensureHome();
         return;
       }
 
       if (atHome || element.parentElement !== home.stage) ensureStage();
-
-      const elementRect = element.getBoundingClientRect();
-      const homeRect = home.placeholder.getBoundingClientRect();
-
-      const elementCenterX = elementRect.left + elementRect.width / 2;
-      const elementCenterY = elementRect.top + elementRect.height / 2;
-      const homeCenterX = homeRect.left + homeRect.width / 2;
-      const homeCenterY = homeRect.top + homeRect.height / 2;
-
-      const baseX = Number(gsap.getProperty(element, "x")) || 0;
-      const baseY = Number(gsap.getProperty(element, "y")) || 0;
-      const deltaX = homeCenterX - elementCenterX;
-      const deltaY = homeCenterY - elementCenterY;
-
+      const delta = getStableDelta();
       const next = { ease };
-      if (axis === "x" || axis === "both") next.x = baseX + deltaX * p;
-      if (axis === "y" || axis === "both") next.y = baseY + deltaY * p;
+
+      if (axis === "x" || axis === "both") next.x = delta.x * p;
+      else next.x = 0;
+
+      if (axis === "y" || axis === "both") next.y = delta.y * p;
+      else next.y = 0;
+
       gsap.set(element, next);
     };
 
