@@ -3,11 +3,8 @@ import { readNumber, readString } from "../core/config.js";
 const DEFAULTS = Object.freeze({
   servicesSelector: "[data-services-transition-section]",
   introSelector: ".services-intro",
-  syncTriggerId: "mk-branda-spatial-works",
+  stageSelector: "[data-branda-spatial-pin]",
   anchorY: 0.5,
-  scrollStart: 0.92,
-  scrollEnd: 0.995,
-  safeBottom: 24,
   zIndex: 0
 });
 
@@ -20,7 +17,7 @@ export const worksServicesTransition = {
   category: "composition",
   selector: '[data-motion~="works-services-transition"]',
 
-  mount(root, { gsap, ScrollTrigger, reducedMotion }) {
+  mount(root, { gsap, reducedMotion }) {
     if (reducedMotion()) return;
 
     const servicesSelector = readString(
@@ -33,48 +30,53 @@ export const worksServicesTransition = {
       "motion-services-intro-selector",
       DEFAULTS.introSelector
     );
-    const syncTriggerId = readString(
+    const stageSelector = readString(
       root,
-      "motion-services-sync-trigger-id",
-      DEFAULTS.syncTriggerId
+      "motion-services-stage-selector",
+      DEFAULTS.stageSelector
     );
     const anchorY = clamp(
       readNumber(root, "motion-services-anchor-y", DEFAULTS.anchorY)
     );
-    const scrollStart = clamp(
-      readNumber(root, "motion-services-scroll-start", DEFAULTS.scrollStart)
-    );
-    const scrollEnd = clamp(
-      readNumber(root, "motion-services-scroll-end", DEFAULTS.scrollEnd),
-      scrollStart + 0.0001,
-      1
-    );
-    const safeBottom = Math.max(
-      0,
-      readNumber(root, "motion-services-safe-bottom", DEFAULTS.safeBottom)
-    );
     const zIndex = readNumber(root, "motion-services-z-index", DEFAULTS.zIndex);
 
     const servicesSection = document.querySelector(servicesSelector);
-    if (!servicesSection || root.contains(servicesSection)) return;
+    if (!servicesSection) return;
+
+    const stage = root.closest(stageSelector) || root.parentElement || root;
+    if (stage.contains(servicesSection)) return;
 
     const originalParent = servicesSection.parentElement;
     const originalNextSibling = servicesSection.nextSibling;
     const originalStyle = servicesSection.getAttribute("style");
+    const originalStageStyle = stage.getAttribute("style");
+    const originalRootStyle = root.getAttribute("style");
 
-    // The actual Services section becomes the final state of the same pinned
-    // Works composition. It is intentionally removed from normal flow for the
-    // lifetime of the module, so it cannot reappear as a second section below.
-    root.appendChild(servicesSection);
+    // The real Services section becomes the final visual state of the Works pin,
+    // but it is staged on the pin wrapper rather than inside .work-gallery.
+    // .work-gallery must keep overflow:hidden for the WebGL cards, while Services
+    // must not be clipped by that gallery viewport.
+    stage.appendChild(servicesSection);
 
-    let syncTrigger = null;
+    if (window.getComputedStyle(stage).position === "static") {
+      gsap.set(stage, { position: "relative" });
+    }
+
+    // Keep the WebGL Works layer above Services while cards are still crossing.
+    gsap.set(root, { position: "relative", zIndex: zIndex + 1 });
+
     let rafId = null;
     let destroyed = false;
-    let startY = 0;
-    let endY = 0;
+    let stageY = 0;
 
     const measure = () => {
-      if (!servicesSection.isConnected || servicesSection.parentElement !== root) return;
+      if (
+        destroyed ||
+        !servicesSection.isConnected ||
+        servicesSection.parentElement !== stage
+      ) {
+        return;
+      }
 
       gsap.set(servicesSection, {
         position: "absolute",
@@ -84,7 +86,7 @@ export const worksServicesTransition = {
         left: 0,
         width: "100%",
         height: "auto",
-        minHeight: "100%",
+        minHeight: "0",
         margin: 0,
         y: 0,
         zIndex,
@@ -94,52 +96,31 @@ export const worksServicesTransition = {
         willChange: "transform"
       });
 
-      const stageRect = root.getBoundingClientRect();
+      const referenceRect = root.getBoundingClientRect();
       const intro = servicesSection.querySelector(introSelector);
-      if (!intro) return;
 
-      const introRect = intro.getBoundingClientRect();
-      const servicesRect = servicesSection.getBoundingClientRect();
-      const desiredIntroCenterY = stageRect.top + stageRect.height * anchorY;
-      const introCenterY = introRect.top + introRect.height / 2;
-
-      startY = desiredIntroCenterY - introCenterY;
-
-      const sectionBottomAtStart = startY + servicesRect.height;
-      const desiredBottom = stageRect.height - safeBottom;
-      endY = Math.min(startY, startY + (desiredBottom - sectionBottomAtStart));
-
-      gsap.set(servicesSection, { y: startY });
-    };
-
-    const applyProgress = (rawProgress) => {
-      if (!servicesSection.isConnected || servicesSection.parentElement !== root) return;
-
-      if (rawProgress <= scrollStart) {
-        gsap.set(servicesSection, { y: startY });
+      // During depth-emerge the intro is temporarily portaled into .work-gallery.
+      // If it is not currently inside Services, keep the last stable alignment
+      // instead of re-measuring from an incomplete layout.
+      if (!intro) {
+        gsap.set(servicesSection, { y: stageY });
         return;
       }
 
-      const p = clamp((rawProgress - scrollStart) / (scrollEnd - scrollStart));
-      gsap.set(servicesSection, {
-        y: startY + (endY - startY) * p
-      });
+      const introRect = intro.getBoundingClientRect();
+      const desiredIntroCenterY = referenceRect.top + referenceRect.height * anchorY;
+      const introCenterY = introRect.top + introRect.height / 2;
+      stageY = desiredIntroCenterY - introCenterY;
+
+      gsap.set(servicesSection, { y: stageY });
     };
 
+    // Services stays seated for the entire final handoff. Individual modules
+    // animate the intro, rows, and bottom notes. The composition itself does not
+    // vertically scroll the whole section, which previously cut rows off.
     measure();
-    requestAnimationFrame(measure);
+    rafId = requestAnimationFrame(measure);
     window.addEventListener("resize", measure, { passive: true });
-
-    const update = () => {
-      if (destroyed) return;
-
-      syncTrigger = syncTrigger || ScrollTrigger.getById(syncTriggerId);
-      if (syncTrigger) applyProgress(syncTrigger.progress);
-
-      rafId = requestAnimationFrame(update);
-    };
-
-    rafId = requestAnimationFrame(update);
 
     return () => {
       destroyed = true;
@@ -156,6 +137,12 @@ export const worksServicesTransition = {
 
       if (originalStyle == null) servicesSection.removeAttribute("style");
       else servicesSection.setAttribute("style", originalStyle);
+
+      if (originalStageStyle == null) stage.removeAttribute("style");
+      else stage.setAttribute("style", originalStageStyle);
+
+      if (originalRootStyle == null) root.removeAttribute("style");
+      else root.setAttribute("style", originalRootStyle);
     };
   }
 };
