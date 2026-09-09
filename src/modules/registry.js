@@ -35,6 +35,7 @@ import { scrambleText } from "./scramble-text.js";
 import { scrollHighlight } from "./scroll-highlight.js";
 import { scrollSyncedGallery } from "./scroll-synced-gallery.js";
 import { scrollTravel } from "./scroll-travel.js";
+import { sectionHandoff } from "./section-handoff.js";
 import { servicesCenterShift } from "./services-center-shift.js";
 import { spatialLoop } from "./spatial-loop.js";
 import { stackedCards } from "./stacked-cards.js";
@@ -78,6 +79,7 @@ export const modules = [
   depthEmerge,
   elementLayoutReturn,
   syncedFade,
+  sectionHandoff,
   heroFrameTransition,
   heroHeartTransition,
   pinnedMedia,
