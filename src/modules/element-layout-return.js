@@ -7,7 +7,8 @@ const DEFAULTS = Object.freeze({
   ease: "none",
   progressStart: 0,
   progressEnd: 1,
-  axis: "both"
+  axis: "both",
+  release: "pin-end"
 });
 
 function clamp(value, min = 0, max = 1) {
@@ -32,6 +33,7 @@ export const elementLayoutReturn = {
     const scrub = readNumber(element, "motion-layout-return-scrub", DEFAULTS.scrub);
     const ease = readString(element, "motion-layout-return-ease", DEFAULTS.ease);
     const axis = readString(element, "motion-layout-return-axis", DEFAULTS.axis);
+    const release = readString(element, "motion-layout-return-release", DEFAULTS.release);
     const progressStart = clamp(
       readNumber(element, "motion-layout-return-progress-start", DEFAULTS.progressStart)
     );
@@ -109,10 +111,13 @@ export const elementLayoutReturn = {
         if (syncTrigger) {
           const p = clamp((syncTrigger.progress - progressStart) / (progressEnd - progressStart));
 
-          // Keep the real element visually inside the pinned Works stage through
-          // the end of the pin. Moving it home at progressEnd makes it disappear
-          // before the next section actually takes over the viewport.
-          if (syncTrigger.progress >= 0.9999 && !syncTrigger.isActive) {
+          if (release === "progress-end" && syncTrigger.progress >= progressEnd) {
+            ensureHome();
+          } else if (
+            release !== "progress-end" &&
+            syncTrigger.progress >= 0.9999 &&
+            !syncTrigger.isActive
+          ) {
             ensureHome();
           } else {
             applyStageProgress(p);
