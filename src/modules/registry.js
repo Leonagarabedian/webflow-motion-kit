@@ -8,6 +8,7 @@ import { characterConverge } from "./character-converge.js";
 import { characterScatterTitle } from "./character-scatter-title.js";
 import { cursor } from "./cursor.js";
 import { depthEmerge } from "./depth-emerge.js";
+import { elementBlurReveal } from "./element-blur-reveal.js";
 import { elementLayoutReturn } from "./element-layout-return.js";
 import { flipRelocation } from "./flip-relocation.js";
 import { heroFrameTransition } from "./hero-frame-transition.js";
@@ -27,6 +28,7 @@ import { morphNarrative } from "./morph-narrative.js";
 import { navFlip } from "./nav-flip.js";
 import { pageTransition } from "./page-transition.js";
 import { parallax } from "./parallax.js";
+import { pinOverlapNext } from "./pin-overlap-next.js";
 import { pinnedMedia } from "./pinned-media.js";
 import { pinnedMediaReturn } from "./pinned-media-return.js";
 import { pinnedSteps } from "./pinned-steps.js";
@@ -51,6 +53,7 @@ export const modules = [
   lineReveal,
   textReveal,
   blurReveal,
+  elementBlurReveal,
   scrambleText,
   scrollHighlight,
   svgReveal,
@@ -80,6 +83,7 @@ export const modules = [
   elementLayoutReturn,
   syncedFade,
   sectionHandoff,
+  pinOverlapNext,
   heroFrameTransition,
   heroHeartTransition,
   pinnedMedia,
