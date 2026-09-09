@@ -7,8 +7,8 @@ const DEFAULTS = Object.freeze({
   start: "top 88%",
   end: "top 28%",
   scrub: 1,
-  introXPercent: 50,
-  introY: 18,
+  centerX: 0.5,
+  centerY: 0.5,
   blur: 18,
   cardsY: 28,
   cardStagger: 0.07
@@ -37,8 +37,14 @@ export const servicesCenterShift = {
     const initialListStyle = list.getAttribute("style");
     const initialCardStyles = cards.map((card) => card.getAttribute("style"));
 
-    const introXPercent = readNumber(root, "motion-intro-x-percent", DEFAULTS.introXPercent);
-    const introY = readNumber(root, "motion-intro-y", DEFAULTS.introY);
+    const centerX = Math.min(
+      1,
+      Math.max(0, readNumber(root, "motion-intro-center-x", DEFAULTS.centerX))
+    );
+    const centerY = Math.min(
+      1,
+      Math.max(0, readNumber(root, "motion-intro-center-y", DEFAULTS.centerY))
+    );
     const blur = Math.max(0, readNumber(root, "motion-card-blur", DEFAULTS.blur));
     const cardsY = readNumber(root, "motion-card-y", DEFAULTS.cardsY);
     const cardStagger = Math.max(0, readNumber(root, "motion-card-stagger", DEFAULTS.cardStagger));
@@ -46,12 +52,17 @@ export const servicesCenterShift = {
     const end = readString(root, "motion-end", DEFAULTS.end);
     const scrub = readNumber(root, "motion-scrub", DEFAULTS.scrub);
 
-    gsap.set(intro, {
-      xPercent: introXPercent,
-      y: introY,
-      autoAlpha: 0,
-      willChange: "transform, opacity"
-    });
+    const getCenterOffset = () => {
+      gsap.set(intro, { x: 0, y: 0 });
+      const rect = intro.getBoundingClientRect();
+      const targetX = window.innerWidth * centerX;
+      const targetY = window.innerHeight * centerY;
+
+      return {
+        x: targetX - (rect.left + rect.width / 2),
+        y: targetY - (rect.top + rect.height / 2)
+      };
+    };
 
     gsap.set(list, {
       willChange: "transform, opacity, filter"
@@ -76,21 +87,36 @@ export const servicesCenterShift = {
     });
 
     timeline
-      .to(intro, {
-        xPercent: 0,
-        y: 0,
-        autoAlpha: 1,
-        ease: "none",
-        duration: 0.58
-      }, 0)
-      .to(cards, {
-        y: 0,
-        autoAlpha: 1,
-        filter: "blur(0px)",
-        ease: "none",
-        stagger: cardStagger,
-        duration: 0.42
-      }, 0.3);
+      .fromTo(
+        intro,
+        {
+          x: () => getCenterOffset().x,
+          y: () => getCenterOffset().y,
+          autoAlpha: 0,
+          willChange: "transform, opacity"
+        },
+        {
+          x: 0,
+          y: 0,
+          autoAlpha: 1,
+          ease: "none",
+          duration: 0.58,
+          immediateRender: true
+        },
+        0
+      )
+      .to(
+        cards,
+        {
+          y: 0,
+          autoAlpha: 1,
+          filter: "blur(0px)",
+          ease: "none",
+          stagger: cardStagger,
+          duration: 0.42
+        },
+        0.3
+      );
 
     return () => {
       timeline.scrollTrigger?.kill();
