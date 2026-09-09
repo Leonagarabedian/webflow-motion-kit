@@ -47,6 +47,14 @@ export const depthEmerge = {
     placeholder.style.pointerEvents = "none";
 
     originalParent.insertBefore(placeholder, element);
+
+    element.__mkLayoutHome = {
+      parent: originalParent,
+      nextSibling: originalNextSibling,
+      placeholder,
+      originalStyle
+    };
+
     stage.appendChild(element);
 
     const previousStagePosition = stage.style.position;
@@ -112,15 +120,26 @@ export const depthEmerge = {
 
     const restore = () => {
       if (!element.isConnected) return;
-      if (originalNextSibling && originalNextSibling.parentNode === originalParent) {
-        originalParent.insertBefore(element, originalNextSibling);
-      } else {
-        originalParent.appendChild(element);
+      const home = element.__mkLayoutHome;
+      const homePlaceholder = home?.placeholder;
+      const homeParent = home?.parent || originalParent;
+      const homeNextSibling = home?.nextSibling || originalNextSibling;
+
+      if (element.parentElement !== homeParent) {
+        if (homePlaceholder?.parentNode === homeParent) {
+          homeParent.insertBefore(element, homePlaceholder);
+        } else if (homeNextSibling?.parentNode === homeParent) {
+          homeParent.insertBefore(element, homeNextSibling);
+        } else {
+          homeParent.appendChild(element);
+        }
       }
-      placeholder.remove();
+
+      homePlaceholder?.remove();
       if (originalStyle == null) element.removeAttribute("style");
       else element.setAttribute("style", originalStyle);
       stage.style.position = previousStagePosition;
+      delete element.__mkLayoutHome;
     };
 
     return () => {
