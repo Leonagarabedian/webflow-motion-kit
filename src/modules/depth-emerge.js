@@ -10,8 +10,14 @@ const DEFAULTS = Object.freeze({
   zIndex: 0,
   start: "top 75%",
   end: "bottom 25%",
-  scrub: 1
+  scrub: 1,
+  progressStart: 0,
+  progressEnd: 1
 });
+
+function clamp(value, min = 0, max = 1) {
+  return Math.min(max, Math.max(min, value));
+}
 
 function resolveExternal(root, attribute, fallback = null) {
   const selector = readString(root, attribute, "");
@@ -72,6 +78,13 @@ export const depthEmerge = {
     const start = readString(element, "motion-start", DEFAULTS.start);
     const end = readString(element, "motion-end", DEFAULTS.end);
     const scrub = readNumber(element, "motion-scrub", DEFAULTS.scrub);
+    const syncTriggerId = readString(element, "motion-sync-trigger-id", "");
+    const progressStart = clamp(readNumber(element, "motion-progress-start", DEFAULTS.progressStart));
+    const progressEnd = clamp(
+      readNumber(element, "motion-progress-end", DEFAULTS.progressEnd),
+      progressStart + 0.0001,
+      1
+    );
 
     const setCenteredPosition = () => {
       const stageRect = stage.getBoundingClientRect();
@@ -95,28 +108,39 @@ export const depthEmerge = {
 
     const tween = gsap.fromTo(
       element,
-      {
-        scale: scaleFrom,
-        autoAlpha: opacityFrom
-      },
-      {
-        scale: scaleTo,
-        autoAlpha: opacityTo,
-        ease: "none",
-        paused: true
-      }
+      { scale: scaleFrom, autoAlpha: opacityFrom },
+      { scale: scaleTo, autoAlpha: opacityTo, ease: "none", paused: true }
     );
 
-    const scrollTrigger = ScrollTrigger.create({
-      id: `mk-depth-emerge-${Math.random().toString(36).slice(2, 8)}`,
-      trigger,
-      start,
-      end,
-      scrub,
-      animation: tween,
-      invalidateOnRefresh: true,
-      onRefresh: setCenteredPosition
-    });
+    let scrollTrigger = null;
+    let syncTrigger = null;
+    let syncRaf = null;
+    let destroyed = false;
+
+    if (syncTriggerId) {
+      const updateFromSync = () => {
+        if (destroyed) return;
+        syncTrigger = syncTrigger || ScrollTrigger.getById(syncTriggerId);
+        if (syncTrigger) {
+          const progress = clamp((syncTrigger.progress - progressStart) / (progressEnd - progressStart));
+          tween.progress(progress);
+        }
+        syncRaf = requestAnimationFrame(updateFromSync);
+      };
+      syncRaf = requestAnimationFrame(updateFromSync);
+      window.addEventListener("resize", setCenteredPosition, { passive: true });
+    } else {
+      scrollTrigger = ScrollTrigger.create({
+        id: `mk-depth-emerge-${Math.random().toString(36).slice(2, 8)}`,
+        trigger,
+        start,
+        end,
+        scrub,
+        animation: tween,
+        invalidateOnRefresh: true,
+        onRefresh: setCenteredPosition
+      });
+    }
 
     const restore = () => {
       if (!element.isConnected) return;
@@ -126,13 +150,9 @@ export const depthEmerge = {
       const homeNextSibling = home?.nextSibling || originalNextSibling;
 
       if (element.parentElement !== homeParent) {
-        if (homePlaceholder?.parentNode === homeParent) {
-          homeParent.insertBefore(element, homePlaceholder);
-        } else if (homeNextSibling?.parentNode === homeParent) {
-          homeParent.insertBefore(element, homeNextSibling);
-        } else {
-          homeParent.appendChild(element);
-        }
+        if (homePlaceholder?.parentNode === homeParent) homeParent.insertBefore(element, homePlaceholder);
+        else if (homeNextSibling?.parentNode === homeParent) homeParent.insertBefore(element, homeNextSibling);
+        else homeParent.appendChild(element);
       }
 
       homePlaceholder?.remove();
@@ -143,7 +163,10 @@ export const depthEmerge = {
     };
 
     return () => {
-      scrollTrigger.kill();
+      destroyed = true;
+      scrollTrigger?.kill();
+      if (syncRaf != null) cancelAnimationFrame(syncRaf);
+      window.removeEventListener("resize", setCenteredPosition);
       tween.kill();
       restore();
     };
