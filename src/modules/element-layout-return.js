@@ -83,17 +83,12 @@ export const elementLayoutReturn = {
       };
     };
 
-    const applyProgress = (progress) => {
+    const applyStageProgress = (progress) => {
       if (destroyed || !element.isConnected || !home.placeholder?.isConnected) return;
 
       const p = clamp(progress);
-
-      if (p >= 0.9999) {
-        ensureHome();
-        return;
-      }
-
       if (atHome || element.parentElement !== home.stage) ensureStage();
+
       const delta = getStableDelta();
       const next = { ease };
 
@@ -110,10 +105,20 @@ export const elementLayoutReturn = {
       const updateFromSync = () => {
         if (destroyed) return;
         syncTrigger = syncTrigger || ScrollTrigger.getById(syncTriggerId);
+
         if (syncTrigger) {
           const p = clamp((syncTrigger.progress - progressStart) / (progressEnd - progressStart));
-          applyProgress(p);
+
+          // Keep the real element visually inside the pinned Works stage through
+          // the end of the pin. Moving it home at progressEnd makes it disappear
+          // before the next section actually takes over the viewport.
+          if (syncTrigger.progress >= 0.9999 && !syncTrigger.isActive) {
+            ensureHome();
+          } else {
+            applyStageProgress(p);
+          }
         }
+
         syncRaf = requestAnimationFrame(updateFromSync);
       };
       syncRaf = requestAnimationFrame(updateFromSync);
@@ -129,7 +134,8 @@ export const elementLayoutReturn = {
         end,
         scrub,
         onUpdate(self) {
-          applyProgress(self.progress);
+          if (self.progress >= 0.9999) ensureHome();
+          else applyStageProgress(self.progress);
         }
       });
     }
