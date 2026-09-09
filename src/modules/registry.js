@@ -4,7 +4,6 @@ import { brandLoad } from "./brand-load.js";
 import { brandaSpatialPinLayout } from "./branda-spatial-pin-layout.js";
 import { brandaSpatialShell } from "./branda-spatial-shell.js";
 import { brandaSpatialWorks } from "./branda-spatial-works.js";
-import { brandaWorksServicesTransition } from "./branda-works-services-transition.js";
 import { characterConverge } from "./character-converge.js";
 import { characterScatterTitle } from "./character-scatter-title.js";
 import { cursor } from "./cursor.js";
@@ -34,6 +33,7 @@ import { scrambleText } from "./scramble-text.js";
 import { scrollHighlight } from "./scroll-highlight.js";
 import { scrollSyncedGallery } from "./scroll-synced-gallery.js";
 import { scrollTravel } from "./scroll-travel.js";
+import { servicesCenterShift } from "./services-center-shift.js";
 import { spatialLoop } from "./spatial-loop.js";
 import { stackedCards } from "./stacked-cards.js";
 import { stackedImageHover } from "./stacked-image-hover.js";
@@ -85,7 +85,7 @@ export const modules = [
   heroSlitTransition,
   spatialLoop,
   brandaSpatialWorks,
-  brandaWorksServicesTransition,
+  servicesCenterShift,
   brandaSpatialPinLayout,
   brandaSpatialShell
 ];
