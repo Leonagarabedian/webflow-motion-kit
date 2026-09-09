@@ -40,6 +40,7 @@ import { spatialLoop } from "./spatial-loop.js";
 import { stackedCards } from "./stacked-cards.js";
 import { stackedImageHover } from "./stacked-image-hover.js";
 import { svgReveal } from "./svg-reveal.js";
+import { syncedFade } from "./synced-fade.js";
 import { tagsGlitch } from "./tags-glitch.js";
 import { textReveal } from "./text-reveal.js";
 import { themeSwitch } from "./theme-switch.js";
@@ -76,6 +77,7 @@ export const modules = [
   flipRelocation,
   depthEmerge,
   elementLayoutReturn,
+  syncedFade,
   heroFrameTransition,
   heroHeartTransition,
   pinnedMedia,
