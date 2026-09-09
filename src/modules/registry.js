@@ -7,6 +7,7 @@ import { brandaSpatialWorks } from "./branda-spatial-works.js";
 import { characterConverge } from "./character-converge.js";
 import { characterScatterTitle } from "./character-scatter-title.js";
 import { cursor } from "./cursor.js";
+import { depthEmerge } from "./depth-emerge.js";
 import { flipRelocation } from "./flip-relocation.js";
 import { heroFrameTransition } from "./hero-frame-transition.js";
 import { heroHeartTransition } from "./hero-heart-transition.js";
@@ -72,6 +73,7 @@ export const modules = [
   hoverBackgroundSwap,
   hoverLinkedIlluminate,
   flipRelocation,
+  depthEmerge,
   heroFrameTransition,
   heroHeartTransition,
   pinnedMedia,
