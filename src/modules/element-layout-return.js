@@ -5,19 +5,21 @@ const DEFAULTS = Object.freeze({
   end: "top 15%",
   scrub: 1,
   ease: "none",
-  scale: true
+  scale: true,
+  progressStart: 0,
+  progressEnd: 1
 });
+
+function clamp(value, min = 0, max = 1) {
+  return Math.min(max, Math.max(min, value));
+}
 
 function restoreToHome(element, home) {
   if (!home?.parent) return false;
 
-  if (home.placeholder?.parentNode === home.parent) {
-    home.parent.insertBefore(element, home.placeholder);
-  } else if (home.nextSibling?.parentNode === home.parent) {
-    home.parent.insertBefore(element, home.nextSibling);
-  } else {
-    home.parent.appendChild(element);
-  }
+  if (home.placeholder?.parentNode === home.parent) home.parent.insertBefore(element, home.placeholder);
+  else if (home.nextSibling?.parentNode === home.parent) home.parent.insertBefore(element, home.nextSibling);
+  else home.parent.appendChild(element);
 
   return true;
 }
@@ -39,9 +41,15 @@ export const elementLayoutReturn = {
     const ease = readString(element, "motion-layout-return-ease", DEFAULTS.ease);
     const scale = readString(element, "motion-layout-return-scale", String(DEFAULTS.scale)) !== "false";
     const triggerSelector = readString(element, "motion-layout-return-trigger", "");
-    const trigger = triggerSelector
-      ? element.closest(triggerSelector) || document.querySelector(triggerSelector) || element
-      : element;
+    const syncTriggerId = readString(element, "motion-layout-return-sync-trigger-id", "");
+    const progressStart = clamp(
+      readNumber(element, "motion-layout-return-progress-start", DEFAULTS.progressStart)
+    );
+    const progressEnd = clamp(
+      readNumber(element, "motion-layout-return-progress-end", DEFAULTS.progressEnd),
+      progressStart + 0.0001,
+      1
+    );
 
     const currentParent = element.parentElement;
     if (!currentParent) return;
@@ -50,7 +58,6 @@ export const elementLayoutReturn = {
     const state = Flip.getState(element, { props: "opacity,visibility" });
 
     restoreToHome(element, home);
-
     const finalStyle = element.getAttribute("style");
     element.removeAttribute("style");
 
@@ -63,30 +70,53 @@ export const elementLayoutReturn = {
       prune: true
     });
 
-    const scrollTrigger = ScrollTrigger.create({
-      id: `mk-element-layout-return-${Math.random().toString(36).slice(2, 8)}`,
-      trigger,
-      start,
-      end,
-      scrub,
-      animation: tween,
-      invalidateOnRefresh: true,
-      onLeave: () => {
-        gsap.set(element, { clearProps: "transform,width,height,left,top,position" });
-        home.placeholder?.remove();
-        delete element.__mkLayoutHome;
-      },
-      onLeaveBack: () => {
-        const backState = Flip.getState(element, { props: "opacity,visibility" });
-        if (currentParent.isConnected) currentParent.appendChild(element);
-        if (currentStyle == null) element.removeAttribute("style");
-        else element.setAttribute("style", currentStyle);
-        Flip.from(backState, { duration: 0, absolute: true, scale, prune: true });
-      }
-    });
+    let scrollTrigger = null;
+    let syncTrigger = null;
+    let syncRaf = null;
+    let destroyed = false;
+    let placeholderHidden = false;
+
+    const setPlaceholderHidden = (hidden) => {
+      if (!home.placeholder?.isConnected || placeholderHidden === hidden) return;
+      placeholderHidden = hidden;
+      home.placeholder.style.display = hidden ? "none" : "";
+    };
+
+    if (syncTriggerId) {
+      const updateFromSync = () => {
+        if (destroyed) return;
+        syncTrigger = syncTrigger || ScrollTrigger.getById(syncTriggerId);
+        if (syncTrigger) {
+          const progress = clamp((syncTrigger.progress - progressStart) / (progressEnd - progressStart));
+          setPlaceholderHidden(progress >= 0.9999);
+          tween.progress(progress);
+        }
+        syncRaf = requestAnimationFrame(updateFromSync);
+      };
+      syncRaf = requestAnimationFrame(updateFromSync);
+    } else {
+      const trigger = triggerSelector
+        ? element.closest(triggerSelector) || document.querySelector(triggerSelector) || element
+        : element;
+
+      scrollTrigger = ScrollTrigger.create({
+        id: `mk-element-layout-return-${Math.random().toString(36).slice(2, 8)}`,
+        trigger,
+        start,
+        end,
+        scrub,
+        animation: tween,
+        invalidateOnRefresh: true,
+        onUpdate(self) {
+          setPlaceholderHidden(self.progress >= 0.9999);
+        }
+      });
+    }
 
     return () => {
-      scrollTrigger.kill();
+      destroyed = true;
+      scrollTrigger?.kill();
+      if (syncRaf != null) cancelAnimationFrame(syncRaf);
       tween.kill();
 
       if (element.__mkLayoutHome) {
