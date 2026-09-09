@@ -64,6 +64,7 @@ export const depthEmerge = {
     const opacityTo = readNumber(element, "motion-opacity-to", DEFAULTS.opacityTo);
     const centerX = readNumber(element, "motion-center-x", DEFAULTS.centerX);
     const centerY = readNumber(element, "motion-center-y", DEFAULTS.centerY);
+    const alignY = readString(element, "motion-align-y", "stage");
     const zIndex = readNumber(element, "motion-z-index", DEFAULTS.zIndex);
     const start = readString(element, "motion-start", DEFAULTS.start);
     const end = readString(element, "motion-end", DEFAULTS.end);
@@ -80,8 +81,13 @@ export const depthEmerge = {
       if (element.parentElement !== stage) return;
       const stageRect = stage.getBoundingClientRect();
       const elementRect = element.getBoundingClientRect();
+      const homeRect = placeholder.getBoundingClientRect();
+
       const left = stageRect.width * centerX - elementRect.width / 2;
-      const top = stageRect.height * centerY - elementRect.height / 2;
+      const top =
+        alignY === "home"
+          ? homeRect.top - stageRect.top + homeRect.height / 2 - elementRect.height / 2
+          : stageRect.height * centerY - elementRect.height / 2;
 
       gsap.set(element, {
         position: "absolute",
@@ -117,8 +123,6 @@ export const depthEmerge = {
       { scale: scaleTo, autoAlpha: opacityTo, ease: "none", paused: true }
     );
 
-    // Before the reveal window the element must be fully hidden, even when
-    // opacityFrom is intentionally greater than zero for the actual emergence.
     gsap.set(element, { autoAlpha: 0 });
 
     let scrollTrigger = null;
