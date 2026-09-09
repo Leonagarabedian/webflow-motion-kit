@@ -9,6 +9,8 @@ const DEFAULTS = Object.freeze({
   blurTo: 0,
   centerX: 0.5,
   centerY: 0.5,
+  safeTop: 24,
+  safeBottom: 24,
   zIndex: 0,
   start: "top 75%",
   end: "bottom 25%",
@@ -68,6 +70,8 @@ export const depthEmerge = {
     const blurTo = Math.max(0, readNumber(element, "motion-blur-to", DEFAULTS.blurTo));
     const centerX = readNumber(element, "motion-center-x", DEFAULTS.centerX);
     const centerY = readNumber(element, "motion-center-y", DEFAULTS.centerY);
+    const safeTop = Math.max(0, readNumber(element, "motion-safe-top", DEFAULTS.safeTop));
+    const safeBottom = Math.max(0, readNumber(element, "motion-safe-bottom", DEFAULTS.safeBottom));
     const zIndex = readNumber(element, "motion-z-index", DEFAULTS.zIndex);
     const start = readString(element, "motion-start", DEFAULTS.start);
     const end = readString(element, "motion-end", DEFAULTS.end);
@@ -86,7 +90,9 @@ export const depthEmerge = {
       const lockedWidth = originalRect.width;
       const lockedHeight = originalRect.height;
       const left = stageRect.width * centerX - lockedWidth / 2;
-      const top = stageRect.height * centerY - lockedHeight / 2;
+      const desiredTop = stageRect.height * centerY - lockedHeight / 2;
+      const maxTop = Math.max(safeTop, stageRect.height - lockedHeight - safeBottom);
+      const top = clamp(desiredTop, safeTop, maxTop);
 
       gsap.set(element, {
         position: "absolute",
