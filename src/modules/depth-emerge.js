@@ -65,6 +65,7 @@ export const depthEmerge = {
     const centerX = readNumber(element, "motion-center-x", DEFAULTS.centerX);
     const centerY = readNumber(element, "motion-center-y", DEFAULTS.centerY);
     const alignY = readString(element, "motion-align-y", "stage");
+    const alignYContextSelector = readString(element, "motion-align-y-context", "");
     const zIndex = readNumber(element, "motion-z-index", DEFAULTS.zIndex);
     const start = readString(element, "motion-start", DEFAULTS.start);
     const end = readString(element, "motion-end", DEFAULTS.end);
@@ -77,20 +78,35 @@ export const depthEmerge = {
       1
     );
 
-    const setCenteredPosition = () => {
+    const resolveHomeY = (elementRect, stageRect) => {
+      if (alignY === "home-local") {
+        const context = alignYContextSelector
+          ? placeholder.closest(alignYContextSelector) || document.querySelector(alignYContextSelector)
+          : placeholder.closest("section, .section") || originalParent;
+        const contextRect = context.getBoundingClientRect();
+        const homeRect = placeholder.getBoundingClientRect();
+        const localCenterY = homeRect.top - contextRect.top + homeRect.height / 2;
+        return localCenterY - elementRect.height / 2;
+      }
+
+      if (alignY === "home") {
+        const homeRect = placeholder.getBoundingClientRect();
+        return homeRect.top - stageRect.top + homeRect.height / 2 - elementRect.height / 2;
+      }
+
+      return stageRect.height * centerY - elementRect.height / 2;
+    };
+
+    const setStagePosition = () => {
       if (element.parentElement !== stage) return;
       const stageRect = stage.getBoundingClientRect();
       const elementRect = element.getBoundingClientRect();
-      const homeRect = placeholder.getBoundingClientRect();
-
       const left = stageRect.width * centerX - elementRect.width / 2;
-      const top =
-        alignY === "home"
-          ? homeRect.top - stageRect.top + homeRect.height / 2 - elementRect.height / 2
-          : stageRect.height * centerY - elementRect.height / 2;
+      const top = resolveHomeY(elementRect, stageRect);
 
       gsap.set(element, {
         position: "absolute",
+        width: `${rect.width}px`,
         left,
         top,
         margin: 0,
@@ -103,7 +119,7 @@ export const depthEmerge = {
 
     const returnToStage = () => {
       if (element.parentElement !== stage) stage.appendChild(element);
-      setCenteredPosition();
+      setStagePosition();
     };
 
     element.__mkLayoutHome = {
@@ -149,7 +165,7 @@ export const depthEmerge = {
         syncRaf = requestAnimationFrame(updateFromSync);
       };
       syncRaf = requestAnimationFrame(updateFromSync);
-      window.addEventListener("resize", setCenteredPosition, { passive: true });
+      window.addEventListener("resize", setStagePosition, { passive: true });
     } else {
       scrollTrigger = ScrollTrigger.create({
         id: `mk-depth-emerge-${Math.random().toString(36).slice(2, 8)}`,
@@ -159,7 +175,7 @@ export const depthEmerge = {
         scrub,
         animation: tween,
         invalidateOnRefresh: true,
-        onRefresh: setCenteredPosition
+        onRefresh: setStagePosition
       });
     }
 
@@ -187,7 +203,7 @@ export const depthEmerge = {
       destroyed = true;
       scrollTrigger?.kill();
       if (syncRaf != null) cancelAnimationFrame(syncRaf);
-      window.removeEventListener("resize", setCenteredPosition);
+      window.removeEventListener("resize", setStagePosition);
       tween.kill();
       restore();
     };
