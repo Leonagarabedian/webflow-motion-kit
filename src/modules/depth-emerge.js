@@ -53,20 +53,10 @@ export const depthEmerge = {
     placeholder.style.pointerEvents = "none";
 
     originalParent.insertBefore(placeholder, element);
-
-    element.__mkLayoutHome = {
-      parent: originalParent,
-      nextSibling: originalNextSibling,
-      placeholder,
-      originalStyle
-    };
-
     stage.appendChild(element);
 
     const previousStagePosition = stage.style.position;
-    if (window.getComputedStyle(stage).position === "static") {
-      stage.style.position = "relative";
-    }
+    if (window.getComputedStyle(stage).position === "static") stage.style.position = "relative";
 
     const scaleFrom = readNumber(element, "motion-scale-from", DEFAULTS.scaleFrom);
     const scaleTo = readNumber(element, "motion-scale-to", DEFAULTS.scaleTo);
@@ -87,6 +77,7 @@ export const depthEmerge = {
     );
 
     const setCenteredPosition = () => {
+      if (element.parentElement !== stage) return;
       const stageRect = stage.getBoundingClientRect();
       const elementRect = element.getBoundingClientRect();
       const left = stageRect.width * centerX - elementRect.width / 2;
@@ -104,7 +95,21 @@ export const depthEmerge = {
       });
     };
 
-    setCenteredPosition();
+    const returnToStage = () => {
+      if (element.parentElement !== stage) stage.appendChild(element);
+      setCenteredPosition();
+    };
+
+    element.__mkLayoutHome = {
+      parent: originalParent,
+      nextSibling: originalNextSibling,
+      placeholder,
+      originalStyle,
+      stage,
+      returnToStage
+    };
+
+    returnToStage();
 
     const tween = gsap.fromTo(
       element,
@@ -112,19 +117,31 @@ export const depthEmerge = {
       { scale: scaleTo, autoAlpha: opacityTo, ease: "none", paused: true }
     );
 
+    // Before the reveal window the element must be fully hidden, even when
+    // opacityFrom is intentionally greater than zero for the actual emergence.
+    gsap.set(element, { autoAlpha: 0 });
+
     let scrollTrigger = null;
     let syncTrigger = null;
     let syncRaf = null;
     let destroyed = false;
 
+    const applySyncedProgress = (rawProgress) => {
+      if (rawProgress < progressStart) {
+        tween.progress(0);
+        gsap.set(element, { autoAlpha: 0 });
+        return;
+      }
+
+      const p = clamp((rawProgress - progressStart) / (progressEnd - progressStart));
+      tween.progress(p);
+    };
+
     if (syncTriggerId) {
       const updateFromSync = () => {
         if (destroyed) return;
         syncTrigger = syncTrigger || ScrollTrigger.getById(syncTriggerId);
-        if (syncTrigger) {
-          const progress = clamp((syncTrigger.progress - progressStart) / (progressEnd - progressStart));
-          tween.progress(progress);
-        }
+        if (syncTrigger) applySyncedProgress(syncTrigger.progress);
         syncRaf = requestAnimationFrame(updateFromSync);
       };
       syncRaf = requestAnimationFrame(updateFromSync);
