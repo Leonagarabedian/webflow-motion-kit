@@ -14,9 +14,18 @@ export const hoverHighlightBox = {
     const scale = readNumber(element, "motion-hover-scale", 1);
     const origin = readString(element, "motion-box-origin", "left center");
 
+    const originalTriggerStyles = {
+      position: element.style.position,
+      zIndex: element.style.zIndex
+    };
+
     let timeline;
 
     if (box) {
+      const computed = getComputedStyle(element);
+      if (computed.position === "static") element.style.position = "relative";
+      if (computed.zIndex === "auto") element.style.zIndex = "0";
+
       gsap.set(box, {
         autoAlpha: 0,
         scaleX: 0,
@@ -63,7 +72,11 @@ export const hoverHighlightBox = {
       element.removeEventListener("focusin", enter);
       element.removeEventListener("focusout", leave);
       timeline.kill();
-      if (box) gsap.set(box, { clearProps: "opacity,visibility,transform" });
+      if (box) {
+        gsap.set(box, { clearProps: "opacity,visibility,transform" });
+        element.style.position = originalTriggerStyles.position;
+        element.style.zIndex = originalTriggerStyles.zIndex;
+      }
       gsap.set(content, { clearProps: "color,transform" });
       if (!box) gsap.set(element, { clearProps: "backgroundColor,color,transform" });
     };
