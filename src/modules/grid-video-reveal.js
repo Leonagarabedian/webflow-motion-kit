@@ -27,15 +27,7 @@ function areAdjacent(a, b, cols) {
   return Math.abs(ax - bx) <= 1 && Math.abs(ay - by) <= 1;
 }
 
-function pickScatteredIndices({
-  centerCol,
-  centerRow,
-  cols,
-  rows,
-  radius,
-  count,
-  blocked
-}) {
+function pickScatteredIndices({ centerCol, centerRow, cols, rows, radius, count, blocked }) {
   const r = Math.max(0, Math.round(radius));
   const candidates = [];
 
@@ -109,6 +101,7 @@ export const gridVideoReveal = {
       webkitMaskRepeat: media.style.webkitMaskRepeat,
       pointerEvents: media.style.pointerEvents,
       willChange: media.style.willChange,
+      opacity: media.style.opacity,
       videoWasPaused: media instanceof HTMLVideoElement ? media.paused : null
     };
 
@@ -118,6 +111,7 @@ export const gridVideoReveal = {
     media.style.maskRepeat = "no-repeat";
     media.style.webkitMaskRepeat = "no-repeat";
     media.style.willChange = "mask-image, -webkit-mask-image";
+    media.style.opacity = "1";
 
     const playVideo = () => {
       if (!(media instanceof HTMLVideoElement)) return;
@@ -265,6 +259,7 @@ export const gridVideoReveal = {
       media.style.webkitMaskRepeat = original.webkitMaskRepeat;
       media.style.pointerEvents = original.pointerEvents;
       media.style.willChange = original.willChange;
+      media.style.opacity = original.opacity;
 
       if (media instanceof HTMLVideoElement) {
         if (original.videoWasPaused) media.pause();
