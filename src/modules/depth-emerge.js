@@ -46,12 +46,18 @@ export const depthEmerge = {
     const originalStyle = element.getAttribute("style");
     const originalRect = element.getBoundingClientRect();
 
+    let lockedWidth = originalRect.width;
+    let lockedHeight = originalRect.height;
+    let resizeRaf = null;
+
     const placeholder = document.createElement("div");
     placeholder.setAttribute("data-depth-emerge-placeholder", "");
 
     const computed = window.getComputedStyle(element);
-    placeholder.style.width = `${originalRect.width}px`;
-    placeholder.style.height = `${originalRect.height}px`;
+    // Keep the placeholder fluid so its grid cell follows responsive column changes.
+    placeholder.style.width = "100%";
+    placeholder.style.height = `${lockedHeight}px`;
+    placeholder.style.minWidth = "0";
     placeholder.style.display = computed.display === "inline" ? "inline-block" : computed.display;
     placeholder.style.visibility = "hidden";
     placeholder.style.pointerEvents = "none";
@@ -84,11 +90,37 @@ export const depthEmerge = {
       1
     );
 
+    const syncHomeMetrics = () => {
+      if (!placeholder.isConnected || !element.isConnected) return;
+
+      const homeRect = placeholder.getBoundingClientRect();
+      const nextWidth = homeRect.width || lockedWidth || originalRect.width;
+
+      // Measure the staged element at the width its real responsive grid cell now has.
+      if (element.parentElement === stage) {
+        gsap.set(element, {
+          width: `${nextWidth}px`,
+          height: "auto"
+        });
+      }
+
+      const nextHeight = element.offsetHeight || element.scrollHeight || lockedHeight || originalRect.height;
+      lockedWidth = nextWidth;
+      lockedHeight = nextHeight;
+      placeholder.style.height = `${lockedHeight}px`;
+
+      if (element.__mkLayoutHome) {
+        element.__mkLayoutHome.lockedWidth = lockedWidth;
+        element.__mkLayoutHome.lockedHeight = lockedHeight;
+      }
+    };
+
     const setStagePosition = () => {
       if (element.parentElement !== stage) return;
+
+      syncHomeMetrics();
+
       const stageRect = stage.getBoundingClientRect();
-      const lockedWidth = originalRect.width;
-      const lockedHeight = originalRect.height;
       const left = stageRect.width * centerX - lockedWidth / 2;
       const desiredTop = stageRect.height * centerY - lockedHeight / 2;
       const maxTop = Math.max(safeTop, stageRect.height - lockedHeight - safeBottom);
@@ -129,8 +161,8 @@ export const depthEmerge = {
       originalStyle,
       stage,
       returnToStage,
-      lockedWidth: originalRect.width,
-      lockedHeight: originalRect.height,
+      lockedWidth,
+      lockedHeight,
       stageLeft: 0,
       stageTop: 0
     };
@@ -171,6 +203,17 @@ export const depthEmerge = {
       tween.progress(p);
     };
 
+    const handleResize = () => {
+      if (destroyed) return;
+      if (resizeRaf != null) cancelAnimationFrame(resizeRaf);
+      resizeRaf = requestAnimationFrame(() => {
+        resizeRaf = null;
+        if (destroyed) return;
+        setStagePosition();
+        ScrollTrigger.refresh?.();
+      });
+    };
+
     if (syncTriggerId) {
       const updateFromSync = () => {
         if (destroyed) return;
@@ -179,7 +222,7 @@ export const depthEmerge = {
         syncRaf = requestAnimationFrame(updateFromSync);
       };
       syncRaf = requestAnimationFrame(updateFromSync);
-      window.addEventListener("resize", setStagePosition, { passive: true });
+      window.addEventListener("resize", handleResize, { passive: true });
     } else {
       scrollTrigger = ScrollTrigger.create({
         id: `mk-depth-emerge-${Math.random().toString(36).slice(2, 8)}`,
@@ -191,6 +234,7 @@ export const depthEmerge = {
         invalidateOnRefresh: true,
         onRefresh: setStagePosition
       });
+      window.addEventListener("resize", handleResize, { passive: true });
     }
 
     const restore = () => {
@@ -217,7 +261,8 @@ export const depthEmerge = {
       destroyed = true;
       scrollTrigger?.kill();
       if (syncRaf != null) cancelAnimationFrame(syncRaf);
-      window.removeEventListener("resize", setStagePosition);
+      if (resizeRaf != null) cancelAnimationFrame(resizeRaf);
+      window.removeEventListener("resize", handleResize);
       tween.kill();
       restore();
     };
