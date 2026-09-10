@@ -11,6 +11,7 @@ import { depthEmerge } from "./depth-emerge.js";
 import { elementBlurReveal } from "./element-blur-reveal.js";
 import { elementLayoutReturn } from "./element-layout-return.js";
 import { flipRelocation } from "./flip-relocation.js";
+import { gridVideoReveal } from "./grid-video-reveal.js";
 import { heroFrameTransition } from "./hero-frame-transition.js";
 import { heroHeartTransition } from "./hero-heart-transition.js";
 import { heroSlitTransition } from "./hero-slit-transition.js";
@@ -79,6 +80,7 @@ export const modules = [
   hoverHighlightBox,
   hoverBackgroundSwap,
   hoverLinkedIlluminate,
+  gridVideoReveal,
   flipRelocation,
   worksServicesTransition,
   depthEmerge,
