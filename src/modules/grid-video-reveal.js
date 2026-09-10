@@ -19,6 +19,24 @@ function encodeMask(cols, rows, cells, gap) {
   return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
 }
 
+function randomNearbyIndex(baseCol, baseRow, cols, rows, scatterRadius, previousIndex) {
+  const radius = Math.max(0, Math.round(scatterRadius));
+  const candidates = [];
+
+  for (let dy = -radius; dy <= radius; dy += 1) {
+    for (let dx = -radius; dx <= radius; dx += 1) {
+      const col = baseCol + dx;
+      const row = baseRow + dy;
+      if (col < 0 || col >= cols || row < 0 || row >= rows) continue;
+      const index = row * cols + col;
+      if (index !== previousIndex) candidates.push(index);
+    }
+  }
+
+  if (!candidates.length) return baseRow * cols + baseCol;
+  return candidates[Math.floor(Math.random() * candidates.length)];
+}
+
 export const gridVideoReveal = {
   name: "grid-video-reveal",
   category: "interaction",
@@ -30,11 +48,11 @@ export const gridVideoReveal = {
 
     const cols = Math.max(1, Math.round(readNumber(element, "grid-cols", 12)));
     const rows = Math.max(1, Math.round(readNumber(element, "grid-rows", 7)));
-    const radius = Math.max(0.1, readNumber(element, "grid-radius", 2.2));
-    const openDuration = Math.max(0, readNumber(element, "grid-open", 0.18));
-    const closeDuration = Math.max(0, readNumber(element, "grid-close", 0.5));
-    const falloff = Math.max(0.05, readNumber(element, "grid-falloff", 1));
-    const gap = clamp(readNumber(element, "grid-gap", 0.03), 0, 0.48);
+    const scatterRadius = Math.max(0, readNumber(element, "grid-scatter-radius", 1.5));
+    const switchDelay = Math.max(0, readNumber(element, "grid-switch-delay", 0.09));
+    const openDuration = Math.max(0, readNumber(element, "grid-open", 0.12));
+    const closeDuration = Math.max(0, readNumber(element, "grid-close", 0.22));
+    const gap = clamp(readNumber(element, "grid-gap", 0.05), 0, 0.48);
     const ease = readString(element, "grid-ease", "power2.out");
     const leaveMode = readString(element, "grid-leave", "close");
     const idleOpacity = clamp(readNumber(element, "grid-idle-opacity", 0), 0, 1);
@@ -45,6 +63,9 @@ export const gridVideoReveal = {
     const tweens = new Set();
     let destroyed = false;
     let lastMask = "";
+    let activeIndex = -1;
+    let lastBaseIndex = -1;
+    let lastSwitchTime = 0;
 
     const original = {
       maskImage: media.style.maskImage,
@@ -64,6 +85,16 @@ export const gridVideoReveal = {
     media.style.webkitMaskRepeat = "no-repeat";
     media.style.willChange = "mask-image, -webkit-mask-image";
 
+    if (media instanceof HTMLVideoElement) {
+      media.muted = true;
+      media.loop = true;
+      media.playsInline = true;
+      media.autoplay = true;
+      const play = () => media.play().catch(() => {});
+      if (media.readyState >= 2) play();
+      else media.addEventListener("canplay", play, { once: true });
+    }
+
     const render = () => {
       if (destroyed) return;
       const mask = encodeMask(cols, rows, cells, gap);
@@ -73,7 +104,9 @@ export const gridVideoReveal = {
       media.style.webkitMaskImage = mask;
     };
 
-    const tweenCell = (cell, value, duration) => {
+    const tweenCell = (index, value, duration) => {
+      if (index < 0 || index >= cells.length) return;
+      const cell = cells[index];
       gsap.killTweensOf(cell);
       const tween = gsap.to(cell, {
         value,
@@ -86,36 +119,46 @@ export const gridVideoReveal = {
       tweens.add(tween);
     };
 
-    const closeAll = (immediate = false) => {
-      const duration = immediate || reducedMotion() ? 0 : closeDuration;
-      cells.forEach((cell) => tweenCell(cell, idleOpacity, duration));
+    const closeActive = (immediate = false) => {
+      if (activeIndex < 0) return;
+      const oldIndex = activeIndex;
+      activeIndex = -1;
+      tweenCell(oldIndex, idleOpacity, immediate || reducedMotion() ? 0 : closeDuration);
     };
 
-    const revealAt = (clientX, clientY) => {
+    const activateIndex = (nextIndex) => {
+      if (nextIndex === activeIndex) return;
+      const previous = activeIndex;
+      activeIndex = nextIndex;
+      const openTime = reducedMotion() ? 0 : openDuration;
+      const closeTime = reducedMotion() ? 0 : closeDuration;
+      if (previous >= 0) tweenCell(previous, idleOpacity, closeTime);
+      tweenCell(nextIndex, maxOpacity, openTime);
+    };
+
+    const revealAt = (clientX, clientY, timestamp = performance.now()) => {
       const rect = element.getBoundingClientRect();
       if (!rect.width || !rect.height) return;
 
-      const px = clamp((clientX - rect.left) / rect.width, 0, 0.999999) * cols;
-      const py = clamp((clientY - rect.top) / rect.height, 0, 0.999999) * rows;
-      const durationOpen = reducedMotion() ? 0 : openDuration;
-      const durationClose = reducedMotion() ? 0 : closeDuration;
+      const col = clamp(Math.floor(((clientX - rect.left) / rect.width) * cols), 0, cols - 1);
+      const row = clamp(Math.floor(((clientY - rect.top) / rect.height) * rows), 0, rows - 1);
+      const baseIndex = row * cols + col;
+      const delayMs = switchDelay * 1000;
 
-      cells.forEach((cell, index) => {
-        const x = (index % cols) + 0.5;
-        const y = Math.floor(index / cols) + 0.5;
-        const distance = Math.hypot(x - px, y - py);
-        const normalized = clamp(1 - distance / radius, 0, 1);
-        const influence = Math.pow(normalized, falloff);
-        const target = idleOpacity + (maxOpacity - idleOpacity) * influence;
-        const opening = target > cell.value;
-        tweenCell(cell, target, opening ? durationOpen : durationClose);
-      });
+      if (baseIndex === lastBaseIndex && timestamp - lastSwitchTime < delayMs) return;
+      if (timestamp - lastSwitchTime < delayMs) return;
+
+      const nextIndex = randomNearbyIndex(col, row, cols, rows, scatterRadius, activeIndex);
+      lastBaseIndex = baseIndex;
+      lastSwitchTime = timestamp;
+      activateIndex(nextIndex);
     };
 
-    const onPointerMove = (event) => revealAt(event.clientX, event.clientY);
+    const onPointerMove = (event) => revealAt(event.clientX, event.clientY, event.timeStamp || performance.now());
     const onPointerLeave = () => {
+      lastBaseIndex = -1;
       if (leaveMode === "hold") return;
-      closeAll(false);
+      closeActive(false);
     };
 
     render();
