@@ -1,7 +1,14 @@
 import { readString } from "../core/config.js";
 
 const STYLE_ID = "motion-kit-character-scatter-title-styles";
-const GLITCH_CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ0123456789#$()!?"§&<>@*+-';
+const GLITCH_PAIRS = [
+  ["①", "⚀"],
+  ["②", "⚁"],
+  ["③", "⚂"],
+  ["④", "⚃"],
+  ["⑤", "⚄"],
+  ["⑥", "⚅"]
+];
 const GLITCH_WINDOW = 22;
 const UPDATE_EVERY = 8;
 const FINAL_GLITCH_COUNT = 4;
@@ -92,8 +99,9 @@ function splitCharacters(element) {
   };
 }
 
-function randomGlitchCharacter() {
-  return GLITCH_CHARS[Math.floor(Math.random() * GLITCH_CHARS.length)];
+function pairedGlitchCharacter(index) {
+  const pair = GLITCH_PAIRS[index % GLITCH_PAIRS.length];
+  return pair[Math.random() < 0.5 ? 0 : 1];
 }
 
 function updateSourceGlitch(characters, offset, intensity) {
@@ -107,7 +115,7 @@ function updateSourceGlitch(characters, offset, intensity) {
 
     if (distance < GLITCH_WINDOW) {
       const probability = intensity * Math.pow(1 - distance / GLITCH_WINDOW, 0.6);
-      span.textContent = Math.random() < probability ? randomGlitchCharacter() : original;
+      span.textContent = Math.random() < probability ? pairedGlitchCharacter(index) : original;
     } else {
       span.textContent = original;
     }
@@ -124,7 +132,7 @@ function updateFinalReveal(characters, progress) {
       span.textContent = original;
     } else if (index < cursor) {
       span.style.opacity = "1";
-      span.textContent = randomGlitchCharacter();
+      span.textContent = pairedGlitchCharacter(index);
     } else {
       span.style.opacity = "0";
       span.textContent = original;
