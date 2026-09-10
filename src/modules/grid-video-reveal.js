@@ -108,7 +108,8 @@ export const gridVideoReveal = {
       maskRepeat: media.style.maskRepeat,
       webkitMaskRepeat: media.style.webkitMaskRepeat,
       pointerEvents: media.style.pointerEvents,
-      willChange: media.style.willChange
+      willChange: media.style.willChange,
+      videoWasPaused: media instanceof HTMLVideoElement ? media.paused : null
     };
 
     media.style.pointerEvents = "none";
@@ -118,14 +119,24 @@ export const gridVideoReveal = {
     media.style.webkitMaskRepeat = "no-repeat";
     media.style.willChange = "mask-image, -webkit-mask-image";
 
+    const playVideo = () => {
+      if (!(media instanceof HTMLVideoElement)) return;
+      media.play().catch(() => {});
+    };
+
+    const pauseVideoIfIdle = () => {
+      if (!(media instanceof HTMLVideoElement)) return;
+      if (active.length) return;
+      if (cells.some((cell) => cell.value > idleOpacity + 0.002)) return;
+      media.pause();
+    };
+
     if (media instanceof HTMLVideoElement) {
       media.muted = true;
       media.loop = true;
       media.playsInline = true;
-      media.autoplay = true;
-      const play = () => media.play().catch(() => {});
-      if (media.readyState >= 2) play();
-      else media.addEventListener("canplay", play, { once: true });
+      media.autoplay = false;
+      media.pause();
     }
 
     const render = () => {
@@ -147,7 +158,10 @@ export const gridVideoReveal = {
         ease,
         overwrite: "auto",
         onUpdate: render,
-        onComplete: () => tweens.delete(tween)
+        onComplete: () => {
+          tweens.delete(tween);
+          pauseVideoIfIdle();
+        }
       });
       tweens.add(tween);
     };
@@ -160,9 +174,12 @@ export const gridVideoReveal = {
 
     const closeAll = (immediate = false) => {
       [...active].forEach((index) => closeIndex(index, immediate));
+      if (!active.length && immediate) pauseVideoIfIdle();
     };
 
     const activateIndices = (indices) => {
+      if (!indices.length) return;
+      playVideo();
       const openTime = reducedMotion() ? 0 : openDuration;
       indices.forEach((index) => {
         if (active.includes(index)) return;
@@ -225,6 +242,7 @@ export const gridVideoReveal = {
     };
 
     render();
+    pauseVideoIfIdle();
 
     const hoverEnabled = !supportsHover || supportsHover();
     if (hoverEnabled) {
@@ -247,6 +265,11 @@ export const gridVideoReveal = {
       media.style.webkitMaskRepeat = original.webkitMaskRepeat;
       media.style.pointerEvents = original.pointerEvents;
       media.style.willChange = original.willChange;
+
+      if (media instanceof HTMLVideoElement) {
+        if (original.videoWasPaused) media.pause();
+        else playVideo();
+      }
     };
   }
 };
