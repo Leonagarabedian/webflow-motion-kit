@@ -29,7 +29,7 @@ function ensureStyles(doc) {
       position: sticky;
       top: 0;
       width: 100%;
-      height: 100svh;
+      height: var(--mk-character-scatter-title-stage-height, 100svh);
       display: flex;
       align-items: center;
       overflow: clip;
@@ -182,6 +182,10 @@ export const characterScatterTitle = {
     section.style.setProperty(
       "--mk-character-scatter-title-height-mobile",
       readString(section, "motion-mobile-section-height", "180vh")
+    );
+    section.style.setProperty(
+      "--mk-character-scatter-title-stage-height",
+      readString(section, "motion-stage-height", "100svh")
     );
 
     const sourceSplits = chips.map(splitCharacters);
@@ -347,6 +351,7 @@ export const characterScatterTitle = {
       section.removeAttribute("data-mk-character-scatter-title-section");
       section.style.removeProperty("--mk-character-scatter-title-height");
       section.style.removeProperty("--mk-character-scatter-title-height-mobile");
+      section.style.removeProperty("--mk-character-scatter-title-stage-height");
       restoreNode(field, originalFieldNextSibling);
       restoreNode(title, originalTitleNextSibling);
       stage.remove();
