@@ -19,22 +19,51 @@ function encodeMask(cols, rows, cells, gap) {
   return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
 }
 
-function randomNearbyIndex(baseCol, baseRow, cols, rows, scatterRadius, previousIndex) {
-  const radius = Math.max(0, Math.round(scatterRadius));
+function areAdjacent(a, b, cols) {
+  const ax = a % cols;
+  const ay = Math.floor(a / cols);
+  const bx = b % cols;
+  const by = Math.floor(b / cols);
+  return Math.abs(ax - bx) <= 1 && Math.abs(ay - by) <= 1;
+}
+
+function pickScatteredIndices({
+  centerCol,
+  centerRow,
+  cols,
+  rows,
+  radius,
+  count,
+  blocked
+}) {
+  const r = Math.max(0, Math.round(radius));
   const candidates = [];
 
-  for (let dy = -radius; dy <= radius; dy += 1) {
-    for (let dx = -radius; dx <= radius; dx += 1) {
-      const col = baseCol + dx;
-      const row = baseRow + dy;
+  for (let dy = -r; dy <= r; dy += 1) {
+    for (let dx = -r; dx <= r; dx += 1) {
+      const col = centerCol + dx;
+      const row = centerRow + dy;
       if (col < 0 || col >= cols || row < 0 || row >= rows) continue;
       const index = row * cols + col;
-      if (index !== previousIndex) candidates.push(index);
+      if (blocked.includes(index)) continue;
+      if (blocked.some((other) => areAdjacent(index, other, cols))) continue;
+      candidates.push(index);
     }
   }
 
-  if (!candidates.length) return baseRow * cols + baseCol;
-  return candidates[Math.floor(Math.random() * candidates.length)];
+  for (let i = candidates.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+  }
+
+  const chosen = [];
+  for (const index of candidates) {
+    if (chosen.some((other) => areAdjacent(index, other, cols))) continue;
+    chosen.push(index);
+    if (chosen.length >= count) break;
+  }
+
+  return chosen;
 }
 
 export const gridVideoReveal = {
@@ -48,11 +77,15 @@ export const gridVideoReveal = {
 
     const cols = Math.max(1, Math.round(readNumber(element, "grid-cols", 12)));
     const rows = Math.max(1, Math.round(readNumber(element, "grid-rows", 7)));
-    const scatterRadius = Math.max(0, readNumber(element, "grid-scatter-radius", 1.5));
-    const switchDelay = Math.max(0, readNumber(element, "grid-switch-delay", 0.09));
-    const openDuration = Math.max(0, readNumber(element, "grid-open", 0.12));
-    const closeDuration = Math.max(0, readNumber(element, "grid-close", 0.22));
-    const gap = clamp(readNumber(element, "grid-gap", 0.05), 0, 0.48);
+    const scatterRadius = Math.max(0, readNumber(element, "grid-scatter-radius", 2.5));
+    const maxActive = Math.max(1, Math.round(readNumber(element, "grid-max-active", 5)));
+    const spawnCount = Math.max(1, Math.round(readNumber(element, "grid-spawn-count", 2)));
+    const switchDelay = Math.max(0, readNumber(element, "grid-switch-delay", 0.04));
+    const minMove = Math.max(0, readNumber(element, "grid-min-move", 14));
+    const directionLead = Math.max(0, readNumber(element, "grid-direction-lead", 1.1));
+    const openDuration = Math.max(0, readNumber(element, "grid-open", 0.14));
+    const closeDuration = Math.max(0, readNumber(element, "grid-close", 0.32));
+    const gap = clamp(readNumber(element, "grid-gap", 0.06), 0, 0.48);
     const ease = readString(element, "grid-ease", "power2.out");
     const leaveMode = readString(element, "grid-leave", "close");
     const idleOpacity = clamp(readNumber(element, "grid-idle-opacity", 0), 0, 1);
@@ -61,11 +94,11 @@ export const gridVideoReveal = {
     const cellCount = cols * rows;
     const cells = Array.from({ length: cellCount }, () => ({ value: idleOpacity }));
     const tweens = new Set();
+    const active = [];
     let destroyed = false;
     let lastMask = "";
-    let activeIndex = -1;
-    let lastBaseIndex = -1;
     let lastSwitchTime = 0;
+    let lastPointer = null;
 
     const original = {
       maskImage: media.style.maskImage,
@@ -119,46 +152,76 @@ export const gridVideoReveal = {
       tweens.add(tween);
     };
 
-    const closeActive = (immediate = false) => {
-      if (activeIndex < 0) return;
-      const oldIndex = activeIndex;
-      activeIndex = -1;
-      tweenCell(oldIndex, idleOpacity, immediate || reducedMotion() ? 0 : closeDuration);
+    const closeIndex = (index, immediate = false) => {
+      const activePosition = active.indexOf(index);
+      if (activePosition >= 0) active.splice(activePosition, 1);
+      tweenCell(index, idleOpacity, immediate || reducedMotion() ? 0 : closeDuration);
     };
 
-    const activateIndex = (nextIndex) => {
-      if (nextIndex === activeIndex) return;
-      const previous = activeIndex;
-      activeIndex = nextIndex;
+    const closeAll = (immediate = false) => {
+      [...active].forEach((index) => closeIndex(index, immediate));
+    };
+
+    const activateIndices = (indices) => {
       const openTime = reducedMotion() ? 0 : openDuration;
-      const closeTime = reducedMotion() ? 0 : closeDuration;
-      if (previous >= 0) tweenCell(previous, idleOpacity, closeTime);
-      tweenCell(nextIndex, maxOpacity, openTime);
+      indices.forEach((index) => {
+        if (active.includes(index)) return;
+        active.push(index);
+        tweenCell(index, maxOpacity, openTime);
+      });
+
+      while (active.length > maxActive) {
+        closeIndex(active[0], false);
+      }
     };
 
     const revealAt = (clientX, clientY, timestamp = performance.now()) => {
       const rect = element.getBoundingClientRect();
       if (!rect.width || !rect.height) return;
 
-      const col = clamp(Math.floor(((clientX - rect.left) / rect.width) * cols), 0, cols - 1);
-      const row = clamp(Math.floor(((clientY - rect.top) / rect.height) * rows), 0, rows - 1);
-      const baseIndex = row * cols + col;
-      const delayMs = switchDelay * 1000;
+      if (lastPointer) {
+        const movement = Math.hypot(clientX - lastPointer.x, clientY - lastPointer.y);
+        if (movement < minMove) return;
+      }
 
-      if (baseIndex === lastBaseIndex && timestamp - lastSwitchTime < delayMs) return;
+      const delayMs = switchDelay * 1000;
       if (timestamp - lastSwitchTime < delayMs) return;
 
-      const nextIndex = randomNearbyIndex(col, row, cols, rows, scatterRadius, activeIndex);
-      lastBaseIndex = baseIndex;
+      const nx = clamp((clientX - rect.left) / rect.width, 0, 0.999999);
+      const ny = clamp((clientY - rect.top) / rect.height, 0, 0.999999);
+      let leadX = 0;
+      let leadY = 0;
+
+      if (lastPointer) {
+        const dx = clientX - lastPointer.x;
+        const dy = clientY - lastPointer.y;
+        const length = Math.hypot(dx, dy) || 1;
+        leadX = (dx / length) * directionLead;
+        leadY = (dy / length) * directionLead;
+      }
+
+      const centerCol = clamp(Math.floor(nx * cols + leadX), 0, cols - 1);
+      const centerRow = clamp(Math.floor(ny * rows + leadY), 0, rows - 1);
+      const next = pickScatteredIndices({
+        centerCol,
+        centerRow,
+        cols,
+        rows,
+        radius: scatterRadius,
+        count: spawnCount,
+        blocked: active
+      });
+
+      lastPointer = { x: clientX, y: clientY };
       lastSwitchTime = timestamp;
-      activateIndex(nextIndex);
+      activateIndices(next);
     };
 
     const onPointerMove = (event) => revealAt(event.clientX, event.clientY, event.timeStamp || performance.now());
     const onPointerLeave = () => {
-      lastBaseIndex = -1;
+      lastPointer = null;
       if (leaveMode === "hold") return;
-      closeActive(false);
+      closeAll(false);
     };
 
     render();
