@@ -1,4 +1,4 @@
-import { readNumber, readString } from "../core/config.js";
+import { readBoolean, readNumber, readString, resolveTrigger } from "../core/config.js";
 
 const STYLE_ID = "motion-kit-brand-load-styles";
 
@@ -85,9 +85,19 @@ export const brandLoad = {
       `${readNumber(element, "motion-perspective", 400)}px`
     );
 
-    const timeline = gsap.timeline({
-      delay: readNumber(element, "motion-delay", 0.15)
-    });
+    const triggerOnView = readBoolean(element, "motion-on-view", false);
+    const timeline = gsap.timeline(
+      triggerOnView
+        ? {
+            scrollTrigger: {
+              trigger: resolveTrigger(element),
+              start: readString(element, "motion-start", "top 88%"),
+              once: readBoolean(element, "motion-once", true)
+            }
+          }
+        : { delay: readNumber(element, "motion-delay", 0.15) }
+    );
+
     timeline.fromTo(
       wrapped,
       { rotationY: readNumber(element, "motion-rotation-y", -360) },
