@@ -1,4 +1,4 @@
-import { readNumber, readString, resolveTrigger } from "../core/config.js";
+import { readBoolean, readNumber, readString, resolveTrigger } from "../core/config.js";
 
 export const blurReveal = {
   name: "blur-reveal",
@@ -12,12 +12,32 @@ export const blurReveal = {
 
     const unit = readString(element, "motion-split", "lines");
     const type = unit === "chars" ? "words,chars" : unit;
+    const onLoad = readBoolean(element, "motion-on-load", false);
     const split = SplitText.create(element, {
       aria: "auto",
-      autoSplit: unit === "lines",
+      autoSplit: unit === "lines" && !onLoad,
       type,
       onSplit(self) {
         const units = unit === "chars" ? self.chars : unit === "words" ? self.words : self.lines;
+        const toVars = {
+          autoAlpha: 1,
+          duration: readNumber(element, "motion-duration", 1),
+          ease: readString(element, "motion-ease", "power3.out"),
+          filter: "blur(0px)",
+          stagger: readNumber(element, "motion-stagger", 0.06),
+          yPercent: 0
+        };
+
+        if (onLoad) {
+          toVars.delay = readNumber(element, "motion-delay", 0.15);
+        } else {
+          toVars.scrollTrigger = {
+            once: true,
+            start: readString(element, "motion-start", "top 85%"),
+            trigger: resolveTrigger(element)
+          };
+        }
+
         return gsap.fromTo(
           units,
           {
@@ -25,19 +45,7 @@ export const blurReveal = {
             filter: `blur(${readNumber(element, "motion-blur", 12)}px)`,
             yPercent: readNumber(element, "motion-y", 35)
           },
-          {
-            autoAlpha: 1,
-            duration: readNumber(element, "motion-duration", 1),
-            ease: readString(element, "motion-ease", "power3.out"),
-            filter: "blur(0px)",
-            stagger: readNumber(element, "motion-stagger", 0.06),
-            yPercent: 0,
-            scrollTrigger: {
-              once: true,
-              start: readString(element, "motion-start", "top 85%"),
-              trigger: resolveTrigger(element)
-            }
-          }
+          toVars
         );
       }
     });
