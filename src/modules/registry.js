@@ -11,6 +11,7 @@ import { depthEmerge } from "./depth-emerge.js";
 import { elementBlurReveal } from "./element-blur-reveal.js";
 import { elementLayoutReturn } from "./element-layout-return.js";
 import { flipRelocation } from "./flip-relocation.js";
+import { footerReveal } from "./footer-reveal.js";
 import { gridVideoReveal } from "./grid-video-reveal.js";
 import { heroFrameTransition } from "./hero-frame-transition.js";
 import { heroHeartTransition } from "./hero-heart-transition.js";
@@ -70,6 +71,7 @@ export const modules = [
   linkSwap,
   navFlip,
   brandLoad,
+  footerReveal,
   responsiveMenu,
   loaderComposition,
   pageTransition,
