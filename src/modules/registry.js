@@ -29,6 +29,7 @@ import { magnetic } from "./magnetic.js";
 import { morphNarrative } from "./morph-narrative.js";
 import { navFlip } from "./nav-flip.js";
 import { pageTransition } from "./page-transition.js";
+import { pairedTagIntro } from "./paired-tag-intro.js";
 import { parallax } from "./parallax.js";
 import { pinOverlapNext } from "./pin-overlap-next.js";
 import { pinnedMedia } from "./pinned-media.js";
@@ -75,6 +76,7 @@ export const modules = [
   responsiveMenu,
   loaderComposition,
   pageTransition,
+  pairedTagIntro,
   viewSwitch,
   loopingLabels,
   stackedCards,
