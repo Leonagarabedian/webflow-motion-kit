@@ -12,6 +12,10 @@ const VISIBLE_PROPS = [
   "z-index"
 ];
 
+function clamp(value, min = 0, max = 1) {
+  return Math.min(max, Math.max(min, value));
+}
+
 function forceVisible(element) {
   element.style.setProperty("position", "relative", "important");
   element.style.setProperty("width", "auto", "important");
@@ -89,9 +93,61 @@ export const characterConverge = {
       }
     });
 
+    const passTriggerSelector = readString(element, "motion-pass-trigger", "");
+    let passTimeline = null;
+
+    if (passTriggerSelector) {
+      const passTrigger = element.ownerDocument.querySelector(passTriggerSelector);
+
+      if (passTrigger) {
+        const passStart = readString(element, "motion-pass-start", "bottom 55%");
+        const passEnd = readString(element, "motion-pass-end", "bottom -15%");
+        const passPeak = clamp(readNumber(element, "motion-pass-peak", 0.5), 0.05, 0.95);
+        const passTarget = clamp(readNumber(element, "motion-pass-center-x", 0.5), 0, 1);
+        const passScrub = readNumber(element, "motion-pass-scrub", 1);
+        const passEase = readString(element, "motion-pass-ease", "none");
+
+        const centerDelta = () => {
+          const rect = element.getBoundingClientRect();
+          const currentX = Number(gsap.getProperty(element, "x")) || 0;
+          const naturalCenter = rect.left - currentX + rect.width / 2;
+          return window.innerWidth * passTarget - naturalCenter;
+        };
+
+        passTimeline = gsap.timeline({
+          scrollTrigger: {
+            trigger: passTrigger,
+            start: passStart,
+            end: passEnd,
+            scrub: passScrub,
+            invalidateOnRefresh: true
+          }
+        });
+
+        passTimeline
+          .fromTo(
+            element,
+            { x: 0 },
+            {
+              x: centerDelta,
+              ease: passEase,
+              duration: passPeak
+            }
+          )
+          .to(element, {
+            x: 0,
+            ease: passEase,
+            duration: 1 - passPeak
+          });
+      }
+    }
+
     return () => {
+      passTimeline?.scrollTrigger?.kill();
+      passTimeline?.kill();
       tween.scrollTrigger?.kill();
       tween.kill();
+      gsap.set(element, { clearProps: "transform" });
       gsap.set(chars, { clearProps: "transform,opacity,visibility,willChange" });
       split.revert();
       element.style.willChange = "";
