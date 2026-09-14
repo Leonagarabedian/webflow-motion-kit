@@ -5,11 +5,27 @@ import {
   resolveTrigger
 } from "../core/config.js";
 
+function buildLineRevealStages(count, { duration, stagger, yPercent, yPx, useYPx, fade }) {
+  return Array.from({ length: Math.max(1, count) }, (_, index) => {
+    const start = index * stagger;
+    return {
+      name: `line-reveal-${index + 1}`,
+      start,
+      end: start + duration,
+      duration,
+      yFrom: useYPx ? yPx : yPercent,
+      yTo: 0,
+      opacityFrom: fade ? 0 : 1,
+      opacityTo: 1
+    };
+  });
+}
+
 export const lineReveal = {
   name: "line-reveal",
   category: "primitive",
   selector: '[data-motion~="line-reveal"]',
-  mount(element, { gsap, SplitText, reducedMotion }) {
+  mount(element, { gsap, SplitText, reducedMotion, scrollAlignment }) {
     if (reducedMotion()) {
       gsap.set(element, { autoAlpha: 1 });
       return;
@@ -25,6 +41,7 @@ export const lineReveal = {
     const start = readString(element, "motion-start", "top 85%");
     const ease = readString(element, "motion-ease", "power4.out");
     const once = readBoolean(element, "motion-once", true);
+    const mode = readString(element, "motion-alignment", "legacy");
 
     element.style.willChange = "transform, opacity";
 
@@ -37,6 +54,35 @@ export const lineReveal = {
         const fromState = useYPx ? { y: yPx } : { yPercent };
         if (fade) fromState.autoAlpha = 0;
 
+        const scrollTrigger = mode === "auto"
+          ? {
+              ...scrollAlignment.build(element, {
+                mode: "auto",
+                id: readString(element, "motion-alignment-id", "line-reveal"),
+                trigger,
+                profile: "reveal",
+                stages: buildLineRevealStages(self.lines.length, {
+                  duration,
+                  stagger,
+                  yPercent,
+                  yPx,
+                  useYPx,
+                  fade
+                }),
+                scrub: false,
+                invalidateOnRefresh: true
+              }).scrollTrigger,
+              once,
+              scrub: false,
+              ...(!once && { toggleActions: "play none none reverse" })
+            }
+          : {
+              trigger,
+              start,
+              once,
+              ...(!once && { toggleActions: "play none none reverse" })
+            };
+
         return gsap.fromTo(
           self.lines,
           fromState,
@@ -47,12 +93,7 @@ export const lineReveal = {
             y: 0,
             yPercent: 0,
             ...(fade ? { autoAlpha: 1 } : {}),
-            scrollTrigger: {
-              trigger,
-              start,
-              once,
-              ...(!once && { toggleActions: "play none none reverse" })
-            }
+            scrollTrigger
           }
         );
       }
