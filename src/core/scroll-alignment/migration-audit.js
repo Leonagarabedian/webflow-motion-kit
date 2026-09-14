@@ -13,33 +13,38 @@ const MEDIUM_AUTO = new Set([
   "scroll-highlight",
   "parallax",
   "pinned-media",
-  "pinned-steps"
+  "pinned-steps",
+  "character-converge"
 ]);
 
-const SPECIALIZED_READY = new Set([
-  "scroll-synced-gallery",
-  "element-blur-reveal",
-  "scroll-travel",
-  "synced-fade",
-  "element-layout-return"
+const SPECIALIZED_READY = new Map([
+  ["scroll-synced-gallery", "crossing-line"],
+  ["element-blur-reveal", "synced-progress"],
+  ["scroll-travel", "measured-travel"],
+  ["liquid-fill", "dynamic-span"],
+  ["synced-fade", "synced-progress"],
+  ["element-layout-return", "synced-progress"],
+  ["depth-emerge", "synced-progress"]
 ]);
 
-const SPECIAL_GEOMETRY = new Set([
-  "liquid-fill"
+const CUSTOM_READY = new Map([
+  ["hero-heart-transition", "custom-pinned-span"],
+  ["hero-frame-transition", "custom-pinned-span"],
+  ["hero-slit-transition", "custom-pinned-span"],
+  ["branda-spatial-works", "custom-spatial-span"],
+  ["branda-spatial-pin-layout", "custom-spatial-layout"],
+  ["branda-spatial-shell", "custom-spatial-layout"],
+  ["character-scatter-title", "velocity-timeline"],
+  ["spatial-loop", "custom-spatial-loop"],
+  ["section-handoff", "custom-handoff"],
+  ["pin-overlap-next", "custom-handoff"]
 ]);
 
 const COMPLEX_REVIEW = new Set([
   "stacked-cards",
   "stacked-image-hover",
-  "hero-frame-transition",
-  "hero-heart-transition",
-  "branda-spatial-works",
-  "branda-spatial-pin-layout",
-  "depth-emerge",
-  "character-scatter-title",
-  "character-converge",
-  "morph-narrative",
-  "grid-video-reveal"
+  "character-scatter-title-legacy",
+  "morph-narrative"
 ]);
 
 const NON_SCROLL = new Set([
@@ -52,8 +57,15 @@ const NON_SCROLL = new Set([
   "loader-composition",
   "pinned-media-return",
   "hover-highlight-box",
+  "hover-background-swap",
+  "hover-linked-illuminate",
   "accordion-media",
-  "works-services-transition"
+  "works-services-transition",
+  "grid-video-reveal",
+  "brand-load",
+  "paired-tag-intro",
+  "nav-flip",
+  "theme-switch"
 ]);
 
 function motionNames(element) {
@@ -64,13 +76,13 @@ function motionNames(element) {
 }
 
 function classify(name) {
-  if (SAFE_AUTO.has(name)) return "safe-auto";
-  if (MEDIUM_AUTO.has(name)) return "medium-auto";
-  if (SPECIALIZED_READY.has(name)) return "specialized-ready";
-  if (SPECIAL_GEOMETRY.has(name)) return "special-geometry";
-  if (COMPLEX_REVIEW.has(name)) return "complex-review";
-  if (NON_SCROLL.has(name)) return "non-scroll";
-  return "unclassified";
+  if (SAFE_AUTO.has(name)) return { status: "safe-auto", strategy: "auto" };
+  if (MEDIUM_AUTO.has(name)) return { status: "medium-auto", strategy: "auto" };
+  if (SPECIALIZED_READY.has(name)) return { status: "specialized-ready", strategy: SPECIALIZED_READY.get(name) };
+  if (CUSTOM_READY.has(name)) return { status: "custom-ready", strategy: CUSTOM_READY.get(name) };
+  if (COMPLEX_REVIEW.has(name)) return { status: "complex-review", strategy: "review" };
+  if (NON_SCROLL.has(name)) return { status: "non-scroll", strategy: "non-scroll" };
+  return { status: "unclassified", strategy: "unclassified" };
 }
 
 export function auditScrollAlignment(root = document) {
@@ -79,7 +91,7 @@ export function auditScrollAlignment(root = document) {
 
   elements.forEach((element, elementIndex) => {
     motionNames(element).forEach((name) => {
-      const status = classify(name);
+      const { status, strategy } = classify(name);
       const alignment = element.getAttribute("data-motion-alignment") || "legacy";
       const minWidth = element.getAttribute("data-motion-min-width");
       const trigger = element.getAttribute("data-motion-trigger");
@@ -88,6 +100,7 @@ export function auditScrollAlignment(root = document) {
         elementIndex,
         name,
         status,
+        strategy,
         alignment,
         minWidth: minWidth == null ? null : Number(minWidth),
         trigger: trigger || null,
@@ -96,11 +109,11 @@ export function auditScrollAlignment(root = document) {
         reason:
           status === "safe-auto" ? "standard viewport-owned trigger" :
           status === "medium-auto" ? "shared planner supported; enable after page-level visual review" :
-          status === "specialized-ready" ? "shared specialized geometry strategy preserves its non-generic scroll contract" :
-          status === "special-geometry" ? "owns specialized geometry not yet moved to a shared strategy" :
-          status === "complex-review" ? "spatial, multi-stage, or shared transform ownership" :
-          status === "non-scroll" ? "not controlled by viewport alignment or uses velocity/hover/input/layout composition instead" :
-          "not yet classified for automatic migration"
+          status === "specialized-ready" ? `shared ${strategy} geometry preserves the module's specialized scroll contract` :
+          status === "custom-ready" ? `module intentionally owns a ${strategy} contract instead of generic auto alignment` :
+          status === "complex-review" ? "complex module still requires an explicit geometry contract before reuse" :
+          status === "non-scroll" ? "interaction, velocity, layout, load, or input-driven behavior is outside viewport alignment" :
+          "not yet classified for the motion system"
       });
     });
   });
@@ -117,15 +130,17 @@ export function auditScrollAlignment(root = document) {
     safeToEnable: entries.filter((entry) => entry.status === "safe-auto" && entry.alignment !== "auto"),
     mediumToReview: entries.filter((entry) => entry.status === "medium-auto" && entry.alignment !== "auto"),
     specializedReady: entries.filter((entry) => entry.status === "specialized-ready"),
-    protected: entries.filter((entry) => entry.status === "special-geometry" || entry.status === "complex-review")
+    customReady: entries.filter((entry) => entry.status === "custom-ready"),
+    protected: entries.filter((entry) => entry.status === "complex-review"),
+    unclassified: entries.filter((entry) => entry.status === "unclassified")
   };
 }
 
 export const migrationAuditPolicy = Object.freeze({
   safeAuto: [...SAFE_AUTO],
   mediumAuto: [...MEDIUM_AUTO],
-  specializedReady: [...SPECIALIZED_READY],
-  specialGeometry: [...SPECIAL_GEOMETRY],
+  specializedReady: Object.fromEntries(SPECIALIZED_READY),
+  customReady: Object.fromEntries(CUSTOM_READY),
   complexReview: [...COMPLEX_REVIEW],
   nonScroll: [...NON_SCROLL]
 });
