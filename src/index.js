@@ -8,6 +8,7 @@ import {
 import { createRuntime } from "./core/runtime.js";
 import { createServices } from "./core/services.js";
 import { motionTokens } from "./core/tokens.js";
+import { auditScrollAlignment, migrationAuditPolicy } from "./core/scroll-alignment/migration-audit.js";
 import { modules } from "./modules/registry.js";
 import { statementCompression } from "./modules/statement-compression.js";
 
@@ -44,6 +45,8 @@ const api = {
   destroy,
   init,
   alignment: services.scrollAlignment,
+  migrationAudit: (root = document) => auditScrollAlignment(root),
+  migrationAuditPolicy,
   moduleInventory: allModules.map(({ category, name }) => ({ category, name })),
   modules: allModules.map(({ name }) => name),
   pluginInventory: Object.keys(plugins),
