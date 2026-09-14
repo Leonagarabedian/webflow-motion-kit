@@ -1,4 +1,9 @@
 import { readNumber, readString } from "../core/config.js";
+import {
+  createCrossingLineTriggers,
+  crossingLineProgress,
+  findNearestCrossingIndex
+} from "../core/scroll-alignment/specialized-geometry.js";
 
 function restoreAttribute(element, name, value) {
   if (!element) return;
@@ -66,9 +71,7 @@ export const scrollSyncedGallery = {
       const trigger = triggers[index];
       if (!inner || !trigger || reducedMotion()) return;
 
-      const rect = trigger.getBoundingClientRect();
-      const activationY = window.innerHeight * (activation / 100);
-      const progress = Math.max(0, Math.min(1, (activationY - rect.top) / Math.max(1, rect.height)));
+      const progress = crossingLineProgress(trigger, activation);
       const scale = mediaScaleFrom + (mediaScaleTo - mediaScaleFrom) * progress;
       gsap.set(inner, { scale });
     };
@@ -140,33 +143,20 @@ export const scrollSyncedGallery = {
       });
       apply(0, false);
 
-      const line = `${activation}%`;
-      const instances = triggers.slice(0, count).map((trigger, index) =>
-        ScrollTrigger.create({
-          trigger,
-          start: `top ${line}`,
-          end: `bottom ${line}`,
-          onEnter: () => apply(index),
-          onEnterBack: () => apply(index),
-          onUpdate: () => {
-            if (index === activeIndex) updateMediaScale(index);
-          }
-        })
-      );
+      const activeTriggers = triggers.slice(0, count);
+      const instances = createCrossingLineTriggers({
+        ScrollTrigger,
+        triggers: activeTriggers,
+        activation,
+        onEnter: (index) => apply(index),
+        onEnterBack: (index) => apply(index),
+        onUpdate: (index) => {
+          if (index === activeIndex) updateMediaScale(index);
+        }
+      });
 
       const refreshActive = () => {
-        const activationY = window.innerHeight * (activation / 100);
-        let bestIndex = 0;
-        let bestDistance = Infinity;
-        triggers.slice(0, count).forEach((trigger, index) => {
-          const rect = trigger.getBoundingClientRect();
-          const inside = rect.top <= activationY && rect.bottom >= activationY;
-          const distance = inside ? 0 : Math.min(Math.abs(rect.top - activationY), Math.abs(rect.bottom - activationY));
-          if (distance < bestDistance) {
-            bestDistance = distance;
-            bestIndex = index;
-          }
-        });
+        const bestIndex = findNearestCrossingIndex(activeTriggers, activation);
         apply(bestIndex, false);
         updateMediaScale(bestIndex);
       };
