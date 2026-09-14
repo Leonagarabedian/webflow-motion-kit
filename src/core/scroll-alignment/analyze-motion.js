@@ -17,26 +17,33 @@ function absDelta(a, b, fallback = 0) {
   return Math.abs(second - first);
 }
 
+function optionalDelta(from, to, fallbackFrom, fallbackTo) {
+  const hasFrom = from !== undefined && from !== null;
+  const hasTo = to !== undefined && to !== null;
+  if (!hasFrom && !hasTo) return 0;
+  return absDelta(hasFrom ? from : fallbackFrom, hasTo ? to : fallbackTo);
+}
+
 function normalizeStage(stage = {}) {
   const duration = Math.max(0, finite(stage.duration, 0));
   const start = Math.max(0, finite(stage.start, 0));
   const end = Math.max(start, finite(stage.end, start + duration));
   const travel = Math.hypot(
-    absDelta(stage.xFrom ?? stage.x, stage.xTo ?? 0),
-    absDelta(stage.yFrom ?? stage.y, stage.yTo ?? 0)
+    optionalDelta(stage.xFrom ?? stage.x, stage.xTo, 0, 0),
+    optionalDelta(stage.yFrom ?? stage.y, stage.yTo, 0, 0)
   );
   const scaleDelta = Math.max(
-    absDelta(stage.scaleFrom ?? stage.scale, stage.scaleTo ?? 1),
-    absDelta(stage.scaleXFrom ?? stage.scaleX, stage.scaleXTo ?? 1),
-    absDelta(stage.scaleYFrom ?? stage.scaleY, stage.scaleYTo ?? 1)
+    optionalDelta(stage.scaleFrom ?? stage.scale, stage.scaleTo, 1, 1),
+    optionalDelta(stage.scaleXFrom ?? stage.scaleX, stage.scaleXTo, 1, 1),
+    optionalDelta(stage.scaleYFrom ?? stage.scaleY, stage.scaleYTo, 1, 1)
   );
-  const blurDelta = absDelta(stage.blurFrom ?? stage.blur, stage.blurTo ?? 0);
-  const opacityDelta = absDelta(stage.opacityFrom ?? stage.opacity, stage.opacityTo ?? 1);
+  const blurDelta = optionalDelta(stage.blurFrom ?? stage.blur, stage.blurTo, 0, 0);
+  const opacityDelta = optionalDelta(stage.opacityFrom ?? stage.opacity, stage.opacityTo, 1, 1);
   const rotationDelta = Math.max(
-    absDelta(stage.rotationFrom ?? stage.rotation, stage.rotationTo ?? 0),
-    absDelta(stage.rotateFrom ?? stage.rotate, stage.rotateTo ?? 0)
+    optionalDelta(stage.rotationFrom ?? stage.rotation, stage.rotationTo, 0, 0),
+    optionalDelta(stage.rotateFrom ?? stage.rotate, stage.rotateTo, 0, 0)
   );
-  const trackingDelta = absDelta(stage.letterSpacingFrom ?? stage.letterSpacing, stage.letterSpacingTo ?? 0);
+  const trackingDelta = optionalDelta(stage.letterSpacingFrom ?? stage.letterSpacing, stage.letterSpacingTo, 0, 0);
 
   return {
     ...stage,
