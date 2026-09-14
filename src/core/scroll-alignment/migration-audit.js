@@ -4,6 +4,7 @@ const SAFE_AUTO = new Set([
   "text-reveal",
   "image-clip",
   "svg-reveal",
+  "scramble-text",
   "brand-field-activate",
   "statement-compression"
 ]);
