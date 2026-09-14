@@ -1,3 +1,13 @@
+export const SCROLL_GEOMETRY_STRATEGIES = Object.freeze({
+  AUTO: "auto",
+  CROSSING_LINE: "crossing-line",
+  SYNCED_PROGRESS: "synced-progress",
+  MEASURED_TRAVEL: "measured-travel",
+  DYNAMIC_SPAN: "dynamic-span",
+  PINNED_AUTO: "pinned-auto",
+  NON_SCROLL: "non-scroll"
+});
+
 export function clamp01(value) {
   return Math.min(1, Math.max(0, value));
 }
@@ -85,4 +95,47 @@ export function measuredTravelDistance({
     0,
     containerRect.bottom - paddingBottom - bottomOffset - elementRect.bottom
   ) * direction;
+}
+
+export function buildDynamicSpanTrigger({
+  id,
+  trigger,
+  start = "top top",
+  end,
+  endTrigger = null,
+  scrub = 1,
+  pin = false,
+  pinSpacing,
+  anticipatePin,
+  invalidateOnRefresh = true,
+  markers = false,
+  onUpdate,
+  onEnter,
+  onLeave,
+  onEnterBack,
+  onLeaveBack
+}) {
+  const config = {
+    id,
+    trigger,
+    start,
+    end,
+    scrub,
+    pin,
+    invalidateOnRefresh,
+    markers,
+    onUpdate,
+    onEnter,
+    onLeave,
+    onEnterBack,
+    onLeaveBack
+  };
+
+  if (endTrigger) config.endTrigger = endTrigger;
+  if (pin) {
+    if (pinSpacing !== undefined) config.pinSpacing = pinSpacing;
+    if (anticipatePin !== undefined) config.anticipatePin = anticipatePin;
+  }
+
+  return config;
 }
