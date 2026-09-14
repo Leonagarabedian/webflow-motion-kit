@@ -1,4 +1,5 @@
 import { readNumber, readString } from "../core/config.js";
+import { clamp01, syncedProgress } from "../core/scroll-alignment/specialized-geometry.js";
 
 const DEFAULTS = Object.freeze({
   scaleFrom: 0.68,
@@ -54,7 +55,6 @@ export const depthEmerge = {
     placeholder.setAttribute("data-depth-emerge-placeholder", "");
 
     const computed = window.getComputedStyle(element);
-    // Keep the placeholder fluid so its grid cell follows responsive column changes.
     placeholder.style.width = "100%";
     placeholder.style.height = `${lockedHeight}px`;
     placeholder.style.minWidth = "0";
@@ -83,11 +83,10 @@ export const depthEmerge = {
     const end = readString(element, "motion-end", DEFAULTS.end);
     const scrub = readNumber(element, "motion-scrub", DEFAULTS.scrub);
     const syncTriggerId = readString(element, "motion-sync-trigger-id", "");
-    const progressStart = clamp(readNumber(element, "motion-progress-start", DEFAULTS.progressStart));
-    const progressEnd = clamp(
-      readNumber(element, "motion-progress-end", DEFAULTS.progressEnd),
+    const progressStart = clamp01(readNumber(element, "motion-progress-start", DEFAULTS.progressStart));
+    const progressEnd = Math.max(
       progressStart + 0.0001,
-      1
+      clamp01(readNumber(element, "motion-progress-end", DEFAULTS.progressEnd))
     );
 
     const syncHomeMetrics = () => {
@@ -96,7 +95,6 @@ export const depthEmerge = {
       const homeRect = placeholder.getBoundingClientRect();
       const nextWidth = homeRect.width || lockedWidth || originalRect.width;
 
-      // Measure the staged element at the width its real responsive grid cell now has.
       if (element.parentElement === stage) {
         gsap.set(element, {
           width: `${nextWidth}px`,
@@ -198,9 +196,7 @@ export const depthEmerge = {
         gsap.set(element, { autoAlpha: 0 });
         return;
       }
-
-      const p = clamp((rawProgress - progressStart) / (progressEnd - progressStart));
-      tween.progress(p);
+      tween.progress(syncedProgress(rawProgress, progressStart, progressEnd));
     };
 
     const handleResize = () => {
