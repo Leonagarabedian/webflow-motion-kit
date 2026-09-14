@@ -1,4 +1,4 @@
-import { resolveBreakpointConfig } from "./breakpoints.js";
+import { getActiveBreakpoint, resolveBreakpointConfig } from "./breakpoints.js";
 import { createAlignmentDiagnostics } from "./diagnostics.js";
 import {
   computeAlignedStart,
@@ -10,15 +10,18 @@ import {
   resolvePinTarget,
   warnOnNestedPin
 } from "./pin.js";
+import { planScrollAlignment } from "./planner.js";
+import { analyzeMotion } from "./analyze-motion.js";
 import { createAlignmentRefreshController } from "./refresh.js";
 import { computeAlignedEnd, resolveSpan } from "./span.js";
 import { createAlignedTimeline } from "./timeline.js";
 import { buildLegacyTriggerConfig, resolveAlignmentTrigger } from "./trigger.js";
 
-export const SCROLL_ALIGNMENT_VERSION = "1.0.0";
+export const SCROLL_ALIGNMENT_VERSION = "1.1.0";
 export const SCROLL_ALIGNMENT_MODES = Object.freeze({
   LEGACY: "legacy",
-  ALIGNED: "aligned"
+  ALIGNED: "aligned",
+  AUTO: "auto"
 });
 
 function makeGeometryContext(trigger, win = window) {
@@ -59,9 +62,10 @@ export function createScrollAlignment({
       };
     }
 
-    const { breakpoint, config } = resolveBreakpointConfig(input);
+    const resolved = resolveBreakpointConfig(input);
+    const config = resolved.config;
     if (config.enabled === false) {
-      return { mode, enabled: false, breakpoint, trigger: root, scrollTrigger: null, timeline: null };
+      return { mode, enabled: false, breakpoint: resolved.breakpoint, trigger: root, scrollTrigger: null, timeline: null };
     }
 
     const trigger = resolveAlignmentTrigger(root, config.trigger || "self");
@@ -69,20 +73,40 @@ export function createScrollAlignment({
     const pin = resolvePinTarget(root, pinConfig);
     const id = config.id || null;
 
-    const start = () => computeAlignedStart({
-      trigger,
-      anchor: config.anchor || "top",
-      viewport: config.viewport ?? 0.7,
-      offset: config.offset ?? 0,
-      headerOffset: config.headerOffset ?? 0
-    });
+    const getPlan = () => {
+      if (mode !== SCROLL_ALIGNMENT_MODES.AUTO) return null;
+      const geometry = makeGeometryContext(trigger);
+      return planScrollAlignment({
+        profile: config.profile || "editorial",
+        breakpoint: getActiveBreakpoint(),
+        geometry,
+        stages: config.stages || [],
+        timeline: config.motionTimeline || null,
+        pinned: Boolean(pin),
+        emphasis: config.emphasis ?? 1,
+        scrub: config.scrub !== false,
+        overrides: config.overrides || {}
+      });
+    };
+
+    const start = () => {
+      const plan = getPlan();
+      return computeAlignedStart({
+        trigger,
+        anchor: plan?.anchor || config.anchor || "top",
+        viewport: plan?.viewport ?? config.viewport ?? 0.7,
+        offset: config.offset ?? 0,
+        headerOffset: config.headerOffset ?? 0
+      });
+    };
 
     const end = () => {
       const startValue = start();
       const context = makeGeometryContext(trigger);
+      const plan = getPlan();
       return computeAlignedEnd({
         start: startValue,
-        span: config.span ?? "70vh",
+        span: plan?.span ?? config.span ?? "70vh",
         context
       });
     };
@@ -92,7 +116,9 @@ export function createScrollAlignment({
       trigger,
       start,
       end,
-      scrub: config.scrub ?? 0.85,
+      scrub: mode === SCROLL_ALIGNMENT_MODES.AUTO
+        ? (() => getPlan()?.scrub ?? config.scrub ?? 0.85)()
+        : (config.scrub ?? 0.85),
       invalidateOnRefresh: config.invalidateOnRefresh !== false,
       markers: config.markers === true,
       pin: pin || false,
@@ -100,20 +126,27 @@ export function createScrollAlignment({
       anticipatePin: pin ? pinConfig.anticipate : undefined,
       onRefresh(self) {
         const context = makeGeometryContext(trigger);
+        const plan = getPlan();
+        const activeBreakpoint = mode === SCROLL_ALIGNMENT_MODES.AUTO ? getActiveBreakpoint() : resolved.breakpoint;
+        const activeSpan = plan?.span ?? config.span ?? "70vh";
         diagnostics.record(id || self?.vars?.id || "anonymous", {
           mode,
-          breakpoint,
+          breakpoint: activeBreakpoint,
           trigger,
-          anchor: config.anchor || "top",
-          viewport: config.viewport ?? 0.7,
-          span: config.span ?? "70vh",
-          spanPx: resolveSpan(config.span ?? "70vh", context),
-          start: self?.start,
-          end: self?.end,
+          anchor: plan?.anchor || config.anchor || "top",
+          viewport: plan?.viewport ?? config.viewport ?? 0.7,
+          span: activeSpan,
+          spanPx: plan?.spanPx ?? resolveSpan(activeSpan, context),
+          scrub: plan?.scrub ?? config.scrub ?? 0.85,
           pin: Boolean(pin),
-          smoother: Boolean(getScroller?.())
+          smoother: Boolean(getScroller?.()),
+          planner: plan ? {
+            profile: plan.profile,
+            facts: plan.facts,
+            reasoning: plan.reasoning
+          } : null
         });
-        config.onRefresh?.(self);
+        config.onRefresh?.(self, plan);
       },
       onUpdate: config.onUpdate,
       onEnter: config.onEnter,
@@ -127,11 +160,12 @@ export function createScrollAlignment({
     return {
       mode,
       enabled: true,
-      breakpoint,
+      breakpoint: resolved.breakpoint,
       trigger,
       pin,
       scrollTrigger,
       measure: () => makeGeometryContext(trigger),
+      plan: getPlan,
       timeline: (timelineConfig = {}) => createAlignedTimeline(gsap, scrollTrigger, timelineConfig),
       diagnostics: () => diagnostics.get(id || "anonymous")
     };
@@ -141,6 +175,8 @@ export function createScrollAlignment({
     version: SCROLL_ALIGNMENT_VERSION,
     modes: SCROLL_ALIGNMENT_MODES,
     build,
+    plan: planScrollAlignment,
+    analyze: analyzeMotion,
     diagnostics,
     refresh,
     getScroller
@@ -148,6 +184,8 @@ export function createScrollAlignment({
 }
 
 export {
+  analyzeMotion,
+  planScrollAlignment,
   computeAlignedStart,
   resolveSpan,
   resolveAlignmentTrigger,
