@@ -1,4 +1,5 @@
 import { readNumber, readString } from "../core/config.js";
+import { clamp01, syncedProgress } from "../core/scroll-alignment/specialized-geometry.js";
 
 const DEFAULTS = Object.freeze({
   start: "top 55%",
@@ -10,10 +11,6 @@ const DEFAULTS = Object.freeze({
   axis: "both",
   release: "pin-end"
 });
-
-function clamp(value, min = 0, max = 1) {
-  return Math.min(max, Math.max(min, value));
-}
 
 export const elementLayoutReturn = {
   name: "element-layout-return",
@@ -34,13 +31,12 @@ export const elementLayoutReturn = {
     const ease = readString(element, "motion-layout-return-ease", DEFAULTS.ease);
     const axis = readString(element, "motion-layout-return-axis", DEFAULTS.axis);
     const release = readString(element, "motion-layout-return-release", DEFAULTS.release);
-    const progressStart = clamp(
+    const progressStart = clamp01(
       readNumber(element, "motion-layout-return-progress-start", DEFAULTS.progressStart)
     );
-    const progressEnd = clamp(
-      readNumber(element, "motion-layout-return-progress-end", DEFAULTS.progressEnd),
+    const progressEnd = Math.max(
       progressStart + 0.0001,
-      1
+      clamp01(readNumber(element, "motion-layout-return-progress-end", DEFAULTS.progressEnd))
     );
 
     let destroyed = false;
@@ -76,9 +72,6 @@ export const elementLayoutReturn = {
         clearProps: "x,y,left,top,position,margin,pointerEvents,willChange,zIndex,width,height,filter,transform"
       });
 
-      // Once the real intro is back in its CSS Grid cell, the placeholder must
-      // stop participating in layout. Leaving it visible creates an extra grid
-      // item and pushes the Services list into the next row/left column.
       hidePlaceholder();
       atHome = true;
     };
@@ -104,7 +97,7 @@ export const elementLayoutReturn = {
     const applyStageProgress = (progress) => {
       if (destroyed || !element.isConnected || !home.placeholder?.isConnected) return;
 
-      const p = clamp(progress);
+      const p = clamp01(progress);
       if (atHome || element.parentElement !== home.stage) ensureStage();
 
       const delta = getStableDelta();
@@ -125,7 +118,7 @@ export const elementLayoutReturn = {
         syncTrigger = syncTrigger || ScrollTrigger.getById(syncTriggerId);
 
         if (syncTrigger) {
-          const p = clamp((syncTrigger.progress - progressStart) / (progressEnd - progressStart));
+          const p = syncedProgress(syncTrigger.progress, progressStart, progressEnd);
 
           if (release === "progress-end" && syncTrigger.progress >= progressEnd) {
             ensureHome();
