@@ -2,8 +2,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  analyzeMotion,
   computeAlignedStart,
   createScrollAlignment,
+  planScrollAlignment,
   resolveSpan,
   SCROLL_ALIGNMENT_MODES
 } from "../src/core/scroll-alignment/index.js";
@@ -96,6 +98,58 @@ describe("scroll alignment geometry", () => {
   });
 });
 
+describe("automatic motion analysis", () => {
+  it("detects stage count and motion magnitude from descriptors", () => {
+    const facts = analyzeMotion({
+      profile: "composition",
+      stages: [
+        { start: 0, duration: 0.44, scaleXFrom: 1.14, scaleXTo: 1, yFrom: 16, yTo: 0 },
+        { start: 0.18, duration: 0.38, yFrom: 72, yTo: 0, blurFrom: 8, blurTo: 0, opacityFrom: 0.18, opacityTo: 1 },
+        { start: 0.42, duration: 0.32, yFrom: 28, yTo: 0, opacityFrom: 0.26, opacityTo: 1 },
+        { start: 0.7, duration: 0.22, yFrom: 24, yTo: 0, opacityFrom: 0, opacityTo: 1 }
+      ]
+    });
+
+    expect(facts.stageCount).toBe(4);
+    expect(facts.duration).toBeCloseTo(0.92);
+    expect(facts.maxTravel).toBe(72);
+    expect(facts.maxBlurDelta).toBe(8);
+    expect(facts.maxScaleDelta).toBeCloseTo(0.14);
+    expect(facts.complexity).toBeGreaterThan(1);
+  });
+
+  it("plans longer scroll space for more complex motion", () => {
+    const geometry = { viewportHeight: 1000, element: { height: 180 } };
+    const simple = planScrollAlignment({
+      profile: "reveal",
+      geometry,
+      stages: [{ start: 0, duration: 0.3, yFrom: 16, yTo: 0, opacityFrom: 0, opacityTo: 1 }]
+    });
+    const complex = planScrollAlignment({
+      profile: "composition",
+      geometry,
+      stages: [
+        { start: 0, duration: 0.44, scaleXFrom: 1.14, scaleXTo: 1, yFrom: 16, yTo: 0 },
+        { start: 0.18, duration: 0.38, yFrom: 72, yTo: 0, blurFrom: 8, blurTo: 0 },
+        { start: 0.42, duration: 0.32, yFrom: 28, yTo: 0 },
+        { start: 0.7, duration: 0.22, yFrom: 24, yTo: 0 }
+      ]
+    });
+
+    expect(complex.spanPx).toBeGreaterThan(simple.spanPx);
+    expect(complex.viewport).toBeLessThan(simple.viewport);
+  });
+
+  it("replans for mobile instead of reusing desktop geometry", () => {
+    const geometry = { viewportHeight: 900, element: { height: 180 } };
+    const desktop = planScrollAlignment({ profile: "composition", breakpoint: "desktop", geometry, stages: [{ duration: 0.5 }] });
+    const mobile = planScrollAlignment({ profile: "composition", breakpoint: "mobile", geometry, stages: [{ duration: 0.5 }] });
+
+    expect(mobile.spanPx).toBeLessThan(desktop.spanPx);
+    expect(mobile.viewport).toBeGreaterThan(desktop.viewport);
+  });
+});
+
 describe("scroll alignment breakpoints", () => {
   it.each([
     [1200, "desktop"],
@@ -151,6 +205,22 @@ describe("scroll alignment legacy mode", () => {
       pin: false,
       id: "legacy-test"
     });
+  });
+
+  it("keeps automatic planning opt-in", () => {
+    const root = document.createElement("section");
+    root.getBoundingClientRect = () => rect({ top: 800, height: 200 });
+    const gsap = { timeline: vi.fn((config) => config) };
+    const alignment = createScrollAlignment({ gsap, ScrollTrigger: {} });
+    const built = alignment.build(root, {
+      mode: SCROLL_ALIGNMENT_MODES.AUTO,
+      profile: "composition",
+      stages: [{ duration: 0.5, yFrom: 64, yTo: 0 }]
+    });
+
+    expect(built.mode).toBe("auto");
+    expect(typeof built.plan).toBe("function");
+    expect(built.plan().spanPx).toBeGreaterThan(0);
   });
 });
 
