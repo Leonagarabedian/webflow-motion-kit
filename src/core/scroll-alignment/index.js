@@ -16,8 +16,18 @@ import { createAlignmentRefreshController } from "./refresh.js";
 import { computeAlignedEnd, resolveSpan } from "./span.js";
 import { createAlignedTimeline } from "./timeline.js";
 import { buildLegacyTriggerConfig, resolveAlignmentTrigger } from "./trigger.js";
+import {
+  SCROLL_GEOMETRY_STRATEGIES,
+  buildDynamicSpanTrigger,
+  createCrossingLineTriggers,
+  crossingLinePosition,
+  crossingLineProgress,
+  findNearestCrossingIndex,
+  measuredTravelDistance,
+  syncedProgress
+} from "./specialized-geometry.js";
 
-export const SCROLL_ALIGNMENT_VERSION = "1.1.0";
+export const SCROLL_ALIGNMENT_VERSION = "1.2.0";
 export const SCROLL_ALIGNMENT_MODES = Object.freeze({
   LEGACY: "legacy",
   ALIGNED: "aligned",
@@ -174,12 +184,22 @@ export function createScrollAlignment({
   return {
     version: SCROLL_ALIGNMENT_VERSION,
     modes: SCROLL_ALIGNMENT_MODES,
+    strategies: SCROLL_GEOMETRY_STRATEGIES,
     build,
     plan: planScrollAlignment,
     analyze: analyzeMotion,
     diagnostics,
     refresh,
-    getScroller
+    getScroller,
+    specialized: {
+      buildDynamicSpanTrigger,
+      createCrossingLineTriggers,
+      crossingLinePosition,
+      crossingLineProgress,
+      findNearestCrossingIndex,
+      measuredTravelDistance,
+      syncedProgress
+    }
   };
 }
 
@@ -189,5 +209,13 @@ export {
   computeAlignedStart,
   resolveSpan,
   resolveAlignmentTrigger,
-  createAlignedTimeline
+  createAlignedTimeline,
+  SCROLL_GEOMETRY_STRATEGIES,
+  buildDynamicSpanTrigger,
+  createCrossingLineTriggers,
+  crossingLinePosition,
+  crossingLineProgress,
+  findNearestCrossingIndex,
+  measuredTravelDistance,
+  syncedProgress
 };
