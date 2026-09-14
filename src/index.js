@@ -12,7 +12,7 @@ import { modules } from "./modules/registry.js";
 import { statementCompression } from "./modules/statement-compression.js";
 
 const allModules = [...modules, statementCompression];
-const services = createServices({ gsap, plugins });
+const services = createServices({ gsap, plugins, getPageScroll });
 const runtime = createRuntime({ modules: allModules, services });
 let booted = false;
 
@@ -43,6 +43,7 @@ function init(root = document) {
 const api = {
   destroy,
   init,
+  alignment: services.scrollAlignment,
   moduleInventory: allModules.map(({ category, name }) => ({ category, name })),
   modules: allModules.map(({ name }) => name),
   pluginInventory: Object.keys(plugins),
