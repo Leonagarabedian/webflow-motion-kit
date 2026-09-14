@@ -11,7 +11,12 @@ const SAFE_AUTO = new Set([
 
 const SPECIAL_GEOMETRY = new Set([
   "scroll-synced-gallery",
-  "element-blur-reveal"
+  "element-blur-reveal",
+  "scroll-travel",
+  "liquid-fill",
+  "synced-fade",
+  "element-layout-return",
+  "works-services-transition"
 ]);
 
 const COMPLEX_REVIEW = new Set([
@@ -28,7 +33,8 @@ const COMPLEX_REVIEW = new Set([
   "depth-emerge",
   "character-scatter-title",
   "character-converge",
-  "morph-narrative"
+  "morph-narrative",
+  "grid-video-reveal"
 ]);
 
 const NON_SCROLL = new Set([
@@ -38,7 +44,9 @@ const NON_SCROLL = new Set([
   "responsive-menu",
   "view-switch",
   "page-transition",
-  "loader-composition"
+  "loader-composition",
+  "pinned-media-return",
+  "hover-highlight-box"
 ]);
 
 function motionNames(element) {
@@ -78,9 +86,9 @@ export function auditScrollAlignment(root = document) {
         classes: element.className || null,
         reason:
           status === "safe-auto" ? "standard viewport-owned trigger" :
-          status === "special-geometry" ? "owns synchronized or crossing-line geometry" :
+          status === "special-geometry" ? "owns synchronized, measured, or shared scroll geometry" :
           status === "complex-review" ? "pinned, spatial, multi-stage, or shared transform ownership" :
-          status === "non-scroll" ? "not controlled by scroll position" :
+          status === "non-scroll" ? "not controlled by viewport alignment or uses velocity/hover/input instead" :
           "not yet classified for automatic migration"
       });
     });
