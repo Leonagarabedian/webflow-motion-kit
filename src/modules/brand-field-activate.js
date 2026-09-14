@@ -1,8 +1,45 @@
+const BRAND_FIELD_STAGES = [
+  {
+    name: "field-enter",
+    start: 0.05,
+    end: 0.47,
+    duration: 0.22,
+    yFrom: 10,
+    yTo: 0,
+    scaleFrom: 0.97,
+    scaleTo: 1,
+    opacityFrom: 0.18,
+    opacityTo: 0.55,
+    blurFrom: 4,
+    blurTo: 0
+  },
+  {
+    name: "field-peak",
+    start: 0.3,
+    end: 0.64,
+    duration: 0.12,
+    scaleFrom: 1,
+    scaleTo: 1.025,
+    opacityFrom: 0.55,
+    opacityTo: 0.92
+  },
+  {
+    name: "field-settle",
+    start: 0.46,
+    end: 0.82,
+    duration: 0.18,
+    scaleFrom: 1.025,
+    scaleTo: 1,
+    opacityFrom: 0.92,
+    opacityTo: 0.55
+  }
+];
+
 export const brandFieldActivate = {
   name: "brand-field-activate",
   category: "composition",
   selector: '[data-motion~="brand-field-activate"]',
-  mount(element, { gsap, reducedMotion }) {
+  mount(element, { gsap, reducedMotion, scrollAlignment }) {
     const items = Array.from(element.querySelectorAll(".ns-svc-brand-item"));
     if (!items.length) return;
 
@@ -26,16 +63,37 @@ export const brandFieldActivate = {
       };
     });
 
-    const maxD = Math.max(...entries.map((e) => e.d), 1);
+    const maxD = Math.max(...entries.map((entry) => entry.d), 1);
+    const mode = element.getAttribute("data-motion-alignment") || "legacy";
 
-    const tl = gsap.timeline({
-      scrollTrigger: {
-        trigger: element,
-        start: "top 82%",
-        end: "bottom 32%",
-        scrub: 0.75
-      }
-    });
+    const alignment = mode === "auto"
+      ? scrollAlignment.build(element, {
+          mode: "auto",
+          id: "services-brand-field-activate",
+          trigger: element,
+          profile: "composition",
+          stages: BRAND_FIELD_STAGES,
+          emphasis: 0.9,
+          invalidateOnRefresh: true,
+          breakpoints: {
+            tablet: { enabled: false },
+            mobileLandscape: { enabled: false },
+            mobile: { enabled: false }
+          }
+        })
+      : scrollAlignment.build(element, {
+          mode: "legacy",
+          legacy: {
+            trigger: element,
+            start: "top 82%",
+            end: "bottom 32%",
+            scrub: 0.75
+          }
+        });
+
+    if (!alignment?.enabled) return;
+
+    const tl = alignment.timeline();
 
     entries.forEach((entry) => {
       const n = entry.d / maxD;
