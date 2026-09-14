@@ -9,9 +9,11 @@ import { createRuntime } from "./core/runtime.js";
 import { createServices } from "./core/services.js";
 import { motionTokens } from "./core/tokens.js";
 import { modules } from "./modules/registry.js";
+import { statementCompression } from "./modules/statement-compression.js";
 
+const allModules = [...modules, statementCompression];
 const services = createServices({ gsap, plugins });
-const runtime = createRuntime({ modules, services });
+const runtime = createRuntime({ modules: allModules, services });
 let booted = false;
 
 function boot() {
@@ -41,8 +43,8 @@ function init(root = document) {
 const api = {
   destroy,
   init,
-  moduleInventory: modules.map(({ category, name }) => ({ category, name })),
-  modules: modules.map(({ name }) => name),
+  moduleInventory: allModules.map(({ category, name }) => ({ category, name })),
+  modules: allModules.map(({ name }) => name),
   pluginInventory: Object.keys(plugins),
   plugins,
   refresh: runtime.refresh,
