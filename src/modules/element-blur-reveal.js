@@ -1,4 +1,5 @@
 import { readNumber, readString } from "../core/config.js";
+import { clamp01, syncedProgress } from "../core/scroll-alignment/specialized-geometry.js";
 
 const DEFAULTS = Object.freeze({
   progressStart: 0.92,
@@ -10,10 +11,6 @@ const DEFAULTS = Object.freeze({
   yFrom: 18,
   yTo: 0
 });
-
-function clamp(value, min = 0, max = 1) {
-  return Math.min(max, Math.max(min, value));
-}
 
 export const elementBlurReveal = {
   name: "element-blur-reveal",
@@ -28,16 +25,15 @@ export const elementBlurReveal = {
 
     const index = Math.max(0, readNumber(element, "motion-element-blur-index", 0));
     const stagger = Math.max(0, readNumber(element, "motion-element-blur-stagger", 0.012));
-    const baseStart = clamp(
+    const baseStart = clamp01(
       readNumber(element, "motion-element-blur-progress-start", DEFAULTS.progressStart)
     );
-    const baseEnd = clamp(
-      readNumber(element, "motion-element-blur-progress-end", DEFAULTS.progressEnd),
+    const baseEnd = Math.max(
       baseStart + 0.0001,
-      1
+      clamp01(readNumber(element, "motion-element-blur-progress-end", DEFAULTS.progressEnd))
     );
-    const start = clamp(baseStart + index * stagger);
-    const end = clamp(baseEnd + index * stagger, start + 0.0001, 1);
+    const start = clamp01(baseStart + index * stagger);
+    const end = Math.max(start + 0.0001, clamp01(baseEnd + index * stagger));
     const blurFrom = Math.max(0, readNumber(element, "motion-element-blur-from", DEFAULTS.blurFrom));
     const blurTo = Math.max(0, readNumber(element, "motion-element-blur-to", DEFAULTS.blurTo));
     const opacityFrom = readNumber(element, "motion-element-blur-opacity-from", DEFAULTS.opacityFrom);
@@ -68,10 +64,7 @@ export const elementBlurReveal = {
     const update = () => {
       if (destroyed) return;
       syncTrigger = syncTrigger || ScrollTrigger.getById(syncTriggerId);
-      if (syncTrigger) {
-        const p = clamp((syncTrigger.progress - start) / (end - start));
-        tween.progress(p);
-      }
+      if (syncTrigger) tween.progress(syncedProgress(syncTrigger.progress, start, end));
       rafId = requestAnimationFrame(update);
     };
 
