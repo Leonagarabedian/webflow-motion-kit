@@ -1,5 +1,6 @@
 import { accordionMedia } from "./accordion-media.js";
 import { blurReveal } from "./blur-reveal.js";
+import { brandFieldActivate } from "./brand-field-activate.js";
 import { brandLoad } from "./brand-load.js";
 import { brandaSpatialPinLayout } from "./branda-spatial-pin-layout.js";
 import { brandaSpatialShell } from "./branda-spatial-shell.js";
@@ -72,6 +73,7 @@ export const modules = [
   linkSwap,
   navFlip,
   brandLoad,
+  brandFieldActivate,
   footerReveal,
   responsiveMenu,
   loaderComposition,
