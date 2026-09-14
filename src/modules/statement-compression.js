@@ -1,5 +1,54 @@
 import { readNumber, readString } from "../core/config.js";
 
+const STATEMENT_STAGES = [
+  {
+    name: "heading-compression",
+    start: 0,
+    end: 0.44,
+    duration: 0.44,
+    yFrom: 16,
+    yTo: 0,
+    scaleXFrom: 1.14,
+    scaleXTo: 1,
+    scaleYFrom: 1.05,
+    scaleYTo: 1
+  },
+  {
+    name: "body-reveal",
+    start: 0.18,
+    end: 0.56,
+    duration: 0.38,
+    yFrom: 72,
+    yTo: 0,
+    opacityFrom: 0.18,
+    opacityTo: 1,
+    blurFrom: 8,
+    blurTo: 0
+  },
+  {
+    name: "capabilities-reveal",
+    start: 0.42,
+    end: 0.74,
+    duration: 0.32,
+    yFrom: 28,
+    yTo: 0,
+    opacityFrom: 0.26,
+    opacityTo: 1,
+    letterSpacingFrom: 0.09,
+    letterSpacingTo: 0
+  },
+  {
+    name: "cta-reveal",
+    start: 0.7,
+    end: 0.92,
+    duration: 0.22,
+    yFrom: 24,
+    yTo: 0,
+    opacityFrom: 0,
+    opacityTo: 1
+  }
+];
+
 export const statementCompression = {
   name: "statement-compression",
   category: "composition",
@@ -15,31 +64,50 @@ export const statementCompression = {
     if (!heading || !body || !capabilities || !cta) return;
 
     const mode = readString(element, "motion-alignment", "legacy");
-    const alignment = mode === "aligned"
-      ? scrollAlignment.build(element, {
-          mode: "aligned",
-          id: "services-statement-compression",
-          trigger: readString(element, "motion-alignment-trigger", ".ns-svc-quote__text"),
-          anchor: readString(element, "motion-alignment-anchor", "top"),
-          viewport: readNumber(element, "motion-alignment-viewport", 0.72),
-          span: readString(element, "motion-alignment-span", "70vh"),
-          scrub: readNumber(element, "motion-scrub", 0.85),
-          invalidateOnRefresh: true,
-          breakpoints: {
-            tablet: { enabled: false },
-            mobileLandscape: { enabled: false },
-            mobile: { enabled: false }
-          }
-        })
-      : scrollAlignment.build(element, {
-          mode: "legacy",
-          legacy: {
-            trigger: element,
-            start: readString(element, "motion-start", "top 88%"),
-            end: readString(element, "motion-end", "bottom 42%"),
-            scrub: readNumber(element, "motion-scrub", 0.85)
-          }
-        });
+    let alignment;
+
+    if (mode === "auto") {
+      alignment = scrollAlignment.build(element, {
+        mode: "auto",
+        id: "services-statement-compression",
+        trigger: readString(element, "motion-alignment-trigger", ".ns-svc-quote__text"),
+        profile: "composition",
+        stages: STATEMENT_STAGES,
+        emphasis: 1,
+        invalidateOnRefresh: true,
+        breakpoints: {
+          tablet: { enabled: false },
+          mobileLandscape: { enabled: false },
+          mobile: { enabled: false }
+        }
+      });
+    } else if (mode === "aligned") {
+      alignment = scrollAlignment.build(element, {
+        mode: "aligned",
+        id: "services-statement-compression",
+        trigger: readString(element, "motion-alignment-trigger", ".ns-svc-quote__text"),
+        anchor: readString(element, "motion-alignment-anchor", "top"),
+        viewport: readNumber(element, "motion-alignment-viewport", 0.72),
+        span: readString(element, "motion-alignment-span", "70vh"),
+        scrub: readNumber(element, "motion-scrub", 0.85),
+        invalidateOnRefresh: true,
+        breakpoints: {
+          tablet: { enabled: false },
+          mobileLandscape: { enabled: false },
+          mobile: { enabled: false }
+        }
+      });
+    } else {
+      alignment = scrollAlignment.build(element, {
+        mode: "legacy",
+        legacy: {
+          trigger: element,
+          start: readString(element, "motion-start", "top 88%"),
+          end: readString(element, "motion-end", "bottom 42%"),
+          scrub: readNumber(element, "motion-scrub", 0.85)
+        }
+      });
+    }
 
     if (!alignment?.enabled) return;
 
