@@ -35,8 +35,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Validate and build Motion Kit
-        run: pnpm check
+      - name: Validate scroll alignment and build Motion Kit
+        run: pnpm check:alignment
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
