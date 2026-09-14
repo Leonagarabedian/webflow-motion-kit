@@ -4,7 +4,7 @@ export const statementCompression = {
   name: "statement-compression",
   category: "composition",
   selector: '[data-motion~="statement-compression"]',
-  mount(element, { gsap, reducedMotion }) {
+  mount(element, { gsap, reducedMotion, scrollAlignment }) {
     if (reducedMotion() || window.innerWidth < readNumber(element, "motion-min-width", 992)) return;
 
     const heading = element.querySelector(".ns-svc-quote__text");
@@ -14,15 +14,36 @@ export const statementCompression = {
     const cta = element.querySelector(".ns-svc-link");
     if (!heading || !body || !capabilities || !cta) return;
 
-    const tl = gsap.timeline({
-      defaults: { ease: "none" },
-      scrollTrigger: {
-        trigger: element,
-        start: readString(element, "motion-start", "top 88%"),
-        end: readString(element, "motion-end", "bottom 42%"),
-        scrub: readNumber(element, "motion-scrub", 0.85)
-      }
-    });
+    const mode = readString(element, "motion-alignment", "legacy");
+    const alignment = mode === "aligned"
+      ? scrollAlignment.build(element, {
+          mode: "aligned",
+          id: "services-statement-compression",
+          trigger: readString(element, "motion-alignment-trigger", ".ns-svc-quote__text"),
+          anchor: readString(element, "motion-alignment-anchor", "top"),
+          viewport: readNumber(element, "motion-alignment-viewport", 0.72),
+          span: readString(element, "motion-alignment-span", "70vh"),
+          scrub: readNumber(element, "motion-scrub", 0.85),
+          invalidateOnRefresh: true,
+          breakpoints: {
+            tablet: { enabled: false },
+            mobileLandscape: { enabled: false },
+            mobile: { enabled: false }
+          }
+        })
+      : scrollAlignment.build(element, {
+          mode: "legacy",
+          legacy: {
+            trigger: element,
+            start: readString(element, "motion-start", "top 88%"),
+            end: readString(element, "motion-end", "bottom 42%"),
+            scrub: readNumber(element, "motion-scrub", 0.85)
+          }
+        });
+
+    if (!alignment?.enabled) return;
+
+    const tl = alignment.timeline({ defaults: { ease: "none" } });
 
     tl.fromTo(heading,
       { scaleX: 1.14, scaleY: 1.05, y: 16, transformOrigin: "center center" },
