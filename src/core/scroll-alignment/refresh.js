@@ -1,5 +1,6 @@
 export function createAlignmentRefreshController({ ScrollTrigger, logger = console } = {}) {
   const cleanups = new Set();
+  let pendingRaf = 0;
 
   function refresh() {
     try {
@@ -9,18 +10,20 @@ export function createAlignmentRefreshController({ ScrollTrigger, logger = conso
     }
   }
 
+  function requestRefresh() {
+    cancelAnimationFrame(pendingRaf);
+    pendingRaf = requestAnimationFrame(() => {
+      pendingRaf = 0;
+      refresh();
+    });
+  }
+
   function watch({ fonts = true, resize = true, orientation = true } = {}) {
     if (fonts && document.fonts?.ready) {
       let active = true;
-      document.fonts.ready.then(() => active && refresh());
+      document.fonts.ready.then(() => active && requestRefresh());
       cleanups.add(() => { active = false; });
     }
-
-    let resizeRaf = 0;
-    const requestRefresh = () => {
-      cancelAnimationFrame(resizeRaf);
-      resizeRaf = requestAnimationFrame(refresh);
-    };
 
     if (resize) {
       window.addEventListener("resize", requestRefresh, { passive: true });
@@ -35,12 +38,13 @@ export function createAlignmentRefreshController({ ScrollTrigger, logger = conso
   }
 
   function destroy() {
-    cancelAnimationFrame(0);
+    cancelAnimationFrame(pendingRaf);
+    pendingRaf = 0;
     for (const cleanup of [...cleanups]) {
       try { cleanup(); } catch {}
       cleanups.delete(cleanup);
     }
   }
 
-  return { refresh, watch, destroy };
+  return { refresh, requestRefresh, watch, destroy };
 }
