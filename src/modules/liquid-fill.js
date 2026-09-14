@@ -1,4 +1,5 @@
 import { readNumber, readString } from "../core/config.js";
+import { buildDynamicSpanTrigger } from "../core/scroll-alignment/specialized-geometry.js";
 
 const STYLE_ID = "motion-kit-liquid-fill-styles";
 let sequence = 0;
@@ -132,17 +133,16 @@ export const liquidFill = {
     };
     render();
 
-    const scrollTriggerConfig = {
+    const scrollTriggerConfig = buildDynamicSpanTrigger({
       id: `mk-liquid-fill-${++sequence}`,
       trigger: container,
       start: readString(element, "motion-start", "top top"),
       end: readString(element, "motion-end", `+=${Math.max(1, container.offsetHeight)}`),
+      endTrigger,
       scrub: readNumber(element, "motion-scrub", 1),
       invalidateOnRefresh: true,
       markers: readString(element, "motion-markers", "false") === "true"
-    };
-
-    if (endTrigger) scrollTriggerConfig.endTrigger = endTrigger;
+    });
 
     const tween = gsap.to(state, {
       progress: 1,
