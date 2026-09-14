@@ -1,4 +1,5 @@
 import { readNumber, readString } from "../core/config.js";
+import { measuredTravelDistance } from "../core/scroll-alignment/specialized-geometry.js";
 
 const STYLE_ID = "motion-kit-scroll-travel-styles";
 let sequence = 0;
@@ -49,24 +50,14 @@ export const scrollTravel = {
     const direction = readNumber(element, "motion-direction", 1);
     const explicitDistance = element.getAttribute("data-motion-distance");
 
-    function distance() {
-      const configured = Number.parseFloat(explicitDistance);
-      if (Number.isFinite(configured)) return configured * direction;
-
-      if (axis === "x") {
-        const containerRect = container.getBoundingClientRect();
-        const elementRect = element.getBoundingClientRect();
-        return Math.max(0, containerRect.right - elementRect.right - bottomOffset) * direction;
-      }
-
-      const containerRect = container.getBoundingClientRect();
-      const elementRect = element.getBoundingClientRect();
-      const paddingBottom = parseFloat(getComputedStyle(container).paddingBottom) || 0;
-      return Math.max(
-        0,
-        containerRect.bottom - paddingBottom - bottomOffset - elementRect.bottom
-      ) * direction;
-    }
+    const distance = () => measuredTravelDistance({
+      element,
+      container,
+      axis,
+      bottomOffset,
+      direction,
+      explicitDistance
+    });
 
     const prop = axis === "x" ? "x" : "y";
     const tween = gsap.fromTo(
