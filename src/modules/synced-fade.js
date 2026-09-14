@@ -1,4 +1,5 @@
 import { readNumber, readString } from "../core/config.js";
+import { clamp01, syncedProgress } from "../core/scroll-alignment/specialized-geometry.js";
 
 const DEFAULTS = Object.freeze({
   progressStart: 0,
@@ -8,10 +9,6 @@ const DEFAULTS = Object.freeze({
   yFrom: 0,
   yTo: 0
 });
-
-function clamp(value, min = 0, max = 1) {
-  return Math.min(max, Math.max(min, value));
-}
 
 export const syncedFade = {
   name: "synced-fade",
@@ -24,13 +21,12 @@ export const syncedFade = {
     const syncTriggerId = readString(element, "motion-fade-sync-trigger-id", "");
     if (!syncTriggerId) return;
 
-    const progressStart = clamp(
+    const progressStart = clamp01(
       readNumber(element, "motion-fade-progress-start", DEFAULTS.progressStart)
     );
-    const progressEnd = clamp(
-      readNumber(element, "motion-fade-progress-end", DEFAULTS.progressEnd),
+    const progressEnd = Math.max(
       progressStart + 0.0001,
-      1
+      clamp01(readNumber(element, "motion-fade-progress-end", DEFAULTS.progressEnd))
     );
     const opacityFrom = readNumber(element, "motion-fade-opacity-from", DEFAULTS.opacityFrom);
     const opacityTo = readNumber(element, "motion-fade-opacity-to", DEFAULTS.opacityTo);
@@ -46,7 +42,7 @@ export const syncedFade = {
       syncTrigger = syncTrigger || ScrollTrigger.getById(syncTriggerId);
 
       if (syncTrigger) {
-        const p = clamp((syncTrigger.progress - progressStart) / (progressEnd - progressStart));
+        const p = syncedProgress(syncTrigger.progress, progressStart, progressEnd);
         gsap.set(element, {
           opacity: opacityFrom + (opacityTo - opacityFrom) * p,
           y: yFrom + (yTo - yFrom) * p
