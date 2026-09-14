@@ -11,25 +11,26 @@ const SAFE_AUTO = new Set([
 
 const MEDIUM_AUTO = new Set([
   "scroll-highlight",
-  "parallax"
+  "parallax",
+  "pinned-media",
+  "pinned-steps"
 ]);
 
-const SPECIAL_GEOMETRY = new Set([
+const SPECIALIZED_READY = new Set([
   "scroll-synced-gallery",
   "element-blur-reveal",
   "scroll-travel",
-  "liquid-fill",
   "synced-fade",
-  "element-layout-return",
-  "works-services-transition"
+  "element-layout-return"
+]);
+
+const SPECIAL_GEOMETRY = new Set([
+  "liquid-fill"
 ]);
 
 const COMPLEX_REVIEW = new Set([
-  "pinned-media",
-  "pinned-steps",
   "stacked-cards",
   "stacked-image-hover",
-  "accordion-media",
   "hero-frame-transition",
   "hero-heart-transition",
   "branda-spatial-works",
@@ -50,7 +51,9 @@ const NON_SCROLL = new Set([
   "page-transition",
   "loader-composition",
   "pinned-media-return",
-  "hover-highlight-box"
+  "hover-highlight-box",
+  "accordion-media",
+  "works-services-transition"
 ]);
 
 function motionNames(element) {
@@ -63,6 +66,7 @@ function motionNames(element) {
 function classify(name) {
   if (SAFE_AUTO.has(name)) return "safe-auto";
   if (MEDIUM_AUTO.has(name)) return "medium-auto";
+  if (SPECIALIZED_READY.has(name)) return "specialized-ready";
   if (SPECIAL_GEOMETRY.has(name)) return "special-geometry";
   if (COMPLEX_REVIEW.has(name)) return "complex-review";
   if (NON_SCROLL.has(name)) return "non-scroll";
@@ -91,10 +95,11 @@ export function auditScrollAlignment(root = document) {
         classes: element.className || null,
         reason:
           status === "safe-auto" ? "standard viewport-owned trigger" :
-          status === "medium-auto" ? "viewport-owned scrubbed trigger; enable only after page-level visual review" :
-          status === "special-geometry" ? "owns synchronized, measured, or shared scroll geometry" :
-          status === "complex-review" ? "pinned, spatial, multi-stage, or shared transform ownership" :
-          status === "non-scroll" ? "not controlled by viewport alignment or uses velocity/hover/input instead" :
+          status === "medium-auto" ? "shared planner supported; enable after page-level visual review" :
+          status === "specialized-ready" ? "shared specialized geometry strategy preserves its non-generic scroll contract" :
+          status === "special-geometry" ? "owns specialized geometry not yet moved to a shared strategy" :
+          status === "complex-review" ? "spatial, multi-stage, or shared transform ownership" :
+          status === "non-scroll" ? "not controlled by viewport alignment or uses velocity/hover/input/layout composition instead" :
           "not yet classified for automatic migration"
       });
     });
@@ -111,6 +116,7 @@ export function auditScrollAlignment(root = document) {
     entries,
     safeToEnable: entries.filter((entry) => entry.status === "safe-auto" && entry.alignment !== "auto"),
     mediumToReview: entries.filter((entry) => entry.status === "medium-auto" && entry.alignment !== "auto"),
+    specializedReady: entries.filter((entry) => entry.status === "specialized-ready"),
     protected: entries.filter((entry) => entry.status === "special-geometry" || entry.status === "complex-review")
   };
 }
@@ -118,6 +124,7 @@ export function auditScrollAlignment(root = document) {
 export const migrationAuditPolicy = Object.freeze({
   safeAuto: [...SAFE_AUTO],
   mediumAuto: [...MEDIUM_AUTO],
+  specializedReady: [...SPECIALIZED_READY],
   specialGeometry: [...SPECIAL_GEOMETRY],
   complexReview: [...COMPLEX_REVIEW],
   nonScroll: [...NON_SCROLL]
