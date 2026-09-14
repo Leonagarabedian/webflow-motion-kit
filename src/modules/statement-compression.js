@@ -54,7 +54,11 @@ export const statementCompression = {
   category: "composition",
   selector: '[data-motion~="statement-compression"]',
   mount(element, { gsap, reducedMotion, scrollAlignment }) {
-    if (reducedMotion() || window.innerWidth < readNumber(element, "motion-min-width", 992)) return;
+    const mode = readString(element, "motion-alignment", "legacy");
+    const minimumWidth = readNumber(element, "motion-min-width", 992);
+
+    if (reducedMotion()) return;
+    if (mode !== "auto" && window.innerWidth < minimumWidth) return;
 
     const heading = element.querySelector(".ns-svc-quote__text");
     const copy = element.querySelectorAll(".ns-svc-quote__person p");
@@ -63,7 +67,6 @@ export const statementCompression = {
     const cta = element.querySelector(".ns-svc-link");
     if (!heading || !body || !capabilities || !cta) return;
 
-    const mode = readString(element, "motion-alignment", "legacy");
     let alignment;
 
     if (mode === "auto") {
@@ -74,12 +77,7 @@ export const statementCompression = {
         profile: "composition",
         stages: STATEMENT_STAGES,
         emphasis: 1,
-        invalidateOnRefresh: true,
-        breakpoints: {
-          tablet: { enabled: false },
-          mobileLandscape: { enabled: false },
-          mobile: { enabled: false }
-        }
+        invalidateOnRefresh: true
       });
     } else if (mode === "aligned") {
       alignment = scrollAlignment.build(element, {
