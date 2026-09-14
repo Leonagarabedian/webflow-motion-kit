@@ -27,12 +27,30 @@ function clearVisibleOverrides(element) {
   VISIBLE_PROPS.forEach((prop) => element.style.removeProperty(prop));
 }
 
+function buildStages(count, { baseX, stepX, y, opacityFrom, stagger }) {
+  return Array.from({ length: Math.max(1, count) }, (_, index) => {
+    const start = index * stagger;
+    return {
+      name: `character-converge-${index + 1}`,
+      start,
+      end: start + 1,
+      duration: 1,
+      xFrom: baseX + stepX * index,
+      xTo: 0,
+      yFrom: y,
+      yTo: 0,
+      opacityFrom,
+      opacityTo: 1
+    };
+  });
+}
+
 export const characterConverge = {
   name: "character-converge",
   category: "primitive",
   selector: '[data-motion~="character-converge"]',
 
-  mount(element, { gsap, SplitText, reducedMotion }) {
+  mount(element, { gsap, SplitText, reducedMotion, scrollAlignment }) {
     forceVisible(element);
 
     if (reducedMotion()) {
@@ -50,6 +68,8 @@ export const characterConverge = {
     const opacityFrom = readNumber(element, "motion-opacity-from", 1);
     const ease = readString(element, "motion-ease", "none");
     const order = readString(element, "motion-order", "reverse");
+    const stagger = readNumber(element, "motion-stagger", 0.06);
+    const mode = readString(element, "motion-alignment", "legacy");
 
     element.style.willChange = "transform, opacity";
 
@@ -71,22 +91,34 @@ export const characterConverge = {
       });
     });
 
+    const scrollTrigger = mode === "auto"
+      ? scrollAlignment.build(element, {
+          mode: "auto",
+          id: readString(element, "motion-alignment-id", "character-converge"),
+          trigger,
+          profile: "editorial",
+          stages: buildStages(ordered.length, { baseX, stepX, y, opacityFrom, stagger }),
+          scrub,
+          invalidateOnRefresh: true
+        }).scrollTrigger
+      : {
+          trigger,
+          start,
+          end,
+          scrub,
+          invalidateOnRefresh: true
+        };
+
     const tween = gsap.to(ordered, {
       x: 0,
       y: 0,
       autoAlpha: 1,
       ease,
       stagger: {
-        each: readNumber(element, "motion-stagger", 0.06),
+        each: stagger,
         from: "start"
       },
-      scrollTrigger: {
-        trigger,
-        start,
-        end,
-        scrub,
-        invalidateOnRefresh: true
-      }
+      scrollTrigger
     });
 
     return () => {
