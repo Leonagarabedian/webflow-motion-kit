@@ -9,6 +9,11 @@ const SAFE_AUTO = new Set([
   "statement-compression"
 ]);
 
+const MEDIUM_AUTO = new Set([
+  "scroll-highlight",
+  "parallax"
+]);
+
 const SPECIAL_GEOMETRY = new Set([
   "scroll-synced-gallery",
   "element-blur-reveal",
@@ -25,7 +30,6 @@ const COMPLEX_REVIEW = new Set([
   "stacked-cards",
   "stacked-image-hover",
   "accordion-media",
-  "scroll-highlight",
   "hero-frame-transition",
   "hero-heart-transition",
   "branda-spatial-works",
@@ -58,6 +62,7 @@ function motionNames(element) {
 
 function classify(name) {
   if (SAFE_AUTO.has(name)) return "safe-auto";
+  if (MEDIUM_AUTO.has(name)) return "medium-auto";
   if (SPECIAL_GEOMETRY.has(name)) return "special-geometry";
   if (COMPLEX_REVIEW.has(name)) return "complex-review";
   if (NON_SCROLL.has(name)) return "non-scroll";
@@ -86,6 +91,7 @@ export function auditScrollAlignment(root = document) {
         classes: element.className || null,
         reason:
           status === "safe-auto" ? "standard viewport-owned trigger" :
+          status === "medium-auto" ? "viewport-owned scrubbed trigger; enable only after page-level visual review" :
           status === "special-geometry" ? "owns synchronized, measured, or shared scroll geometry" :
           status === "complex-review" ? "pinned, spatial, multi-stage, or shared transform ownership" :
           status === "non-scroll" ? "not controlled by viewport alignment or uses velocity/hover/input instead" :
@@ -104,12 +110,14 @@ export function auditScrollAlignment(root = document) {
     byStatus,
     entries,
     safeToEnable: entries.filter((entry) => entry.status === "safe-auto" && entry.alignment !== "auto"),
+    mediumToReview: entries.filter((entry) => entry.status === "medium-auto" && entry.alignment !== "auto"),
     protected: entries.filter((entry) => entry.status === "special-geometry" || entry.status === "complex-review")
   };
 }
 
 export const migrationAuditPolicy = Object.freeze({
   safeAuto: [...SAFE_AUTO],
+  mediumAuto: [...MEDIUM_AUTO],
   specialGeometry: [...SPECIAL_GEOMETRY],
   complexReview: [...COMPLEX_REVIEW],
   nonScroll: [...NON_SCROLL]
