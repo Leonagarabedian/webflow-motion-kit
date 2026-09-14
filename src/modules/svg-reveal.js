@@ -11,7 +11,7 @@ export const svgReveal = {
   name: "svg-reveal",
   category: "primitive",
   selector: '[data-motion~="svg-reveal"]',
-  mount(element, { gsap, reducedMotion, supportsHover }) {
+  mount(element, { gsap, reducedMotion, supportsHover, scrollAlignment }) {
     const explicitPaths = selectTargets(element, "svg-path");
     const paths = explicitPaths.length
       ? explicitPaths
@@ -21,22 +21,47 @@ export const svgReveal = {
     const originalStyles = paths.map((path) => path.getAttribute("style"));
     const hoverTarget = selectTarget(element, "svg-hover", element.querySelector("svg"));
     const originalHoverStyle = hoverTarget?.getAttribute("style");
-    const timeline = gsap.timeline({
-      scrollTrigger: {
-        once: readBoolean(element, "motion-once", true),
-        start: readString(element, "motion-start", "top 85%"),
-        trigger: resolveTrigger(element)
-      }
-    });
+    const duration = reducedMotion() ? 0 : readNumber(element, "motion-duration", 1.2);
+    const stagger = reducedMotion() ? 0 : readNumber(element, "motion-stagger", 0.08);
+    const once = readBoolean(element, "motion-once", true);
+    const trigger = resolveTrigger(element);
+    const mode = readString(element, "motion-alignment", "legacy");
+
+    const scrollTrigger = mode === "auto"
+      ? {
+          ...scrollAlignment.build(element, {
+            mode: "auto",
+            id: readString(element, "motion-alignment-id", "svg-reveal"),
+            trigger,
+            profile: "reveal",
+            stages: paths.map((_, index) => ({
+              name: `svg-path-${index + 1}`,
+              start: index * stagger,
+              end: index * stagger + duration,
+              duration
+            })),
+            scrub: false,
+            invalidateOnRefresh: true
+          }).scrollTrigger,
+          once,
+          scrub: false
+        }
+      : {
+          once,
+          start: readString(element, "motion-start", "top 85%"),
+          trigger
+        };
+
+    const timeline = gsap.timeline({ scrollTrigger });
 
     timeline.fromTo(
       paths,
       { drawSVG: reducedMotion() ? "0% 100%" : "0% 0%" },
       {
         drawSVG: "0% 100%",
-        duration: reducedMotion() ? 0 : readNumber(element, "motion-duration", 1.2),
+        duration,
         ease: readString(element, "motion-ease", "power2.inOut"),
-        stagger: reducedMotion() ? 0 : readNumber(element, "motion-stagger", 0.08)
+        stagger
       }
     );
 
