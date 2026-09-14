@@ -45,13 +45,17 @@ export function createScrollAlignment({
     const mode = input.mode || SCROLL_ALIGNMENT_MODES.ALIGNED;
     if (mode === SCROLL_ALIGNMENT_MODES.LEGACY) {
       const legacy = buildLegacyTriggerConfig(input.legacy || input);
+      const scrollTrigger = {
+        ...legacy,
+        trigger: legacy.trigger || root
+      };
       return {
         mode,
         enabled: true,
         breakpoint: null,
-        trigger: legacy.trigger || root,
-        scrollTrigger: legacy,
-        timeline: (timelineConfig = {}) => createAlignedTimeline(gsap, legacy, timelineConfig)
+        trigger: scrollTrigger.trigger,
+        scrollTrigger,
+        timeline: (timelineConfig = {}) => createAlignedTimeline(gsap, scrollTrigger, timelineConfig)
       };
     }
 
