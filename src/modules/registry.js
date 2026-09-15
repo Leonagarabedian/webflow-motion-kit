@@ -27,6 +27,7 @@ import { liquidFill } from "./liquid-fill.js";
 import { loaderComposition } from "./loader-composition.js";
 import { loopingLabels } from "./looping-labels.js";
 import { magnetic } from "./magnetic.js";
+import { mediaRoom } from "./media-room.js";
 import { morphNarrative } from "./morph-narrative.js";
 import { navFlip } from "./nav-flip.js";
 import { pageTransition } from "./page-transition.js";
@@ -109,5 +110,6 @@ export const modules = [
   brandaSpatialWorks,
   servicesCenterShift,
   brandaSpatialPinLayout,
-  brandaSpatialShell
+  brandaSpatialShell,
+  mediaRoom
 ];
