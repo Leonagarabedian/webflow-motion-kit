@@ -51,6 +51,92 @@ function roomPosition(index, spacing) {
   return { x: 0.85, y: -1.35, z: depth - 1.05, rotationY: -0.04, scale: 0.88 };
 }
 
+function parseCssColor(value, fallback = "#c7d5ff") {
+  try {
+    const color = new THREE.Color(value || fallback);
+    if (Number.isFinite(color.r) && Number.isFinite(color.g) && Number.isFinite(color.b)) return color;
+  } catch (_) {}
+  return new THREE.Color(fallback);
+}
+
+function nearestBackgroundColor(element) {
+  let node = element;
+  while (node && node !== document.documentElement) {
+    const value = getComputedStyle(node).backgroundColor;
+    if (value && value !== "transparent" && value !== "rgba(0, 0, 0, 0)") return value;
+    node = node.parentElement;
+  }
+  const bodyColor = getComputedStyle(document.body).backgroundColor;
+  return bodyColor && bodyColor !== "transparent" ? bodyColor : "#c7d5ff";
+}
+
+function shiftLightness(color, amount) {
+  const hsl = {};
+  color.getHSL(hsl);
+  const shifted = new THREE.Color();
+  shifted.setHSL(hsl.h, hsl.s, clamp(hsl.l + amount, 0.04, 0.96));
+  return shifted;
+}
+
+function buildRoomShell(scene, baseColor, depth, cameraStartZ) {
+  const shell = [];
+  const width = 12.8;
+  const height = 8.4;
+  const centerZ = (cameraStartZ - depth) / 2;
+  const length = Math.abs(depth - cameraStartZ) + 18;
+
+  const backColor = shiftLightness(baseColor, -0.025);
+  const sideColor = shiftLightness(baseColor, -0.07);
+  const floorColor = shiftLightness(baseColor, -0.115);
+  const ceilingColor = shiftLightness(baseColor, 0.035);
+
+  const createPlane = (geometry, material, position, rotation) => {
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.set(position.x, position.y, position.z);
+    mesh.rotation.set(rotation.x, rotation.y, rotation.z);
+    scene.add(mesh);
+    shell.push(mesh);
+    return mesh;
+  };
+
+  createPlane(
+    new THREE.PlaneGeometry(width, height),
+    new THREE.MeshBasicMaterial({ color: backColor, side: THREE.DoubleSide }),
+    { x: 0, y: 0, z: depth - 5.5 },
+    { x: 0, y: 0, z: 0 }
+  );
+
+  createPlane(
+    new THREE.PlaneGeometry(length, height),
+    new THREE.MeshBasicMaterial({ color: sideColor, side: THREE.DoubleSide }),
+    { x: -width * 0.5, y: 0, z: centerZ },
+    { x: 0, y: Math.PI / 2, z: 0 }
+  );
+
+  createPlane(
+    new THREE.PlaneGeometry(length, height),
+    new THREE.MeshBasicMaterial({ color: sideColor, side: THREE.DoubleSide }),
+    { x: width * 0.5, y: 0, z: centerZ },
+    { x: 0, y: -Math.PI / 2, z: 0 }
+  );
+
+  createPlane(
+    new THREE.PlaneGeometry(width, length),
+    new THREE.MeshBasicMaterial({ color: floorColor, side: THREE.DoubleSide }),
+    { x: 0, y: -height * 0.5, z: centerZ },
+    { x: -Math.PI / 2, y: 0, z: 0 }
+  );
+
+  createPlane(
+    new THREE.PlaneGeometry(width, length),
+    new THREE.MeshBasicMaterial({ color: ceilingColor, side: THREE.DoubleSide }),
+    { x: 0, y: height * 0.5, z: centerZ },
+    { x: Math.PI / 2, y: 0, z: 0 }
+  );
+
+  return shell;
+}
+
 export const mediaRoom = {
   name: "media-room",
   category: "composition",
@@ -85,7 +171,7 @@ export const mediaRoom = {
     root.appendChild(stage);
 
     const renderer = new THREE.WebGLRenderer({
-      alpha: true,
+      alpha: false,
       antialias: true,
       canvas,
       powerPreference: "high-performance"
@@ -93,15 +179,24 @@ export const mediaRoom = {
     renderer.outputColorSpace = THREE.SRGBColorSpace;
 
     const scene = new THREE.Scene();
+    const configuredRoomColor = readString(root, "motion-room-color", "");
+    const baseColor = parseCssColor(configuredRoomColor || nearestBackgroundColor(root));
+    scene.background = baseColor.clone();
+
     const camera = new THREE.PerspectiveCamera(52, 1, 0.1, 140);
     const startZ = 5.2;
     const finalItemZ = -(sourceMedia.length - 1) * spacing;
     const endZ = finalItemZ + 4.2;
     camera.position.set(0, 0, startZ);
 
+    const fogNear = readNumber(root, "motion-fog-near", 7.5);
+    const fogFar = readNumber(root, "motion-fog-far", 24);
+    scene.fog = new THREE.Fog(baseColor.clone(), fogNear, fogFar);
+
     const meshes = [];
     const textures = [];
     const loader = new THREE.TextureLoader();
+    const shell = buildRoomShell(scene, baseColor, finalItemZ, startZ);
     let destroyed = false;
     let raf = null;
 
@@ -132,7 +227,8 @@ export const mediaRoom = {
           const material = new THREE.MeshBasicMaterial({
             map: texture,
             side: THREE.DoubleSide,
-            transparent: true
+            transparent: true,
+            fog: true
           });
           const mesh = new THREE.Mesh(geometry, material);
           mesh.position.set(layout.x, layout.y, layout.z);
@@ -198,6 +294,11 @@ export const mediaRoom = {
       tween.scrollTrigger?.kill();
       tween.kill();
       meshes.forEach((mesh) => {
+        mesh.geometry.dispose();
+        mesh.material.dispose();
+        scene.remove(mesh);
+      });
+      shell.forEach((mesh) => {
         mesh.geometry.dispose();
         mesh.material.dispose();
         scene.remove(mesh);
