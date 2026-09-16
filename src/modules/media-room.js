@@ -72,6 +72,13 @@ function mix(a, b, t) {
   return a + (b - a) * t;
 }
 
+function mixAngle(a, b, t) {
+  let delta = (b - a) % (Math.PI * 2);
+  if (delta > Math.PI) delta -= Math.PI * 2;
+  if (delta < -Math.PI) delta += Math.PI * 2;
+  return a + delta * t;
+}
+
 function smoothstep(edge0, edge1, value) {
   const t = clamp((value - edge0) / Math.max(0.0001, edge1 - edge0), 0, 1);
   return t * t * (3 - 2 * t);
@@ -264,8 +271,9 @@ export const mediaRoom = {
     const velocitySmoothing = clamp(readNumber(root, "motion-velocity-smoothing", 0.18), 0.04, 0.5);
     const entranceSpan = clamp(readNumber(root, "motion-entrance-span", 0.2), 0.08, 0.32);
     const releaseStart = clamp(readNumber(root, "motion-release-start", 0.82), 0.68, 0.94);
-    const passStrength = readNumber(root, "motion-pass-strength", 0.82);
-    const orbitStrength = readNumber(root, "motion-orbit-strength", 0.78);
+    const passStrength = readNumber(root, "motion-pass-strength", 0.95);
+    const orbitStrength = readNumber(root, "motion-orbit-strength", 1.4);
+    const orbitRadius = readNumber(root, "motion-orbit-radius", 1.45);
     root.style.setProperty("--mk-media-room-grain", `${readNumber(root, "motion-grain", 0.11)}`);
 
     const stage = root.ownerDocument.createElement("div");
@@ -347,9 +355,9 @@ export const mediaRoom = {
       const roomPresence = entrance * (1 - release * 0.78);
 
       camera.position.z = mix(entranceZ, endZ, travel);
-      camera.position.x = Math.sin(travel * Math.PI * 2.45) * 0.11 * roomPresence;
+      camera.position.x = Math.sin(travel * Math.PI * 2.45) * 0.12 * roomPresence;
       camera.position.y = Math.sin(travel * Math.PI * 1.7 + 0.5) * 0.072 * roomPresence;
-      camera.rotation.y = Math.sin(travel * Math.PI * 2.05) * 0.018 * roomPresence;
+      camera.rotation.y = Math.sin(travel * Math.PI * 2.05) * 0.028 * roomPresence;
       camera.rotation.z = velocityValue * -0.0045;
 
       const velocityMagnitude = Math.min(1, Math.abs(velocityValue));
@@ -368,13 +376,12 @@ export const mediaRoom = {
         const localReveal = smoothstep(revealStart, revealEnd, p);
 
         const cameraDelta = layout.z - camera.position.z;
-        const nearWeight = clamp(1 - Math.abs(cameraDelta) / 9.5, 0, 1);
-        const passProgress = smoothstep(-7.2, 3.6, cameraDelta);
-        const passArc = Math.sin(passProgress * Math.PI);
-        const passWindow = passArc * passArc;
-        const orbitTurn = side * passProgress * orbitStrength * (0.48 + peripheral * 0.52);
-        const orbitOut = side * passWindow * orbitStrength * (0.68 + peripheral * 0.72);
-        const orbitDepth = passWindow * orbitStrength * 0.52;
+        const nearWeight = clamp(1 - Math.abs(cameraDelta) / 10.5, 0, 1);
+        const passProgress = smoothstep(-8.5, 4.0, cameraDelta);
+        const passWindow = Math.pow(Math.sin(passProgress * Math.PI), 2);
+        const arcPhase = (passProgress - 0.5) * Math.PI;
+        const orbitX = side * Math.cos(arcPhase) * orbitRadius * passWindow * (0.72 + peripheral * 0.62);
+        const orbitZ = Math.sin(arcPhase) * orbitRadius * 0.72 * passWindow;
 
         const entranceSpread = (1 - localReveal) * side * (0.95 + peripheral * 0.95 + centerWeight * 0.25);
         const entranceDepth = (1 - localReveal) * (1.5 + layout.depthRatio * 1.7);
@@ -389,15 +396,19 @@ export const mediaRoom = {
         const velocityLift = velocityDirection * velocityMagnitude * nearWeight * 0.045 * (index % 2 ? 1 : -1);
         const breathing = Math.sin((p * Math.PI * 2.0) + index * 0.66) * 0.018 * roomPresence;
 
-        const targetX = layout.x + entranceSpread + orbitOut * passStrength + releaseSpread + velocitySpread;
+        const targetX = layout.x + entranceSpread + orbitX * passStrength + releaseSpread + velocitySpread;
         const targetY = layout.y + entranceLift + releaseLift + velocityLift + breathing;
-        const targetZ = layout.z + entranceDepth + orbitDepth + releaseDepth + velocityDepthLag;
-        const targetRotationY = layout.rotationY
-          + orbitTurn
-          + velocityValue * side * peripheral * 0.022
-          + release * side * peripheral * 0.045;
+        const targetZ = layout.z + entranceDepth + orbitZ + releaseDepth + velocityDepthLag;
+
+        const lookYaw = Math.atan2(camera.position.x - targetX, camera.position.z - targetZ);
+        const faceCameraAmount = passWindow * clamp(0.66 + peripheral * 0.28, 0, 0.94);
+        const orbitYaw = side * (passProgress - 0.5) * orbitStrength;
+        const targetRotationY = mixAngle(layout.rotationY + orbitYaw, lookYaw, faceCameraAmount)
+          + velocityValue * side * peripheral * 0.018
+          + release * side * peripheral * 0.04;
+
         const targetScale = (0.86 + localReveal * 0.14)
-          * (1 + passWindow * nearWeight * 0.042)
+          * (1 + passWindow * nearWeight * 0.06)
           * (1 + nearWeight * velocityMagnitude * 0.014);
         const targetOpacity = clamp(localReveal * (1 - release * (0.18 + peripheral * 0.22)), 0, 1);
 
