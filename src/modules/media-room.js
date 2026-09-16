@@ -14,8 +14,7 @@ function ensureStyles(doc) {
       overflow: visible;
     }
     [data-mk-media-room-stage] {
-      position: sticky;
-      top: 0;
+      position: relative;
       width: 100%;
       height: 100svh;
       overflow: hidden;
@@ -451,16 +450,12 @@ export const mediaRoom = {
     };
 
     const progress = { value: 0 };
-    let scrollTrigger = null;
     const tween = gsap.to(progress, {
       value: 1,
       ease: "none",
       paused: false,
       onUpdate: () => {
         progressValue = progress.value;
-        if (scrollTrigger) {
-          velocityTarget = clamp(scrollTrigger.getVelocity() / Math.max(1, velocityMax), -1, 1);
-        }
         applyChoreography();
       },
       scrollTrigger: {
@@ -468,17 +463,28 @@ export const mediaRoom = {
         start: "top top",
         end: () => `+=${metrics.scrollDistance}`,
         scrub: readNumber(root, "motion-scrub", 0.75),
+        pin: stage,
+        pinSpacing: false,
+        anticipatePin: 1,
         invalidateOnRefresh: true,
+        onUpdate: (self) => {
+          velocityTarget = clamp(self.getVelocity() / Math.max(1, velocityMax), -1, 1);
+        },
         onRefreshInit: () => {
           metrics = measureRoom(root, stage, sourceMedia.length, spacing, explicitScrollVh);
         },
-        onRefresh: (self) => {
-          progressValue = self.progress;
+        onRefresh: () => {
+          progressValue = progress.value;
           applyChoreography();
+        },
+        onLeave: () => {
+          velocityTarget = 0;
+        },
+        onLeaveBack: () => {
+          velocityTarget = 0;
         }
       }
     });
-    scrollTrigger = tween.scrollTrigger;
 
     const velocityTick = () => {
       if (destroyed) return;
