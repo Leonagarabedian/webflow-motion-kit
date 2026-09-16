@@ -170,20 +170,17 @@ function buildRoomShell(scene, baseColor, depth, cameraStartZ) {
   const floorColor = shiftLightness(baseColor, -0.105);
   const ceilingColor = shiftLightness(baseColor, -0.042);
 
-  const createPlane = (geometry, color, position, rotation, role, roughness = 1) => {
+  const createPlane = (geometry, color, position, rotation, roughness = 1) => {
     const material = new THREE.MeshStandardMaterial({
       color,
       roughness,
       metalness: 0,
       side: THREE.DoubleSide,
-      fog: true,
-      transparent: true,
-      opacity: 1
+      fog: true
     });
     const mesh = new THREE.Mesh(geometry, material);
     mesh.position.set(position.x, position.y, position.z);
     mesh.rotation.set(rotation.x, rotation.y, rotation.z);
-    mesh.userData.roomSurface = role;
     scene.add(mesh);
     shell.push(mesh);
     return mesh;
@@ -192,25 +189,22 @@ function buildRoomShell(scene, baseColor, depth, cameraStartZ) {
   createPlane(
     new THREE.PlaneGeometry(width, height),
     backColor,
-    { x: 0, y: 0, z: depth - 9.5 },
-    { x: 0, y: 0, z: 0 },
-    "back"
+    { x: 0, y: 0, z: depth - 8.5 },
+    { x: 0, y: 0, z: 0 }
   );
 
   createPlane(
     new THREE.PlaneGeometry(length, height),
     sideColor,
     { x: -width * 0.5, y: 0, z: centerZ },
-    { x: 0, y: Math.PI / 2, z: 0 },
-    "side"
+    { x: 0, y: Math.PI / 2, z: 0 }
   );
 
   createPlane(
     new THREE.PlaneGeometry(length, height),
     sideColor,
     { x: width * 0.5, y: 0, z: centerZ },
-    { x: 0, y: -Math.PI / 2, z: 0 },
-    "side"
+    { x: 0, y: -Math.PI / 2, z: 0 }
   );
 
   createPlane(
@@ -218,7 +212,6 @@ function buildRoomShell(scene, baseColor, depth, cameraStartZ) {
     floorColor,
     { x: 0, y: -height * 0.5, z: centerZ },
     { x: -Math.PI / 2, y: 0, z: 0 },
-    "floor",
     0.96
   );
 
@@ -226,8 +219,7 @@ function buildRoomShell(scene, baseColor, depth, cameraStartZ) {
     new THREE.PlaneGeometry(width, length),
     ceilingColor,
     { x: 0, y: height * 0.5, z: centerZ },
-    { x: Math.PI / 2, y: 0, z: 0 },
-    "ceiling"
+    { x: Math.PI / 2, y: 0, z: 0 }
   );
 
   const coveMaterial = new THREE.MeshBasicMaterial({
@@ -247,7 +239,6 @@ function buildRoomShell(scene, baseColor, depth, cameraStartZ) {
   strips.forEach(({ x, y }) => {
     const strip = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.11, coveDepth), coveMaterial.clone());
     strip.position.set(x, y, centerZ);
-    strip.userData.roomSurface = "cove";
     scene.add(strip);
     shell.push(strip);
   });
@@ -312,7 +303,6 @@ export const mediaRoom = {
     const scene = new THREE.Scene();
     const configuredRoomColor = readString(root, "motion-room-color", "");
     const baseColor = parseCssColor(configuredRoomColor || nearestBackgroundColor(root));
-    const exitColor = shiftLightness(baseColor, 0.07);
     scene.background = baseColor.clone();
 
     const ambient = new THREE.HemisphereLight(
@@ -334,7 +324,7 @@ export const mediaRoom = {
     const startZ = 5.2;
     const entranceZ = startZ + 2.7;
     const finalItemZ = -(sourceMedia.length - 1) * spacing;
-    const endZ = finalItemZ - 1.8;
+    const endZ = finalItemZ + 4.0;
     camera.position.set(0, 0, entranceZ);
 
     const fogNear = readNumber(root, "motion-fog-near", 6.8);
@@ -361,30 +351,14 @@ export const mediaRoom = {
       const p = clamp(progressValue, 0, 1);
       const entrance = smoothstep(0, entranceSpan, p);
       const release = smoothstep(releaseStart, 1, p);
-      const releaseLate = smoothstep(0.9, 1, p);
       const travel = smoothstep(0.035, 0.965, p);
-      const roomPresence = entrance * (1 - release * 0.88);
+      const roomPresence = entrance * (1 - release * 0.78);
 
-      camera.position.z = mix(entranceZ, endZ, travel) - releaseLate * 1.6;
+      camera.position.z = mix(entranceZ, endZ, travel);
       camera.position.x = Math.sin(travel * Math.PI * 2.45) * 0.12 * roomPresence;
       camera.position.y = Math.sin(travel * Math.PI * 1.7 + 0.5) * 0.072 * roomPresence;
       camera.rotation.y = Math.sin(travel * Math.PI * 2.05) * 0.028 * roomPresence;
       camera.rotation.z = velocityValue * -0.0045;
-
-      scene.background.copy(baseColor).lerp(exitColor, releaseLate * 0.72);
-      if (scene.fog) scene.fog.color.copy(shiftLightness(baseColor, -0.01)).lerp(exitColor, releaseLate * 0.52);
-
-      shell.forEach((surface) => {
-        const role = surface.userData.roomSurface;
-        let fade = release;
-        if (role === "back") fade = smoothstep(releaseStart - 0.02, 0.93, p);
-        else if (role === "ceiling") fade = smoothstep(releaseStart + 0.015, 0.965, p);
-        else if (role === "side") fade = smoothstep(releaseStart + 0.035, 0.98, p);
-        else if (role === "floor") fade = smoothstep(releaseStart + 0.055, 0.99, p);
-        else if (role === "cove") fade = smoothstep(releaseStart - 0.01, 0.94, p);
-        const baseOpacity = role === "cove" ? 0.105 : 1;
-        surface.material.opacity = baseOpacity * (1 - fade * 0.96);
-      });
 
       const velocityMagnitude = Math.min(1, Math.abs(velocityValue));
       const velocityDirection = Math.sign(velocityValue || 1);
@@ -396,7 +370,6 @@ export const mediaRoom = {
         const peripheral = clamp((Math.abs(layout.x) - 1.1) / 3.0, 0, 1);
         const wallWeight = layout.role.includes("wall") ? 1 : 0;
         const centerWeight = layout.role === "deep-center" ? 1 : 0;
-        const finalCluster = smoothstep(0.72, 1, layout.depthRatio);
 
         const revealStart = 0.025 + layout.depthRatio * 0.12;
         const revealEnd = Math.min(entranceSpan + layout.depthRatio * 0.08, 0.34);
@@ -414,10 +387,9 @@ export const mediaRoom = {
         const entranceDepth = (1 - localReveal) * (1.5 + layout.depthRatio * 1.7);
         const entranceLift = (1 - localReveal) * (index % 2 === 0 ? 0.22 : -0.18);
 
-        const releaseSpread = release * side * (1.1 + peripheral * 1.25 + wallWeight * 0.42 + finalCluster * 1.65);
-        const releaseLift = release * (layout.y >= 0 ? 0.25 : -0.25) * (0.7 + peripheral * 0.45 + finalCluster * 0.5);
-        const releaseDepth = release * (0.3 + layout.depthRatio * 0.8) - releaseLate * finalCluster * 1.2;
-        const releaseTurn = release * side * finalCluster * 0.42;
+        const releaseSpread = release * side * (1.15 + peripheral * 1.35 + wallWeight * 0.45);
+        const releaseLift = release * (layout.y >= 0 ? 0.25 : -0.25) * (0.7 + peripheral * 0.45);
+        const releaseDepth = release * (0.35 + layout.depthRatio * 0.95);
 
         const velocitySpread = side * peripheral * velocityMagnitude * velocityStrength * (0.32 + nearWeight * 0.78);
         const velocityDepthLag = -velocityDirection * velocityMagnitude * velocityStrength * (0.12 + nearWeight * 0.52);
@@ -433,15 +405,12 @@ export const mediaRoom = {
         const orbitYaw = side * (passProgress - 0.5) * orbitStrength;
         const targetRotationY = mixAngle(layout.rotationY + orbitYaw, lookYaw, faceCameraAmount)
           + velocityValue * side * peripheral * 0.018
-          + release * side * peripheral * 0.04
-          + releaseTurn;
+          + release * side * peripheral * 0.04;
 
         const targetScale = (0.86 + localReveal * 0.14)
           * (1 + passWindow * nearWeight * 0.06)
-          * (1 + nearWeight * velocityMagnitude * 0.014)
-          * (1 - releaseLate * finalCluster * 0.06);
-        const exitFade = release * (0.12 + peripheral * 0.16) + releaseLate * finalCluster * 0.72;
-        const targetOpacity = clamp(localReveal * (1 - exitFade), 0, 1);
+          * (1 + nearWeight * velocityMagnitude * 0.014);
+        const targetOpacity = clamp(localReveal * (1 - release * (0.18 + peripheral * 0.22)), 0, 1);
 
         mesh.position.set(targetX, targetY, targetZ);
         mesh.rotation.y = targetRotationY;
@@ -451,11 +420,10 @@ export const mediaRoom = {
         shadow.position.set(targetX + 0.08, targetY - 0.08, targetZ - 0.055);
         shadow.rotation.y = targetRotationY;
         shadow.scale.setScalar(targetScale * (1 + nearWeight * velocityMagnitude * 0.014));
-        shadow.material.opacity = targetOpacity * (0.055 + roomPresence * 0.055 + nearWeight * 0.03) * (1 - release * 0.7);
+        shadow.material.opacity = targetOpacity * (0.055 + roomPresence * 0.055 + nearWeight * 0.03);
       });
 
-      atmosphere.style.opacity = `${clamp(0.5 + roomPresence * 0.22 - release * 0.22 + velocityMagnitude * 0.02, 0.18, 0.78)}`;
-      grain.style.opacity = `${clamp(readNumber(root, "motion-grain", 0.11) * (1 - releaseLate * 0.72), 0.02, 0.2)}`;
+      atmosphere.style.opacity = `${clamp(0.5 + roomPresence * 0.22 - release * 0.08 + velocityMagnitude * 0.02, 0.42, 0.78)}`;
       render();
     };
 
