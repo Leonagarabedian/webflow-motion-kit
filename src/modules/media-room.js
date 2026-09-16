@@ -69,6 +69,15 @@ function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
+function mix(a, b, t) {
+  return a + (b - a) * t;
+}
+
+function smoothstep(edge0, edge1, value) {
+  const t = clamp((value - edge0) / Math.max(0.0001, edge1 - edge0), 0, 1);
+  return t * t * (3 - 2 * t);
+}
+
 function sourceUrl(media) {
   return media?.currentSrc || media?.src || media?.getAttribute?.("src") || "";
 }
@@ -109,6 +118,33 @@ function shiftLightness(color, amount) {
   const shifted = new THREE.Color();
   shifted.setHSL(hsl.h, hsl.s, clamp(hsl.l + amount, 0.04, 0.96));
   return shifted;
+}
+
+function measureRoom(root, stage, imageCount, spacing, explicitScrollVh) {
+  const viewportHeight = Math.max(1, window.innerHeight || stage.getBoundingClientRect().height || 1);
+  const viewportWidth = Math.max(1, stage.getBoundingClientRect().width || window.innerWidth || 1);
+  const depthUnits = Math.max(spacing * Math.max(1, imageCount - 1), spacing * 3);
+  const aspect = viewportWidth / viewportHeight;
+
+  const depthDistance = depthUnits * viewportHeight * (aspect > 1.55 ? 0.48 : 0.56);
+  const countDistance = imageCount * viewportHeight * 0.205;
+  const minimumDistance = viewportHeight * 2.8;
+  const maximumDistance = viewportHeight * 6.4;
+  const measuredDistance = clamp(Math.max(depthDistance, countDistance, minimumDistance), minimumDistance, maximumDistance);
+  const explicitDistance = explicitScrollVh > 0 ? viewportHeight * (explicitScrollVh / 100) : 0;
+  const scrollDistance = explicitDistance || measuredDistance;
+  const rootHeight = viewportHeight + scrollDistance;
+
+  root.style.setProperty("--mk-media-room-height", `${rootHeight}px`);
+
+  return {
+    viewportHeight,
+    viewportWidth,
+    aspect,
+    depthUnits,
+    scrollDistance,
+    rootHeight
+  };
 }
 
 function buildRoomShell(scene, baseColor, depth, cameraStartZ) {
@@ -219,10 +255,9 @@ export const mediaRoom = {
     const originalStyle = root.getAttribute("style");
     const spacing = readNumber(root, "motion-depth-spacing", 2.55);
     const explicitScrollVh = readNumber(root, "motion-scroll-vh", 0);
-    const scrollVh = explicitScrollVh > 0
-      ? explicitScrollVh
-      : clamp(sourceMedia.length * 22, 280, 520);
-    root.style.setProperty("--mk-media-room-height", `${scrollVh}svh`);
+    const velocityMax = readNumber(root, "motion-velocity-max", 1800);
+    const velocityStrength = readNumber(root, "motion-velocity-strength", 0.62);
+    const velocitySmoothing = clamp(readNumber(root, "motion-velocity-smoothing", 0.16), 0.04, 0.5);
     root.style.setProperty("--mk-media-room-grain", `${readNumber(root, "motion-grain", 0.11)}`);
 
     const stage = root.ownerDocument.createElement("div");
@@ -271,25 +306,82 @@ export const mediaRoom = {
 
     const camera = new THREE.PerspectiveCamera(52, 1, 0.1, 140);
     const startZ = 5.2;
+    const entranceZ = startZ + 2.4;
     const finalItemZ = -(sourceMedia.length - 1) * spacing;
     const endZ = finalItemZ + 4.2;
-    camera.position.set(0, 0, startZ);
+    camera.position.set(0, 0, entranceZ);
 
     const fogNear = readNumber(root, "motion-fog-near", 6.8);
     const fogFar = readNumber(root, "motion-fog-far", 21.5);
     scene.fog = new THREE.Fog(shiftLightness(baseColor, -0.01), fogNear, fogFar);
 
-    const meshes = [];
-    const shadows = [];
+    const imageRecords = new Array(sourceMedia.length);
     const textures = [];
     const loader = new THREE.TextureLoader();
     const shell = buildRoomShell(scene, baseColor, finalItemZ, startZ);
     let destroyed = false;
-    let raf = null;
+    let resizeRaf = null;
+    let metrics = measureRoom(root, stage, sourceMedia.length, spacing, explicitScrollVh);
+    let progressValue = 0;
+    let velocityTarget = 0;
+    let velocityValue = 0;
 
     const render = () => {
       if (destroyed) return;
       renderer.render(scene, camera);
+    };
+
+    const applyChoreography = () => {
+      const p = clamp(progressValue, 0, 1);
+      const entrance = smoothstep(0, 0.13, p);
+      const exit = smoothstep(0.86, 1, p);
+      const travel = smoothstep(0.07, 0.94, p);
+      const roomPresence = entrance * (1 - exit * 0.72);
+
+      camera.position.z = mix(entranceZ, endZ, travel);
+      camera.position.x = Math.sin(travel * Math.PI * 2.7) * 0.13 * roomPresence;
+      camera.position.y = Math.sin(travel * Math.PI * 1.85 + 0.55) * 0.085 * roomPresence;
+      camera.rotation.z = velocityValue * -0.006;
+
+      const velocityMagnitude = Math.min(1, Math.abs(velocityValue));
+      const velocityDirection = Math.sign(velocityValue || 1);
+
+      imageRecords.forEach((record, index) => {
+        if (!record) return;
+        const { mesh, shadow, layout } = record;
+        const side = layout.x === 0 ? 0 : Math.sign(layout.x);
+        const peripheral = clamp(Math.abs(layout.x) / 3.7, 0, 1);
+        const depthRatio = sourceMedia.length > 1 ? index / (sourceMedia.length - 1) : 0;
+        const nearWeight = 1 - Math.min(1, Math.abs(layout.z - camera.position.z) / 13);
+
+        const entranceSpread = (1 - entrance) * (0.65 + peripheral * 0.55);
+        const exitSpread = exit * (0.75 + peripheral * 0.85);
+        const velocitySpread = side * peripheral * velocityMagnitude * velocityStrength * (0.34 + nearWeight * 0.58);
+        const velocityDepthLag = velocityDirection * velocityMagnitude * velocityStrength * (0.16 + nearWeight * 0.34);
+        const breathing = Math.sin((p * Math.PI * 2.1) + index * 0.72) * 0.025 * roomPresence;
+
+        const targetX = layout.x
+          + side * entranceSpread
+          + side * exitSpread
+          + velocitySpread;
+        const targetY = layout.y + breathing - exit * (0.06 + depthRatio * 0.08);
+        const targetZ = layout.z + velocityDepthLag;
+        const targetRotationY = layout.rotationY + velocityValue * side * peripheral * 0.026;
+        const targetScale = 1 - (1 - entrance) * 0.055 + nearWeight * velocityMagnitude * 0.018;
+
+        mesh.position.set(targetX, targetY, targetZ);
+        mesh.rotation.y = targetRotationY;
+        mesh.scale.setScalar(targetScale);
+        mesh.material.opacity = clamp(0.2 + entrance * 0.8 - exit * (0.12 + depthRatio * 0.12), 0, 1);
+
+        shadow.position.set(targetX + 0.08, targetY - 0.08, targetZ - 0.055);
+        shadow.rotation.y = targetRotationY;
+        shadow.scale.setScalar(targetScale * (1 + nearWeight * velocityMagnitude * 0.018));
+        shadow.material.opacity = 0.065 + roomPresence * 0.05 + nearWeight * velocityMagnitude * 0.025;
+      });
+
+      atmosphere.style.opacity = `${clamp(0.52 + roomPresence * 0.2 + velocityMagnitude * 0.025, 0.5, 0.78)}`;
+      render();
     };
 
     sourceMedia.forEach((media, index) => {
@@ -307,7 +399,7 @@ export const mediaRoom = {
           const image = texture.image;
           const ratio = image?.width && image?.height ? image.width / image.height : 1.35;
           const layout = roomPosition(index, spacing);
-          const baseHeight = layout.x === 0 ? 2.65 : 2.35;
+          const baseHeight = Math.abs(layout.x) < 1 ? 2.65 : 2.35;
           const height = baseHeight * layout.scale;
           const width = clamp(height * ratio, 1.55, 4.15);
 
@@ -324,21 +416,22 @@ export const mediaRoom = {
           shadow.position.set(layout.x + 0.08, layout.y - 0.08, layout.z - 0.055);
           shadow.rotation.y = layout.rotationY;
           scene.add(shadow);
-          shadows.push(shadow);
 
           const geometry = new THREE.PlaneGeometry(width, height, 1, 1);
           const material = new THREE.MeshBasicMaterial({
             map: texture,
             side: THREE.DoubleSide,
             transparent: true,
+            opacity: 0,
             fog: true
           });
           const mesh = new THREE.Mesh(geometry, material);
           mesh.position.set(layout.x, layout.y, layout.z);
           mesh.rotation.y = layout.rotationY;
           scene.add(mesh);
-          meshes.push(mesh);
-          render();
+
+          imageRecords[index] = { mesh, shadow, layout };
+          applyChoreography();
         },
         undefined,
         () => {}
@@ -353,35 +446,56 @@ export const mediaRoom = {
       renderer.setSize(width, height, false);
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
-      render();
+      metrics = measureRoom(root, stage, sourceMedia.length, spacing, explicitScrollVh);
+      applyChoreography();
     };
 
     const progress = { value: 0 };
-    const updateCamera = () => {
-      const p = progress.value;
-      camera.position.z = startZ + (endZ - startZ) * p;
-      camera.position.x = Math.sin(p * Math.PI * 3.2) * 0.16;
-      camera.position.y = Math.sin(p * Math.PI * 2.1 + 0.6) * 0.1;
-      render();
-    };
-
+    let scrollTrigger = null;
     const tween = gsap.to(progress, {
       value: 1,
       ease: "none",
-      onUpdate: updateCamera,
+      paused: false,
+      onUpdate: () => {
+        progressValue = progress.value;
+        if (scrollTrigger) {
+          velocityTarget = clamp(scrollTrigger.getVelocity() / Math.max(1, velocityMax), -1, 1);
+        }
+        applyChoreography();
+      },
       scrollTrigger: {
         trigger: root,
         start: "top top",
-        end: "bottom bottom",
+        end: () => `+=${metrics.scrollDistance}`,
         scrub: readNumber(root, "motion-scrub", 0.75),
-        invalidateOnRefresh: true
+        invalidateOnRefresh: true,
+        onRefreshInit: () => {
+          metrics = measureRoom(root, stage, sourceMedia.length, spacing, explicitScrollVh);
+        },
+        onRefresh: (self) => {
+          progressValue = self.progress;
+          applyChoreography();
+        }
       }
     });
+    scrollTrigger = tween.scrollTrigger;
+
+    const velocityTick = () => {
+      if (destroyed) return;
+      velocityTarget *= 0.9;
+      velocityValue += (velocityTarget - velocityValue) * velocitySmoothing;
+      if (Math.abs(velocityValue) < 0.0008 && Math.abs(velocityTarget) < 0.0008) {
+        velocityValue = 0;
+        velocityTarget = 0;
+      }
+      applyChoreography();
+    };
+    gsap.ticker.add(velocityTick);
 
     const resizeObserver = new ResizeObserver(() => {
-      if (raf != null) cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        raf = null;
+      if (resizeRaf != null) cancelAnimationFrame(resizeRaf);
+      resizeRaf = requestAnimationFrame(() => {
+        resizeRaf = null;
         resize();
         ScrollTrigger.refresh?.();
       });
@@ -392,19 +506,19 @@ export const mediaRoom = {
 
     return () => {
       destroyed = true;
-      if (raf != null) cancelAnimationFrame(raf);
+      if (resizeRaf != null) cancelAnimationFrame(resizeRaf);
       resizeObserver.disconnect();
+      gsap.ticker.remove(velocityTick);
       tween.scrollTrigger?.kill();
       tween.kill();
-      meshes.forEach((mesh) => {
-        mesh.geometry.dispose();
-        mesh.material.dispose();
-        scene.remove(mesh);
-      });
-      shadows.forEach((shadow) => {
-        shadow.geometry.dispose();
-        shadow.material.dispose();
-        scene.remove(shadow);
+      imageRecords.forEach((record) => {
+        if (!record) return;
+        record.mesh.geometry.dispose();
+        record.mesh.material.dispose();
+        scene.remove(record.mesh);
+        record.shadow.geometry.dispose();
+        record.shadow.material.dispose();
+        scene.remove(record.shadow);
       });
       shell.forEach((mesh) => {
         mesh.geometry.dispose();
