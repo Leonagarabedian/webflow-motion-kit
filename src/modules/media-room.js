@@ -81,15 +81,20 @@ function sourceUrl(media) {
   return media?.currentSrc || media?.src || media?.getAttribute?.("src") || "";
 }
 
-function roomPosition(index, spacing) {
-  const lane = index % 6;
-  const depth = -index * spacing;
-  if (lane === 0) return { x: -3.35, y: 0.75, z: depth, rotationY: 0.38, scale: 1.08 };
-  if (lane === 1) return { x: 3.45, y: -0.55, z: depth - 0.45, rotationY: -0.38, scale: 1.02 };
-  if (lane === 2) return { x: -0.7, y: 1.45, z: depth - 0.9, rotationY: 0.04, scale: 0.9 };
-  if (lane === 3) return { x: -3.7, y: -1.2, z: depth - 0.25, rotationY: 0.44, scale: 0.96 };
-  if (lane === 4) return { x: 3.65, y: 1.05, z: depth - 0.7, rotationY: -0.44, scale: 1.06 };
-  return { x: 0.85, y: -1.35, z: depth - 1.05, rotationY: -0.04, scale: 0.88 };
+function roomPosition(index, spacing, count) {
+  const pattern = [
+    { role: "left-wall", x: -3.55, y: 0.8, rotationY: 0.42, scale: 1.08, zOffset: 0 },
+    { role: "right-wall", x: 3.55, y: -0.45, rotationY: -0.42, scale: 1.02, zOffset: -0.42 },
+    { role: "deep-center", x: -0.55, y: 1.35, rotationY: 0.04, scale: 0.88, zOffset: -0.9 },
+    { role: "left-peripheral", x: -4.0, y: -1.15, rotationY: 0.5, scale: 0.96, zOffset: -0.22 },
+    { role: "right-peripheral", x: 3.95, y: 1.05, rotationY: -0.5, scale: 1.06, zOffset: -0.68 },
+    { role: "deep-center", x: 0.75, y: -1.25, rotationY: -0.04, scale: 0.86, zOffset: -1.02 }
+  ];
+  const slot = pattern[index % pattern.length];
+  const cycle = Math.floor(index / pattern.length);
+  const depth = -index * spacing + slot.zOffset - cycle * 0.08;
+  const depthRatio = count > 1 ? index / (count - 1) : 0;
+  return { ...slot, z: depth, depthRatio };
 }
 
 function parseCssColor(value, fallback = "#c7d5ff") {
@@ -255,8 +260,11 @@ export const mediaRoom = {
     const spacing = readNumber(root, "motion-depth-spacing", 2.55);
     const explicitScrollVh = readNumber(root, "motion-scroll-vh", 0);
     const velocityMax = readNumber(root, "motion-velocity-max", 1800);
-    const velocityStrength = readNumber(root, "motion-velocity-strength", 0.62);
-    const velocitySmoothing = clamp(readNumber(root, "motion-velocity-smoothing", 0.16), 0.04, 0.5);
+    const velocityStrength = readNumber(root, "motion-velocity-strength", 0.72);
+    const velocitySmoothing = clamp(readNumber(root, "motion-velocity-smoothing", 0.18), 0.04, 0.5);
+    const entranceSpan = clamp(readNumber(root, "motion-entrance-span", 0.2), 0.08, 0.32);
+    const releaseStart = clamp(readNumber(root, "motion-release-start", 0.82), 0.68, 0.94);
+    const passStrength = readNumber(root, "motion-pass-strength", 0.82);
     root.style.setProperty("--mk-media-room-grain", `${readNumber(root, "motion-grain", 0.11)}`);
 
     const stage = root.ownerDocument.createElement("div");
@@ -305,9 +313,9 @@ export const mediaRoom = {
 
     const camera = new THREE.PerspectiveCamera(52, 1, 0.1, 140);
     const startZ = 5.2;
-    const entranceZ = startZ + 2.4;
+    const entranceZ = startZ + 2.7;
     const finalItemZ = -(sourceMedia.length - 1) * spacing;
-    const endZ = finalItemZ + 4.2;
+    const endZ = finalItemZ + 4.0;
     camera.position.set(0, 0, entranceZ);
 
     const fogNear = readNumber(root, "motion-fog-near", 6.8);
@@ -332,15 +340,15 @@ export const mediaRoom = {
 
     const applyChoreography = () => {
       const p = clamp(progressValue, 0, 1);
-      const entrance = smoothstep(0, 0.13, p);
-      const exit = smoothstep(0.86, 1, p);
-      const travel = smoothstep(0.07, 0.94, p);
-      const roomPresence = entrance * (1 - exit * 0.72);
+      const entrance = smoothstep(0, entranceSpan, p);
+      const release = smoothstep(releaseStart, 1, p);
+      const travel = smoothstep(0.035, 0.965, p);
+      const roomPresence = entrance * (1 - release * 0.78);
 
       camera.position.z = mix(entranceZ, endZ, travel);
-      camera.position.x = Math.sin(travel * Math.PI * 2.7) * 0.13 * roomPresence;
-      camera.position.y = Math.sin(travel * Math.PI * 1.85 + 0.55) * 0.085 * roomPresence;
-      camera.rotation.z = velocityValue * -0.006;
+      camera.position.x = Math.sin(travel * Math.PI * 2.45) * 0.11 * roomPresence;
+      camera.position.y = Math.sin(travel * Math.PI * 1.7 + 0.5) * 0.072 * roomPresence;
+      camera.rotation.z = velocityValue * -0.0045;
 
       const velocityMagnitude = Math.min(1, Math.abs(velocityValue));
       const velocityDirection = Math.sign(velocityValue || 1);
@@ -348,38 +356,57 @@ export const mediaRoom = {
       imageRecords.forEach((record, index) => {
         if (!record) return;
         const { mesh, shadow, layout } = record;
-        const side = layout.x === 0 ? 0 : Math.sign(layout.x);
-        const peripheral = clamp(Math.abs(layout.x) / 3.7, 0, 1);
-        const depthRatio = sourceMedia.length > 1 ? index / (sourceMedia.length - 1) : 0;
-        const nearWeight = 1 - Math.min(1, Math.abs(layout.z - camera.position.z) / 13);
+        const side = Math.sign(layout.x || 1);
+        const peripheral = clamp((Math.abs(layout.x) - 1.1) / 3.0, 0, 1);
+        const wallWeight = layout.role.includes("wall") ? 1 : 0;
+        const centerWeight = layout.role === "deep-center" ? 1 : 0;
 
-        const entranceSpread = (1 - entrance) * (0.65 + peripheral * 0.55);
-        const exitSpread = exit * (0.75 + peripheral * 0.85);
-        const velocitySpread = side * peripheral * velocityMagnitude * velocityStrength * (0.34 + nearWeight * 0.58);
-        const velocityDepthLag = velocityDirection * velocityMagnitude * velocityStrength * (0.16 + nearWeight * 0.34);
-        const breathing = Math.sin((p * Math.PI * 2.1) + index * 0.72) * 0.025 * roomPresence;
+        const revealStart = 0.025 + layout.depthRatio * 0.12;
+        const revealEnd = Math.min(entranceSpan + layout.depthRatio * 0.08, 0.34);
+        const localReveal = smoothstep(revealStart, revealEnd, p);
 
-        const targetX = layout.x
-          + side * entranceSpread
-          + side * exitSpread
-          + velocitySpread;
-        const targetY = layout.y + breathing - exit * (0.06 + depthRatio * 0.08);
-        const targetZ = layout.z + velocityDepthLag;
-        const targetRotationY = layout.rotationY + velocityValue * side * peripheral * 0.026;
-        const targetScale = 1 - (1 - entrance) * 0.055 + nearWeight * velocityMagnitude * 0.018;
+        const cameraDelta = layout.z - camera.position.z;
+        const nearWeight = clamp(1 - Math.abs(cameraDelta) / 9.5, 0, 1);
+        const passWindow = smoothstep(-5.8, -0.65, cameraDelta) * (1 - smoothstep(-0.65, 3.2, cameraDelta));
+        const passDirection = cameraDelta < -0.65 ? 1 : -1;
+        const passOut = side * peripheral * passWindow * passStrength * passDirection;
+        const passScale = 1 + passWindow * nearWeight * 0.052;
+
+        const entranceSpread = (1 - localReveal) * side * (0.95 + peripheral * 0.95 + centerWeight * 0.25);
+        const entranceDepth = (1 - localReveal) * (1.5 + layout.depthRatio * 1.7);
+        const entranceLift = (1 - localReveal) * (index % 2 === 0 ? 0.22 : -0.18);
+
+        const releaseSpread = release * side * (1.15 + peripheral * 1.35 + wallWeight * 0.45);
+        const releaseLift = release * (layout.y >= 0 ? 0.25 : -0.25) * (0.7 + peripheral * 0.45);
+        const releaseDepth = release * (0.35 + layout.depthRatio * 0.95);
+
+        const velocitySpread = side * peripheral * velocityMagnitude * velocityStrength * (0.32 + nearWeight * 0.78);
+        const velocityDepthLag = -velocityDirection * velocityMagnitude * velocityStrength * (0.12 + nearWeight * 0.52);
+        const velocityLift = velocityDirection * velocityMagnitude * nearWeight * 0.045 * (index % 2 ? 1 : -1);
+        const breathing = Math.sin((p * Math.PI * 2.0) + index * 0.66) * 0.018 * roomPresence;
+
+        const targetX = layout.x + entranceSpread + passOut + releaseSpread + velocitySpread;
+        const targetY = layout.y + entranceLift + releaseLift + velocityLift + breathing;
+        const targetZ = layout.z + entranceDepth + releaseDepth + velocityDepthLag;
+        const targetRotationY = layout.rotationY
+          + passOut * -0.055
+          + velocityValue * side * peripheral * 0.022
+          + release * side * peripheral * 0.045;
+        const targetScale = (0.86 + localReveal * 0.14) * passScale * (1 + nearWeight * velocityMagnitude * 0.014);
+        const targetOpacity = clamp(localReveal * (1 - release * (0.18 + peripheral * 0.22)), 0, 1);
 
         mesh.position.set(targetX, targetY, targetZ);
         mesh.rotation.y = targetRotationY;
         mesh.scale.setScalar(targetScale);
-        mesh.material.opacity = clamp(0.2 + entrance * 0.8 - exit * (0.12 + depthRatio * 0.12), 0, 1);
+        mesh.material.opacity = targetOpacity;
 
         shadow.position.set(targetX + 0.08, targetY - 0.08, targetZ - 0.055);
         shadow.rotation.y = targetRotationY;
-        shadow.scale.setScalar(targetScale * (1 + nearWeight * velocityMagnitude * 0.018));
-        shadow.material.opacity = 0.065 + roomPresence * 0.05 + nearWeight * velocityMagnitude * 0.025;
+        shadow.scale.setScalar(targetScale * (1 + nearWeight * velocityMagnitude * 0.014));
+        shadow.material.opacity = targetOpacity * (0.055 + roomPresence * 0.055 + nearWeight * 0.03);
       });
 
-      atmosphere.style.opacity = `${clamp(0.52 + roomPresence * 0.2 + velocityMagnitude * 0.025, 0.5, 0.78)}`;
+      atmosphere.style.opacity = `${clamp(0.5 + roomPresence * 0.22 - release * 0.08 + velocityMagnitude * 0.02, 0.42, 0.78)}`;
       render();
     };
 
@@ -397,16 +424,16 @@ export const mediaRoom = {
 
           const image = texture.image;
           const ratio = image?.width && image?.height ? image.width / image.height : 1.35;
-          const layout = roomPosition(index, spacing);
-          const baseHeight = Math.abs(layout.x) < 1 ? 2.65 : 2.35;
+          const layout = roomPosition(index, spacing, sourceMedia.length);
+          const baseHeight = layout.role === "deep-center" ? 2.5 : 2.3;
           const height = baseHeight * layout.scale;
-          const width = clamp(height * ratio, 1.55, 4.15);
+          const width = clamp(height * ratio, 1.5, 4.15);
 
           const shadowGeometry = new THREE.PlaneGeometry(width * 1.055, height * 1.055, 1, 1);
           const shadowMaterial = new THREE.MeshBasicMaterial({
             color: 0x101820,
             transparent: true,
-            opacity: 0.115,
+            opacity: 0,
             side: THREE.DoubleSide,
             depthWrite: false,
             fog: true
@@ -488,9 +515,11 @@ export const mediaRoom = {
 
     const velocityTick = () => {
       if (destroyed) return;
-      velocityTarget *= 0.9;
-      velocityValue += (velocityTarget - velocityValue) * velocitySmoothing;
-      if (Math.abs(velocityValue) < 0.0008 && Math.abs(velocityTarget) < 0.0008) {
+      const decay = Math.abs(velocityTarget) < 0.02 ? 0.86 : 0.94;
+      velocityTarget *= decay;
+      const response = Math.abs(velocityTarget) > Math.abs(velocityValue) ? velocitySmoothing * 1.35 : velocitySmoothing * 0.78;
+      velocityValue += (velocityTarget - velocityValue) * clamp(response, 0.05, 0.55);
+      if (Math.abs(velocityValue) < 0.0007 && Math.abs(velocityTarget) < 0.0007) {
         velocityValue = 0;
         velocityTarget = 0;
       }
