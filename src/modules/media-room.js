@@ -156,7 +156,7 @@ function buildRoomShell(scene, baseColor, depth, cameraStartZ) {
   const width = 12.8;
   const height = 8.4;
   const centerZ = (cameraStartZ - depth) / 2;
-  const length = Math.abs(depth - cameraStartZ) + 18;
+  const length = Math.abs(depth - cameraStartZ) + 20;
 
   const backColor = shiftLightness(baseColor, -0.012);
   const sideColor = shiftLightness(baseColor, -0.06);
@@ -182,7 +182,7 @@ function buildRoomShell(scene, baseColor, depth, cameraStartZ) {
   createPlane(
     new THREE.PlaneGeometry(width, height),
     backColor,
-    { x: 0, y: 0, z: depth - 5.5 },
+    { x: 0, y: 0, z: depth - 8.5 },
     { x: 0, y: 0, z: 0 }
   );
 
@@ -265,6 +265,7 @@ export const mediaRoom = {
     const entranceSpan = clamp(readNumber(root, "motion-entrance-span", 0.2), 0.08, 0.32);
     const releaseStart = clamp(readNumber(root, "motion-release-start", 0.82), 0.68, 0.94);
     const passStrength = readNumber(root, "motion-pass-strength", 0.82);
+    const orbitStrength = readNumber(root, "motion-orbit-strength", 0.78);
     root.style.setProperty("--mk-media-room-grain", `${readNumber(root, "motion-grain", 0.11)}`);
 
     const stage = root.ownerDocument.createElement("div");
@@ -348,6 +349,7 @@ export const mediaRoom = {
       camera.position.z = mix(entranceZ, endZ, travel);
       camera.position.x = Math.sin(travel * Math.PI * 2.45) * 0.11 * roomPresence;
       camera.position.y = Math.sin(travel * Math.PI * 1.7 + 0.5) * 0.072 * roomPresence;
+      camera.rotation.y = Math.sin(travel * Math.PI * 2.05) * 0.018 * roomPresence;
       camera.rotation.z = velocityValue * -0.0045;
 
       const velocityMagnitude = Math.min(1, Math.abs(velocityValue));
@@ -367,10 +369,12 @@ export const mediaRoom = {
 
         const cameraDelta = layout.z - camera.position.z;
         const nearWeight = clamp(1 - Math.abs(cameraDelta) / 9.5, 0, 1);
-        const passWindow = smoothstep(-5.8, -0.65, cameraDelta) * (1 - smoothstep(-0.65, 3.2, cameraDelta));
-        const passDirection = cameraDelta < -0.65 ? 1 : -1;
-        const passOut = side * peripheral * passWindow * passStrength * passDirection;
-        const passScale = 1 + passWindow * nearWeight * 0.052;
+        const passProgress = smoothstep(-7.2, 3.6, cameraDelta);
+        const passArc = Math.sin(passProgress * Math.PI);
+        const passWindow = passArc * passArc;
+        const orbitTurn = side * passProgress * orbitStrength * (0.48 + peripheral * 0.52);
+        const orbitOut = side * passWindow * orbitStrength * (0.68 + peripheral * 0.72);
+        const orbitDepth = passWindow * orbitStrength * 0.52;
 
         const entranceSpread = (1 - localReveal) * side * (0.95 + peripheral * 0.95 + centerWeight * 0.25);
         const entranceDepth = (1 - localReveal) * (1.5 + layout.depthRatio * 1.7);
@@ -385,14 +389,16 @@ export const mediaRoom = {
         const velocityLift = velocityDirection * velocityMagnitude * nearWeight * 0.045 * (index % 2 ? 1 : -1);
         const breathing = Math.sin((p * Math.PI * 2.0) + index * 0.66) * 0.018 * roomPresence;
 
-        const targetX = layout.x + entranceSpread + passOut + releaseSpread + velocitySpread;
+        const targetX = layout.x + entranceSpread + orbitOut * passStrength + releaseSpread + velocitySpread;
         const targetY = layout.y + entranceLift + releaseLift + velocityLift + breathing;
-        const targetZ = layout.z + entranceDepth + releaseDepth + velocityDepthLag;
+        const targetZ = layout.z + entranceDepth + orbitDepth + releaseDepth + velocityDepthLag;
         const targetRotationY = layout.rotationY
-          + passOut * -0.055
+          + orbitTurn
           + velocityValue * side * peripheral * 0.022
           + release * side * peripheral * 0.045;
-        const targetScale = (0.86 + localReveal * 0.14) * passScale * (1 + nearWeight * velocityMagnitude * 0.014);
+        const targetScale = (0.86 + localReveal * 0.14)
+          * (1 + passWindow * nearWeight * 0.042)
+          * (1 + nearWeight * velocityMagnitude * 0.014);
         const targetOpacity = clamp(localReveal * (1 - release * (0.18 + peripheral * 0.22)), 0, 1);
 
         mesh.position.set(targetX, targetY, targetZ);
