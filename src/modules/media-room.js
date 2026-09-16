@@ -85,10 +85,10 @@ function buildRoomShell(scene, baseColor, depth, cameraStartZ) {
   const centerZ = (cameraStartZ - depth) / 2;
   const length = Math.abs(depth - cameraStartZ) + 18;
 
-  const backColor = shiftLightness(baseColor, -0.025);
-  const sideColor = shiftLightness(baseColor, -0.07);
-  const floorColor = shiftLightness(baseColor, -0.115);
-  const ceilingColor = shiftLightness(baseColor, 0.035);
+  const backColor = shiftLightness(baseColor, -0.015);
+  const sideColor = shiftLightness(baseColor, -0.065);
+  const floorColor = shiftLightness(baseColor, -0.11);
+  const ceilingColor = shiftLightness(baseColor, -0.045);
 
   const createPlane = (geometry, material, position, rotation) => {
     const mesh = new THREE.Mesh(geometry, material);
