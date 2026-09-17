@@ -68,7 +68,7 @@ export const scrollSyncedGallery = {
     };
 
     let instances = [];
-    const manualRange = scrollMode(element) !== "auto" && (element.hasAttribute("data-motion-start") || element.hasAttribute("data-motion-end"));
+    const manualRange = scrollMode(element) !== "auto" && (["data-motion-start", "data-motion-end", "data-motion-scroll-distance", "data-motion-scroll-vh"].some(attribute => element.hasAttribute(attribute)));
     const updateMediaScale = (index) => {
       const inner = mediaInnerItems[index];
       const trigger = triggers[index];

@@ -1,6 +1,6 @@
 # Existing scroll animation contracts
 
-This directory organizes the 37 existing modules that own, follow, or respond to scrolling. The 14 stationary typography modules are excluded. Original src/modules/<name>.js entry points re-export the same module objects, so existing imports and Webflow data-motion values remain valid.
+This directory organizes the 38 existing modules that own, follow, or respond to scrolling. The 14 stationary typography modules are excluded. Original src/modules/<name>.js entry points re-export the same module objects, so existing imports and Webflow data-motion values remain valid.
 
 ## Controls
 
@@ -66,10 +66,15 @@ The scroll-synced-gallery uses per-item ranges. Manual start/end apply to each i
 | `pinned-media` | Auto + legacy existed | Shared composition/spatial planner; scale delta and pin ownership | Existing start/end where relevant, scrub and module-specific pin settings |
 | `pinned-steps` | Auto + legacy existed | Shared spatial planner; measured incoming panel height and step count | Existing start/end where relevant, scrub and module-specific pin settings |
 | `character-converge` | Auto + legacy existed | Shared editorial planner; actual pixel offsets and stagger | Existing start/end where relevant, scrub and module-specific pin settings |
+| `pinned-media-return` | Velocity measured; manual threshold only | Auto threshold = measured media height / response duration; actual scroll velocity still drives crop | crop-velocity-max / crop-inset / crop-response-duration / crop-velocity-smoothing |
 
 ## Verification and release
 
 The PR validates module contracts, legacy defaults, custom hero phase preservation, compatibility imports, and alignment/build regression checks in GitHub Actions. Visual QA in real Webflow layouts is still required before approval.
+
+pinned-media-return is a velocity-responsive scroll effect, not a trigger owner. Its auto mode calculates the normalization threshold from current media height and response duration. Legacy preserves the existing 1400px/s default or authored crop-velocity-max. The crop shape, maximum inset, easing and smoothing remain authored.
+
+All 57 existing animation modules were checked: 38 scroll-related modules above, plus 19 non-scroll/support modules. The latter stay outside this folder: accordion-media, branda-spatial-pin-layout, branda-spatial-shell, cursor, grid-video-reveal, hover-background-swap, hover-highlight-box, hover-linked-illuminate, link-swap, loader-composition, looping-labels, magnetic, nav-flip, page-transition, paired-tag-intro, responsive-menu, stacked-image-hover, view-switch, works-services-transition. view-switch refreshes scroll measurements after switching views but does not own an animation range.
 
 The root-level page-scroll service remains in src/core/page-scroll.js. It manages page smoothing; it is not an animation module. branda-spatial-shell and branda-spatial-pin-layout remain supporting layout helpers.
 

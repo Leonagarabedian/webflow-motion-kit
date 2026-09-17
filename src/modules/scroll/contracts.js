@@ -147,5 +147,9 @@ export const scrollContracts = Object.freeze([
   {
     "name": "character-converge",
     "role": "owner"
+  },
+  {
+    "name": "pinned-media-return",
+    "role": "velocity"
   }
 ]);

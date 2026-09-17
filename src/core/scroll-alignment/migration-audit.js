@@ -46,7 +46,8 @@ const CUSTOM_READY = new Map([
   ["services-center-shift", "measured-center-span"],
   ["footer-reveal", "measured-reveal-span"],
   ["theme-switch", "measured-theme-window"],
-  ["morph-narrative", "measured-morph-span"]
+  ["morph-narrative", "measured-morph-span"],
+  ["pinned-media-return", "measured-velocity-response"]
 ]);
 
 const COMPLEX_REVIEW = new Set([
@@ -61,7 +62,6 @@ const NON_SCROLL = new Set([
   "view-switch",
   "page-transition",
   "loader-composition",
-  "pinned-media-return",
   "hover-highlight-box",
   "hover-background-swap",
   "hover-linked-illuminate",

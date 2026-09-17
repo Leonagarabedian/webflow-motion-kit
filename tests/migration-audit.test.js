@@ -49,14 +49,15 @@ describe("motion migration strategy policy", () => {
     expect(report.entries.find((entry) => entry.name === "liquid-fill")?.strategy).toBe("dynamic-span");
   });
 
-  it("keeps velocity and pointer interactions outside viewport alignment", () => {
+  it("distinguishes measured velocity responses from pointer interactions", () => {
     document.body.innerHTML = `
       <div data-motion="pinned-media-return"></div>
       <div data-motion="grid-video-reveal"></div>
       <div data-motion="accordion-media"></div>
     `;
     const report = auditScrollAlignment(document);
-    expect(report.entries.every((entry) => entry.status === "non-scroll")).toBe(true);
+    expect(report.entries.find(entry => entry.name === "pinned-media-return").strategy).toBe("measured-velocity-response");
+    expect(report.entries.filter(entry => entry.name !== "pinned-media-return").every(entry => entry.status === "non-scroll")).toBe(true);
   });
 });
 

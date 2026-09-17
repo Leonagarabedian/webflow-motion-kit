@@ -35,3 +35,4 @@ export { scrollHighlight } from "./scroll-highlight.js";
 export { pinnedMedia } from "./pinned-media.js";
 export { pinnedSteps } from "./pinned-steps.js";
 export { characterConverge } from "./character-converge.js";
+export { pinnedMediaReturn } from "./pinned-media-return.js";
