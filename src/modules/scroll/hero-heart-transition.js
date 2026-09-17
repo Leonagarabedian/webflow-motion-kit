@@ -1,4 +1,5 @@
-import { resolveScrollContract, relativeSpan, phaseScrollDistance, layoutSize } from "../../core/scroll-alignment/contract.js";
+import { createPhaseScrollPlan } from "../../core/scroll-alignment/phase-plan.js";
+import { resolveScrollContract, relativeSpan, phaseScrollDistance, layoutSize, scrollMode } from "../../core/scroll-alignment/contract.js";
 import {
   readNumber,
   readString,
@@ -273,7 +274,10 @@ export const heroHeartTransition = {
         gsap.set(heartFillPath, { opacity: 0 });
         gsap.set(heartOutlinePath, { opacity: 0 });
 
+        let phasePlan = null;
+
         function render(scrollProgress) {
+          if (phasePlan) scrollProgress = phasePlan.authoredProgressAt(scrollProgress);
           const phase1 = phaseProgress(scrollProgress, 0, clipEnd, clamp);
           const leftEdge = interpolate(0, slitLeft, phase1);
           const rightEdge = interpolate(100, slitRight, phase1);
@@ -421,6 +425,29 @@ export const heroHeartTransition = {
           });
         }
 
+        const automatic = scrollMode(element) === "auto";
+        function calculatePhasePlan() {
+          const phases = [
+            { start: 0, end: clipEnd, travel: layoutSize(frame).width * (slitLeft + 100 - slitRight) / 100 },
+            { start: rotateStart, end: rotateEnd, travel: layoutSize(frame).height * Math.abs(rotateTo) / 180 },
+            { start: scaleStart, end: morphStart, travel: layoutSize(frame).height * 0.82 },
+            { start: morphStart, end: morphEnd, travel: heartSize, minVh: 0.08, maxVh: 0.18 },
+            { start: morphEnd, end: settleEnd, travel: heartSize * Math.abs(heartScale * (1 - heartSettleFrom)), minVh: 0.04, maxVh: 0.08 },
+            { start: outlineStart, end: outlineEnd, travel: 0, minVh: 0.08, maxVh: 0.08 },
+            { start: outlineEnd, end: disappearEnd, travel: 0, minVh: 0.06, maxVh: 0.06 }
+          ];
+          const factor = Math.max(0.1, readNumber(element, "motion-scroll-factor", 1));
+          phasePlan = createPhaseScrollPlan(phases, {
+            viewportHeight: window.innerHeight,
+            // Preserve the opening's previously tested auto pacing exactly.
+            baselineDistance: phaseScrollDistance(element, phases) / factor,
+            preserveUntil: morphStart,
+            factor,
+            gapVh: 0.12
+          });
+          return phasePlan;
+        }
+        if (automatic) calculatePhasePlan();
         render(0);
 
         const trigger = ScrollTrigger.create(resolveScrollContract(element, {
@@ -432,19 +459,14 @@ export const heroHeartTransition = {
           scrub,
           invalidateOnRefresh: true,
           onUpdate: (self) => render(self.progress),
-          onRefresh: (self) => render(self.progress)
+          onRefresh: (self) => {
+            if (automatic) calculatePhasePlan();
+            render(self.progress);
+          }
         }, () => ({
-  start: "top top",
-  end: () => relativeSpan(phaseScrollDistance(element, [
-    { start: 0, end: clipEnd, travel: layoutSize(frame).width * (slitLeft + 100 - slitRight) / 100 },
-    { start: rotateStart, end: rotateEnd, travel: layoutSize(frame).height * Math.abs(rotateTo) / 180 },
-    { start: scaleStart, end: morphStart, travel: layoutSize(frame).height * 0.82 },
-    { start: morphStart, end: morphEnd, travel: heartSize },
-    { start: morphEnd, end: settleEnd, travel: heartSize * Math.abs(heartScale * (1 - heartSettleFrom)) },
-    { start: outlineStart, end: outlineEnd, travel: 0 },
-    { start: outlineEnd, end: disappearEnd, travel: 0 }
-  ]))
-})));
+          start: "top top",
+          end: () => relativeSpan(calculatePhasePlan().totalDistance)
+        })));
 
         return () => trigger.kill();
       }

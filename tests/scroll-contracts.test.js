@@ -1,3 +1,4 @@
+import { createPhaseScrollPlan } from "../src/core/scroll-alignment/phase-plan.js";
 /** @vitest-environment jsdom */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resolveScrollContract, phaseScrollDistance, scrollMode, viewportScroll } from "../src/core/scroll-alignment/contract.js";
@@ -92,7 +93,7 @@ describe("scroll ownership contracts", () => {
   });
 });
 
-function captureHero(module, mode, attributes = "") {
+function captureHero(module, mode, attributes = "", sampleProgress = value => value) {
   const targets = ["intro", "frame", "side-left", "side-right", "overlay-dark", "bg-copy-left", "bg-copy-right"];
   document.body.innerHTML = '<section data-motion-alignment="' + mode + '" ' + attributes + '>' + targets.map(role => '<div data-motion-target="' + role + '"></div>').join("") + '</section>';
   const root = document.body.firstElementChild;
@@ -128,7 +129,7 @@ function captureHero(module, mode, attributes = "") {
   sets.length = 0;
   const trace = [];
   for (const value of [0, 0.12, 0.25, 0.32, 0.45, 0.52, 0.55, 0.6, 0.65, 0.72, 0.75, 0.78, 0.9, 1]) {
-    config.onUpdate({ progress: value });
+    config.onUpdate({ progress: sampleProgress(value) });
     trace.push({ progress: progress.splice(0), sets: sets.splice(0) });
   }
   const result = { trace, start: config.start, end: typeof config.end === "function" ? config.end() : config.end, pinIsRoot: config.pin === root, scrub: config.scrub };
@@ -148,7 +149,7 @@ describe("customized heroes preserve the GitHub legacy reference", () => {
     const auto = captureHero(module, "auto");
     expect(legacy).toEqual(original);
     expect(legacy.end).toBe("+=" + distance);
-    expect(auto.trace).toEqual(original.trace);
+    if (name !== "hero-heart-transition") expect(auto.trace).toEqual(original.trace);
     expect(auto.pinIsRoot).toBe(true);
     expect(auto.end).not.toBe(legacy.end);
     expect(captureHero(module, "legacy", 'data-motion-scroll-vh="330" data-motion-start="top 10%"').trace)
@@ -173,4 +174,33 @@ it("a follower picks up a recreated parent instead of stale progress", () => {
   frame();
   expect(gsap.set).toHaveBeenLastCalledWith(root, { opacity: expect.closeTo(0.2), y: 0 });
   cleanup();
+});
+
+it("heart auto preserves authored states at remapped progress and opening distances", () => {
+  const root = document.createElement("section");
+  const phases = [
+    { start: 0, end: 0.25, travel: 1440 * 0.96 },
+    { start: 0.25, end: 0.45, travel: 1000 * 65 / 180 },
+    { start: 0.45, end: 0.56, travel: 820 },
+    { start: 0.56, end: 0.63, travel: 160, minVh: 0.08, maxVh: 0.18 },
+    { start: 0.63, end: 0.65, travel: 9.6, minVh: 0.04, maxVh: 0.08 },
+    { start: 0.65, end: 0.72, travel: 0, minVh: 0.08, maxVh: 0.08 },
+    { start: 0.72, end: 0.78, travel: 0, minVh: 0.06, maxVh: 0.06 }
+  ];
+  const oldDistance = phaseScrollDistance(root, phases);
+  const plan = createPhaseScrollPlan(phases, {
+    viewportHeight: 1000, baselineDistance: oldDistance, preserveUntil: 0.56
+  });
+  const auto = captureHero(organized.heroHeartTransition, "auto", "", plan.scrollProgressAt);
+  const legacy = captureHero(referenceHeart, "legacy");
+  expect(Number(auto.end.slice(2))).toBeCloseTo(plan.totalDistance);
+  auto.trace.forEach((entry, index) => {
+    // Compare numbers tolerantly because inverse interpolation has floating-point roundoff.
+    const normalize = value => JSON.parse(JSON.stringify(value, (_key, item) =>
+      typeof item === "number" ? Math.round(item * 1e8) / 1e8
+        : typeof item === "string" ? item.replace(/-?\d+\.\d+/g, number => String(Math.round(Number(number) * 1e8) / 1e8)) : item));
+    expect(normalize(entry)).toEqual(normalize(legacy.trace[index]));
+  });
+  expect(plan.totalDistance).toBeLessThan(oldDistance);
+  expect(plan.scrollProgressAt(0.45) * plan.totalDistance).toBeCloseTo(oldDistance * 0.45);
 });
