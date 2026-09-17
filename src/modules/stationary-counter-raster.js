@@ -22,16 +22,36 @@ export function findCounters(data, width, height) {
   return counters;
 }
 
+// Sample the original counter's alpha coverage continuously, not a rounded
+// binary pixel mask. Sampling is restricted to this enclosed component.
+function counterCoverage(source, width, mask, x, y) {
+  const x0=Math.floor(x), y0=Math.floor(y), tx=x-x0, ty=y-y0;
+  const at=(px,py) => {
+    if(px<0 || px>=width || py<0) return 0;
+    const i=py*width+px;
+    return mask.has(i) ? 1-source[i*4+3]/255 : 0;
+  };
+  return (at(x0,y0)*(1-tx)+at(x0+1,y0)*tx)*(1-ty)
+    +(at(x0,y0+1)*(1-tx)+at(x0+1,y0+1)*tx)*ty;
+}
+
 export function counterFrame(source, width, counters, progress, scale=0.82, distort=0, color=[0,0,0]) {
   const output=new Uint8ClampedArray(source);
-  if(progress>=1) return output;
-  const pressure=Math.max(0.1,Math.min(1,scale+(1-scale)*progress));
-  for(const {pixels,mask,cx,cy} of counters) for(const i of pixels) {
-    const x=i%width,y=Math.floor(i/width);
-    const skew=(1-progress)*distort*(y-cy);
-    const sx=Math.round(cx+(x-cx-skew)/pressure),sy=Math.round(cy+(y-cy)/pressure);
-    if(sx<0||sx>=width||!mask.has(sy*width+sx)) {
-      output[i*4]=color[0];output[i*4+1]=color[1];output[i*4+2]=color[2];output[i*4+3]=255;
+  const p=Math.max(0,Math.min(1,progress));
+  if(p>=1) return output;
+  const pressure=Math.max(0.1,Math.min(1,scale+(1-scale)*p));
+  for(const {pixels,mask,cx,cy} of counters) {
+    // A bounded, smooth bend replaces the straight shear. Only the counter
+    // interior is repainted; exterior and non-counter pixels remain exact.
+    const radius=pixels.reduce((max,i)=>Math.max(max,Math.abs(Math.floor(i/width)-cy)),1);
+    for(const i of pixels) {
+      const x=i%width,y=Math.floor(i/width);
+      const bend=(1-p)*distort*radius*0.35*Math.sin((y-cy)/radius*Math.PI);
+      const sx=cx+(x-cx-bend)/pressure, sy=cy+(y-cy)/pressure;
+      const coverage=counterCoverage(source,width,mask,sx,sy);
+      const alpha=Math.max(source[i*4+3],Math.round(255*(1-coverage)));
+      if(alpha===source[i*4+3]) continue;
+      output[i*4]=color[0];output[i*4+1]=color[1];output[i*4+2]=color[2];output[i*4+3]=alpha;
     }
   }
   return output;
@@ -43,7 +63,7 @@ export function createCounterSurface(char, {scale=0.82,distort=0}={}) {
   const canvas=document.createElement('canvas');
   const ctx=canvas.getContext('2d',{willReadFrequently:true});
   if(!ctx) return null;
-  const cs=getComputedStyle(char),dpr=Math.min(window.devicePixelRatio||1,2);
+  // Supersample even on standard-density displays. CSS downsampling restores\n  // smooth edges without blurring or moving the exterior glyph contour.\n  const cs=getComputedStyle(char),dpr=Math.min(4,Math.max(3,window.devicePixelRatio||1));
   canvas.width=Math.max(1,Math.ceil(rect.width*dpr));canvas.height=Math.max(1,Math.ceil(rect.height*dpr));
   ctx.scale(dpr,dpr);
   ctx.font=`${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
