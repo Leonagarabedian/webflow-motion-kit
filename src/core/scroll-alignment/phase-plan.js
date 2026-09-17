@@ -41,6 +41,7 @@ export function createPhaseScrollPlan(phases, {
   const totalDistance = distance;
   const interpolate = (value, input, output) => {
     for (let i = 1; i < knots.length; i++) {
+      if (Math.abs(value - knots[i][input]) <= Number.EPSILON * 16 * Math.max(1, Math.abs(knots[i][input]))) return knots[i][output];
       if (value <= knots[i][input]) {
         const a = knots[i - 1], b = knots[i];
         return a[output] + (b[output] - a[output]) * (value - a[input]) / (b[input] - a[input]);
