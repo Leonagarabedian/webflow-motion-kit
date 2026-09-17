@@ -24,7 +24,14 @@ export const footerReveal = {
         trigger: element,
         start,
         once: true
-      }, () => (viewportScroll(element, 0.88, () => Math.max(layoutSize(element).height, window.innerHeight * (0.58 + legalDuration)))))
+      }, () => (viewportScroll(element, 0.88, () => Math.max(layoutSize(element).height, window.innerHeight * Math.max(
+        labels.length ? 0.14 + columnDuration * 0.75 + (labels.length - 1) * 0.04 : 0,
+        legal ? 0.58 + legalDuration : 0,
+        ...columns.map((column, index) => {
+          const count = column.querySelectorAll('[data-motion-target="footer-item"]').length;
+          return count ? 0.22 + index * columnStagger + columnDuration + (count - 1) * itemStagger : 0;
+        })
+      )))))
     });
 
     if (labels.length) {

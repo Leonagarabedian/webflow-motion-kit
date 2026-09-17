@@ -26,7 +26,7 @@ export const morphNarrative = {
         scrub: readNumber(element, "motion-scrub", 1),
         start: readString(element, "motion-start", "top top"),
         trigger: resolveTrigger(element)
-      }, () => (viewportScroll(resolveTrigger(element), 0, () => Math.max(window.innerHeight * 0.3, layoutSize(source).height) * shapes.length)))
+      }, () => (viewportScroll(resolveTrigger(element), 0, () => Math.max(window.innerHeight * 0.3, layoutSize(source).height, ...shapes.map(shape => layoutSize(shape).height)) * shapes.length)))
     });
     shapes.forEach((shape) => {
       timeline.to(source, {

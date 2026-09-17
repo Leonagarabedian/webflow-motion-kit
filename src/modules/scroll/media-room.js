@@ -266,7 +266,11 @@ export const mediaRoom = {
 
     const originalStyle = root.getAttribute("style");
     const spacing = readNumber(root, "motion-depth-spacing", 2.55);
-    const explicitScrollVh = scrollMode(root) === "auto" ? 0 : readNumber(root, "motion-scroll-vh", 0);
+    const getExplicitScrollVh = () => {
+      if (scrollMode(root) === "auto") return 0;
+      const pixels = readNumber(root, "motion-scroll-distance", 0);
+      return pixels > 0 ? pixels / Math.max(1, window.innerHeight) * 100 : readNumber(root, "motion-scroll-vh", 0);
+    };
     const velocityMax = readNumber(root, "motion-velocity-max", 1800);
     const velocityStrength = readNumber(root, "motion-velocity-strength", 0.72);
     const velocitySmoothing = clamp(readNumber(root, "motion-velocity-smoothing", 0.18), 0.04, 0.5);
@@ -338,7 +342,7 @@ export const mediaRoom = {
     const shell = buildRoomShell(scene, baseColor, finalItemZ, startZ);
     let destroyed = false;
     let resizeRaf = null;
-    let metrics = measureRoom(root, stage, sourceMedia.length, spacing, explicitScrollVh);
+    let metrics = measureRoom(root, stage, sourceMedia.length, spacing, getExplicitScrollVh());
     let progressValue = 0;
     let velocityTarget = 0;
     let velocityValue = 0;
@@ -490,7 +494,7 @@ export const mediaRoom = {
       renderer.setSize(width, height, false);
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
-      metrics = measureRoom(root, stage, sourceMedia.length, spacing, explicitScrollVh);
+      metrics = measureRoom(root, stage, sourceMedia.length, spacing, getExplicitScrollVh());
       applyChoreography();
     };
 
@@ -516,7 +520,7 @@ export const mediaRoom = {
           velocityTarget = clamp(self.getVelocity() / Math.max(1, velocityMax), -1, 1);
         },
         onRefreshInit: () => {
-          metrics = measureRoom(root, stage, sourceMedia.length, spacing, explicitScrollVh);
+          metrics = measureRoom(root, stage, sourceMedia.length, spacing, getExplicitScrollVh());
         },
         onRefresh: () => {
           progressValue = progress.value;
