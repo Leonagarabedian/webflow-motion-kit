@@ -198,7 +198,7 @@ it("heart auto preserves authored states at remapped progress and opening distan
     // Compare numbers tolerantly because inverse interpolation has floating-point roundoff.
     const normalize = value => JSON.parse(JSON.stringify(value, (_key, item) =>
       typeof item === "number" ? Math.round(item * 1e8) / 1e8
-        : typeof item === "string" ? item.replace(/-?\\d+\\.\\d+/g, number => String(Math.round(Number(number) * 1e8) / 1e8)) : item));
+        : typeof item === "string" ? item.replace(/-?\d+\.\d+/g, number => String(Math.round(Number(number) * 1e8) / 1e8)) : item));
     expect(normalize(entry)).toEqual(normalize(legacy.trace[index]));
   });
   expect(plan.totalDistance).toBeLessThan(oldDistance);
