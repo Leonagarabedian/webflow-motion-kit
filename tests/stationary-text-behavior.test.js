@@ -149,4 +149,33 @@ describe('actual counter geometry',()=>{
     expect(start).not.toEqual(source);expect(finish).toEqual(source);
     const hole=new Set(counters[0].pixels);for(let i=0;i<w*h;i++)if(!hole.has(i))expect([...start.slice(i*4,i*4+4)]).toEqual([...source.slice(i*4,i*4+4)]);
   });
+  it('antialiases deformed counter boundaries and changes smoothly between nearby frames',()=>{
+    const w=21,h=21,source=new Uint8ClampedArray(w*h*4);
+    for(let y=2;y<19;y++)for(let x=2;x<19;x++)if(x<6||x>14||y<6||y>14){
+      const i=(y*w+x)*4;source[i]=35;source[i+1]=35;source[i+2]=35;source[i+3]=255;
+    }
+    const counters=findCounters(source,w,h);
+    const a=counterFrame(source,w,counters,0.4,0.55,0.35,[35,35,35]);
+    const b=counterFrame(source,w,counters,0.401,0.55,0.35,[35,35,35]);
+    expect([...a].some((value,i)=>i%4===3&&value>0&&value<255)).toBe(true);
+    const maxDelta=a.reduce((max,value,i)=>Math.max(max,Math.abs(value-b[i])),0);
+    expect(maxDelta).toBeLessThan(5);
+    const holes=new Set(counters.flatMap(counter=>counter.pixels));
+    for(const p of [0,0.25,0.5,0.75,0.99]){
+      const frame=counterFrame(source,w,counters,p,0.4,0.35,[35,35,35]);
+      for(let i=0;i<w*h;i++)if(!holes.has(i))
+        expect([...frame.slice(i*4,i*4+4)]).toEqual([...source.slice(i*4,i*4+4)]);
+    }
+    expect(counterFrame(source,w,counters,1,0.4,0.35)).toEqual(source);
+    expect(counterFrame(source,w,counters,2,0.4,0.35)).toEqual(source);
+  });
+  it('leaves glyphs without enclosed counters untouched',()=>{
+    const source=new Uint8ClampedArray(5*5*4);
+    for(let x=0;x<5;x++)source[(2*5+x)*4+3]=255;
+    const before=new Uint8ClampedArray(source),counters=findCounters(source,5,5);
+    expect(counters).toHaveLength(0);
+    expect(counterFrame(source,5,counters,0,0.4,0.35)).toEqual(before);
+    expect(source).toEqual(before);
+  });
+
 });
