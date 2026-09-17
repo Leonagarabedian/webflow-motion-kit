@@ -65,9 +65,37 @@ describe('stationary typography behavior and migration',()=>{
     const f=fixture('slice-fragment-reveal'),cleanup=createStationaryTextModule('slice-fragment-reveal').mount(f.el,f.services);
     const layers=f.el.querySelectorAll('[data-motion-surface]');expect(layers).toHaveLength(6);
     for(const layer of layers){expect(layer.querySelector('em')).not.toBeNull();expect(layer.querySelector('br')).not.toBeNull();expect(layer.hasAttribute('data-motion')).toBe(false);}
-    for(const p of [0,0.5,1]){f.timeline.totalProgress(p);for(const layer of layers)expect(layer.style.transform).toBe('');}
+    for(const p of [0,0.5,1]){f.timeline.totalProgress(p);for(const layer of layers)expect(layer.style.transform).toBe('none');}
     cleanup();
   });
+
+  it.each(['stroke-fill','glyph-mask-reveal','occlusion-blocks','slice-fragment-reveal','negative-space-cutout','material-shift'])('%s does not double authored root transforms on fixed surfaces',name=>{
+    const f=fixture(name);
+    f.el.style.transform='translate(-50%, -50%)';
+    f.el.style.translate='10% 5%';
+    f.el.style.rotate='3deg';
+    f.el.style.scale='0.9';
+    const child=f.el.querySelector('em');
+    child.style.transform='rotate(2deg)';
+    const before=f.el.outerHTML;
+    const cleanup=createStationaryTextModule(name).mount(f.el,f.services);
+    const layers=f.el.querySelectorAll('[data-motion-surface]');
+    expect(layers.length).toBeGreaterThan(0);
+    for(const progress of [0,0.5,1]){
+      f.timeline.totalProgress(progress);
+      f.config.onRefreshInit();
+      for(const layer of layers){
+        expect(layer.style.transform).toBe('none');
+        expect(layer.style.translate).toBe('none');
+        expect(layer.style.rotate).toBe('none');
+        expect(layer.style.scale).toBe('none');
+        expect(layer.querySelector('em').style.transform).toBe('rotate(2deg)');
+      }
+      expect(f.el.style.transform).toBe('translate(-50%, -50%)');
+    }
+    cleanup();expect(f.el.outerHTML).toBe(before);
+  });
+
   it.each(['grain','matte','glass','erosion'])('provides an actual SVG %s treatment',material=>{
     const f=fixture('material-shift',`data-motion-from="${material}"`),cleanup=createStationaryTextModule('material-shift').mount(f.el,f.services);
     expect(f.el.querySelector('feTurbulence')).not.toBeNull();
