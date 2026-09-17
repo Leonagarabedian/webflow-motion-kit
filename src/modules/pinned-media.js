@@ -27,6 +27,7 @@ export const pinnedMedia = {
 
         const scaleFrom = readNumber(element, "motion-scale-from", 0.8);
         const scaleTo = readNumber(element, "motion-scale-to", 1);
+        const duration = readNumber(element, "motion-duration", 0.5);
         const scrub = readNumber(element, "motion-scrub", 1);
         const pinEnabled = readBoolean(element, "motion-pin", false);
         const mode = readString(element, "motion-alignment", "legacy");
@@ -42,12 +43,12 @@ export const pinnedMedia = {
               stages: [{
                 name: "media-scale",
                 start: 0,
-                end: 1,
-                duration: 1,
+                end: duration,
+                duration,
                 scaleFrom,
                 scaleTo
               }],
-              scrub,
+              scrub: element.hasAttribute("data-motion-scrub") ? scrub : true,
               pin: pinEnabled ? { enabled: true, target: sticky } : false,
               invalidateOnRefresh: true
             }).scrollTrigger
@@ -63,6 +64,7 @@ export const pinnedMedia = {
           media,
           { scale: scaleFrom },
           {
+            duration,
             ease: "none",
             scale: scaleTo,
             scrollTrigger

@@ -6,14 +6,15 @@ import {
   selectTargets
 } from "../core/config.js";
 
-function buildPinnedStepStages(count) {
-  return Array.from({ length: Math.max(1, count - 1) }, (_, index) => ({
+function buildPinnedStepStages(panels) {
+  return Array.from({ length: Math.max(1, panels.length - 1) }, (_, index) => ({
     name: `pinned-step-${index + 2}`,
     start: index,
     end: index + 1,
     duration: 1,
-    yFrom: 100,
-    yTo: 0,
+    target: panels[index + 1],
+    yPercentFrom: 100,
+    yPercentTo: 0,
     opacityFrom: 0,
     opacityTo: 1
   }));
@@ -57,8 +58,8 @@ export const pinnedSteps = {
               id: readString(element, "motion-alignment-id", "pinned-steps"),
               trigger: element,
               profile: "spatial",
-              stages: buildPinnedStepStages(panels.length),
-              scrub,
+              stages: buildPinnedStepStages(panels),
+              scrub: element.hasAttribute("data-motion-scrub") ? scrub : true,
               pin: pinEnabled ? { enabled: true, target: sticky } : false,
               invalidateOnRefresh: true,
               emphasis: 1.15

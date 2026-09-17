@@ -95,7 +95,10 @@ export function createScrollAlignment({
         pinned: Boolean(pin),
         emphasis: config.emphasis ?? 1,
         scrub: config.scrub !== false,
-        overrides: config.overrides || {}
+        overrides: {
+          ...(typeof config.scrub === "number" ? { scrub: config.scrub } : {}),
+          ...config.overrides
+        }
       });
     };
 
@@ -137,6 +140,11 @@ export function createScrollAlignment({
       onRefresh(self) {
         const context = makeGeometryContext(trigger);
         const plan = getPlan();
+        const activeScrub = plan?.scrub ?? config.scrub ?? 0.85;
+        if (self?.vars && self.vars.scrub !== activeScrub) {
+          self.vars.scrub = activeScrub;
+          self.scrubDuration?.(activeScrub);
+        }
         const activeBreakpoint = mode === SCROLL_ALIGNMENT_MODES.AUTO ? getActiveBreakpoint() : resolved.breakpoint;
         const activeSpan = plan?.span ?? config.span ?? "70vh";
         diagnostics.record(id || self?.vars?.id || "anonymous", {
@@ -147,7 +155,7 @@ export function createScrollAlignment({
           viewport: plan?.viewport ?? config.viewport ?? 0.7,
           span: activeSpan,
           spanPx: plan?.spanPx ?? resolveSpan(activeSpan, context),
-          scrub: plan?.scrub ?? config.scrub ?? 0.85,
+          scrub: activeScrub,
           pin: Boolean(pin),
           smoother: Boolean(getScroller?.()),
           planner: plan ? {

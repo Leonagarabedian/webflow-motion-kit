@@ -137,7 +137,7 @@ export const liquidFill = {
       id: `mk-liquid-fill-${++sequence}`,
       trigger: container,
       start: readString(element, "motion-start", "top top"),
-      end: readString(element, "motion-end", `+=${Math.max(1, container.offsetHeight)}`),
+      end: () => readString(element, "motion-end", `+=${Math.max(1, container.offsetHeight)}`),
       endTrigger,
       scrub: readNumber(element, "motion-scrub", 1),
       invalidateOnRefresh: true,

@@ -1,13 +1,13 @@
 import { readNumber, readString, resolveTrigger } from "../core/config.js";
 
-function buildHighlightStages(count, stagger, opacityFrom) {
+function buildHighlightStages(count, stagger, opacityFrom, duration) {
   return Array.from({ length: Math.max(1, count) }, (_, index) => {
     const start = index * stagger;
     return {
       name: `scroll-highlight-${index + 1}`,
       start,
-      end: start + 1,
-      duration: 1,
+      end: start + duration,
+      duration,
       opacityFrom,
       opacityTo: 1
     };
@@ -32,6 +32,7 @@ export const scrollHighlight = {
 
     const opacityFrom = readNumber(element, "motion-opacity-from", 0.22);
     const stagger = readNumber(element, "motion-stagger", 0.08);
+    const duration = readNumber(element, "motion-duration", 0.5);
     const scrub = readNumber(element, "motion-scrub", 1);
     const mode = readString(element, "motion-alignment", "legacy");
     const trigger = resolveTrigger(element);
@@ -43,8 +44,8 @@ export const scrollHighlight = {
           id: readString(element, "motion-alignment-id", "scroll-highlight"),
           trigger,
           profile: "editorial",
-          stages: buildHighlightStages(units.length, stagger, opacityFrom),
-          scrub,
+          stages: buildHighlightStages(units.length, stagger, opacityFrom, duration),
+          scrub: element.hasAttribute("data-motion-scrub") ? scrub : true,
           invalidateOnRefresh: true
         }).scrollTrigger
       : {
@@ -55,6 +56,7 @@ export const scrollHighlight = {
         };
 
     const to = {
+      duration,
       ease: "none",
       opacity: 1,
       stagger,

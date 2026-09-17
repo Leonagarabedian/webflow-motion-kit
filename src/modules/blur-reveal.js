@@ -33,17 +33,18 @@ export const blurReveal = {
             id: readString(element, "motion-alignment-id", "blur-reveal"),
             trigger,
             profile: "reveal",
-            stages: [{
-              start: 0,
-              end: duration + Math.max(0, units.length - 1) * stagger,
+            stages: units.map((target, index) => ({
+              start: index * stagger,
+              end: index * stagger + duration,
               duration,
-              yFrom: yPercent,
-              yTo: 0,
+              target,
+              yPercentFrom: yPercent,
+              yPercentTo: 0,
               opacityFrom: 0,
               opacityTo: 1,
               blurFrom: blur,
               blurTo: 0
-            }],
+            })),
             scrub: false,
             invalidateOnRefresh: true
           });

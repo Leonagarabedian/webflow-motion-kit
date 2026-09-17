@@ -37,12 +37,14 @@ const CUSTOM_READY = new Map([
   ["character-scatter-title", "velocity-timeline"],
   ["spatial-loop", "custom-spatial-loop"],
   ["section-handoff", "custom-handoff"],
-  ["pin-overlap-next", "custom-handoff"]
+  ["pin-overlap-next", "custom-handoff"],
+  ["media-room", "custom-depth-span"],
+  ["tags-glitch", "custom-sticky-runway"],
+  ["flip-relocation", "custom-flip-span"],
+  ["stacked-cards", "native-sticky-layout"]
 ]);
 
 const COMPLEX_REVIEW = new Set([
-  "stacked-cards",
-  "stacked-image-hover",
   "character-scatter-title-legacy",
   "morph-narrative"
 ]);
@@ -65,8 +67,11 @@ const NON_SCROLL = new Set([
   "brand-load",
   "paired-tag-intro",
   "nav-flip",
-  "theme-switch"
+  "stacked-image-hover",
+  "looping-labels"
 ]);
+
+const MANUAL_SCROLL = new Set(["services-center-shift", "footer-reveal", "theme-switch"]);
 
 function motionNames(element) {
   return (element.getAttribute("data-motion") || "")
@@ -75,7 +80,10 @@ function motionNames(element) {
     .filter(Boolean);
 }
 
-function classify(name) {
+function classify(name, element) {
+  if (MANUAL_SCROLL.has(name) || (name === "brand-load" && ["true", "1", ""].includes(element.getAttribute("data-motion-on-view")))) {
+    return { status: "manual-scroll", strategy: "manual-viewport" };
+  }
   if (SAFE_AUTO.has(name)) return { status: "safe-auto", strategy: "auto" };
   if (MEDIUM_AUTO.has(name)) return { status: "medium-auto", strategy: "auto" };
   if (SPECIALIZED_READY.has(name)) return { status: "specialized-ready", strategy: SPECIALIZED_READY.get(name) };
@@ -91,7 +99,7 @@ export function auditScrollAlignment(root = document) {
 
   elements.forEach((element, elementIndex) => {
     motionNames(element).forEach((name) => {
-      const { status, strategy } = classify(name);
+      const { status, strategy } = classify(name, element);
       const alignment = element.getAttribute("data-motion-alignment") || "legacy";
       const minWidth = element.getAttribute("data-motion-min-width");
       const trigger = element.getAttribute("data-motion-trigger");
@@ -111,6 +119,7 @@ export function auditScrollAlignment(root = document) {
           status === "medium-auto" ? "shared planner supported; enable after page-level visual review" :
           status === "specialized-ready" ? `shared ${strategy} geometry preserves the module's specialized scroll contract` :
           status === "custom-ready" ? `module intentionally owns a ${strategy} contract instead of generic auto alignment` :
+          status === "manual-scroll" ? "module uses explicit viewport positions; shared auto planning is not implemented" :
           status === "complex-review" ? "complex module still requires an explicit geometry contract before reuse" :
           status === "non-scroll" ? "interaction, velocity, layout, load, or input-driven behavior is outside viewport alignment" :
           "not yet classified for the motion system"
@@ -131,6 +140,7 @@ export function auditScrollAlignment(root = document) {
     mediumToReview: entries.filter((entry) => entry.status === "medium-auto" && entry.alignment !== "auto"),
     specializedReady: entries.filter((entry) => entry.status === "specialized-ready"),
     customReady: entries.filter((entry) => entry.status === "custom-ready"),
+    manualScroll: entries.filter((entry) => entry.status === "manual-scroll"),
     protected: entries.filter((entry) => entry.status === "complex-review"),
     unclassified: entries.filter((entry) => entry.status === "unclassified")
   };
@@ -142,5 +152,6 @@ export const migrationAuditPolicy = Object.freeze({
   specializedReady: Object.fromEntries(SPECIALIZED_READY),
   customReady: Object.fromEntries(CUSTOM_READY),
   complexReview: [...COMPLEX_REVIEW],
+  manualScroll: [...MANUAL_SCROLL],
   nonScroll: [...NON_SCROLL]
 });

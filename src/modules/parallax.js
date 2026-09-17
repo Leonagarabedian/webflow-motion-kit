@@ -18,6 +18,7 @@ export const parallax = {
 
     const from = readNumber(element, "motion-from", -5);
     const to = readNumber(element, "motion-to", -20);
+    const duration = readNumber(element, "motion-duration", 0.5);
     const scrub = readNumber(element, "motion-scrub", 1.5);
     const trigger = resolveTrigger(element);
     const mode = readString(element, "motion-alignment", "legacy");
@@ -34,12 +35,13 @@ export const parallax = {
         stages: [{
           name: "parallax",
           start: 0,
-          end: 1,
-          duration: 1,
-          yFrom: from,
-          yTo: to
+          end: duration,
+          duration,
+          target,
+          yPercentFrom: from,
+          yPercentTo: to
         }],
-        scrub,
+        scrub: element.hasAttribute("data-motion-scrub") ? scrub : true,
         invalidateOnRefresh: true
       }).scrollTrigger;
     } else {
@@ -56,6 +58,7 @@ export const parallax = {
       target,
       { yPercent: from },
       {
+        duration,
         ease: "none",
         yPercent: to,
         scrollTrigger

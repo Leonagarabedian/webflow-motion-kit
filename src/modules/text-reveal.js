@@ -5,14 +5,15 @@ import {
   resolveTrigger
 } from "../core/config.js";
 
-function stages(count, duration, stagger, y, opacity) {
-  return Array.from({ length: Math.max(1, count) }, (_, i) => ({
+function stages(units, duration, stagger, y, opacity) {
+  return Array.from({ length: units.length }, (_, i) => ({
     name: `text-reveal-${i + 1}`,
     start: i * stagger,
     end: i * stagger + duration,
     duration,
-    yFrom: y,
-    yTo: 0,
+    target: units[i],
+    yPercentFrom: y,
+    yPercentTo: 0,
     opacityFrom: opacity,
     opacityTo: 1
   }));
@@ -53,7 +54,7 @@ export const textReveal = {
             id: readString(element, "motion-alignment-id", "text-reveal"),
             trigger,
             profile: "reveal",
-            stages: stages(units.length, duration, stagger, y, opacity),
+            stages: stages(units, duration, stagger, y, opacity),
             scrub: false,
             invalidateOnRefresh: true
           });

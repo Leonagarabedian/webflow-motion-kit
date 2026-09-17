@@ -27,14 +27,14 @@ function clearVisibleOverrides(element) {
   VISIBLE_PROPS.forEach((prop) => element.style.removeProperty(prop));
 }
 
-function buildStages(count, { baseX, stepX, y, opacityFrom, stagger }) {
+function buildStages(count, { baseX, stepX, y, opacityFrom, stagger, duration }) {
   return Array.from({ length: Math.max(1, count) }, (_, index) => {
     const start = index * stagger;
     return {
       name: `character-converge-${index + 1}`,
       start,
-      end: start + 1,
-      duration: 1,
+      end: start + duration,
+      duration,
       xFrom: baseX + stepX * index,
       xTo: 0,
       yFrom: y,
@@ -61,6 +61,7 @@ export const characterConverge = {
     const trigger = resolveTrigger(element);
     const start = readString(element, "motion-start", "top 85%");
     const end = readString(element, "motion-end", "top 35%");
+    const duration = readNumber(element, "motion-duration", 0.5);
     const scrub = readNumber(element, "motion-scrub", 1);
     const baseX = readNumber(element, "motion-x", 28);
     const stepX = readNumber(element, "motion-x-step", 18);
@@ -97,8 +98,8 @@ export const characterConverge = {
           id: readString(element, "motion-alignment-id", "character-converge"),
           trigger,
           profile: "editorial",
-          stages: buildStages(ordered.length, { baseX, stepX, y, opacityFrom, stagger }),
-          scrub,
+          stages: buildStages(ordered.length, { baseX, stepX, y, opacityFrom, stagger, duration }),
+          scrub: element.hasAttribute("data-motion-scrub") ? scrub : true,
           invalidateOnRefresh: true
         }).scrollTrigger
       : {
@@ -110,6 +111,7 @@ export const characterConverge = {
         };
 
     const tween = gsap.to(ordered, {
+      duration,
       x: 0,
       y: 0,
       autoAlpha: 1,

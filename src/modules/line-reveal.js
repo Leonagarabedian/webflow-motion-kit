@@ -5,16 +5,19 @@ import {
   resolveTrigger
 } from "../core/config.js";
 
-function buildLineRevealStages(count, { duration, stagger, yPercent, yPx, useYPx, fade }) {
-  return Array.from({ length: Math.max(1, count) }, (_, index) => {
+function buildLineRevealStages(lines, { duration, stagger, yPercent, yPx, useYPx, fade }) {
+  return Array.from({ length: lines.length }, (_, index) => {
     const start = index * stagger;
     return {
       name: `line-reveal-${index + 1}`,
       start,
       end: start + duration,
       duration,
-      yFrom: useYPx ? yPx : yPercent,
+      target: lines[index],
+      yFrom: useYPx ? yPx : 0,
       yTo: 0,
+      yPercentFrom: useYPx ? 0 : yPercent,
+      yPercentTo: 0,
       opacityFrom: fade ? 0 : 1,
       opacityTo: 1
     };
@@ -61,7 +64,7 @@ export const lineReveal = {
                 id: readString(element, "motion-alignment-id", "line-reveal"),
                 trigger,
                 profile: "reveal",
-                stages: buildLineRevealStages(self.lines.length, {
+                stages: buildLineRevealStages(self.lines, {
                   duration,
                   stagger,
                   yPercent,
