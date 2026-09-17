@@ -227,3 +227,5 @@ export {
   measuredTravelDistance,
   syncedProgress
 };
+
+export { createPhaseScrollPlan } from "./phase-plan.js";
