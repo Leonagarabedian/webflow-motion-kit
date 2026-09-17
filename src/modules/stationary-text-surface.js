@@ -71,7 +71,10 @@ export function createSurface(element, { hide = true } = {}) {
   });
   layer.setAttribute('data-motion-surface', ''); layer.setAttribute('aria-hidden', 'true'); layer.inert = true;
   if (computed.position === 'static' || !computed.position) element.style.position = 'relative';
-  Object.assign(layer.style, { position:'absolute', inset:'0', width:'100%', height:'100%', boxSizing:'border-box', margin:'0', pointerEvents:'none', visibility:'visible', background:'none', borderColor:'transparent' });
+  // The source already owns its authored positioning/transform. Reapplying it
+  // on the child surface doubles Webflow centering translations and moves type.
+  // Reset only the layer root; nested authored span transforms stay intact.
+  Object.assign(layer.style, { position:'absolute', inset:'0', width:'100%', height:'100%', boxSizing:'border-box', margin:'0', transform:'none', translate:'none', rotate:'none', scale:'none', pointerEvents:'none', visibility:'visible', background:'none', borderColor:'transparent' });
   element.append(layer);
   // Preserve the source DOM and its metrics. Only its paint is hidden.
   if (hide) originals.forEach(node => { node.style.color = 'transparent'; node.style.webkitTextStrokeColor = 'transparent'; node.style.textShadow = 'none'; });
