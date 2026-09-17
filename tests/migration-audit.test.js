@@ -49,13 +49,30 @@ describe("motion migration strategy policy", () => {
     expect(report.entries.find((entry) => entry.name === "liquid-fill")?.strategy).toBe("dynamic-span");
   });
 
-  it("keeps velocity and pointer interactions outside viewport alignment", () => {
+  it("distinguishes measured velocity responses from pointer interactions", () => {
     document.body.innerHTML = `
       <div data-motion="pinned-media-return"></div>
       <div data-motion="grid-video-reveal"></div>
       <div data-motion="accordion-media"></div>
     `;
     const report = auditScrollAlignment(document);
-    expect(report.entries.every((entry) => entry.status === "non-scroll")).toBe(true);
+    expect(report.entries.find(entry => entry.name === "pinned-media-return").strategy).toBe("measured-velocity-response");
+    expect(report.entries.filter(entry => entry.name !== "pinned-media-return").every(entry => entry.status === "non-scroll")).toBe(true);
   });
+});
+
+it("distinguishes manual scroll, native sticky layout, and optional viewport loading", () => {
+  document.body.innerHTML = `
+    <div data-motion="theme-switch services-center-shift footer-reveal"></div>
+    <div data-motion="media-room tags-glitch flip-relocation stacked-cards"></div>
+    <div data-motion="looping-labels stacked-image-hover brand-load"></div>
+    <div data-motion="brand-load" data-motion-on-view="true"></div>
+    <div data-motion="brand-load" data-motion-on-view="1"></div>
+    <div data-motion="brand-load" data-motion-on-view></div>
+  `;
+  const report = auditScrollAlignment(document);
+  expect(report.unclassified).toEqual([]);
+  expect(report.manualScroll).toHaveLength(0);
+  expect(report.entries.find(entry => entry.name === "stacked-cards").strategy).toBe("native-sticky-layout");
+  expect(report.entries.filter(entry => entry.name === "brand-load").map(entry => entry.status)).toEqual(["non-scroll", "custom-ready", "custom-ready", "custom-ready"]);
 });

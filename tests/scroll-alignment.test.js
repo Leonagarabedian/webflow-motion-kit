@@ -263,3 +263,38 @@ describe("refresh safety", () => {
     expect(requestAnimationFrame).toHaveBeenCalledTimes(2);
   });
 });
+
+describe("scroll migration regression checks", () => {
+  it("remeasures percentage travel after target resize and combines signed units", () => {
+    const target = document.createElement("div");
+    let height = 200;
+    Object.defineProperty(target, "offsetHeight", { get: () => height });
+    const stages = [{ duration: 0.5, target, yPercentFrom: -5, yPercentTo: -20 }];
+    expect(analyzeMotion({ stages }).maxTravel).toBe(30);
+    height = 400;
+    expect(analyzeMotion({ stages }).maxTravel).toBe(60);
+    expect(analyzeMotion({ stages: [{ ...stages[0], yFrom: 0, yTo: 60 }] }).maxTravel).toBe(0);
+  });
+
+  it("honors numeric scrub, explicit planner override priority, and non-scrub mode", () => {
+    const root = document.createElement("div");
+    const alignment = createScrollAlignment({ gsap: {}, ScrollTrigger: {} });
+    const built = alignment.build(root, { mode: "auto", scrub: 1.5 });
+    expect(built.scrollTrigger.scrub).toBe(1.5);
+    expect(built.plan().scrub).toBe(1.5);
+    expect(alignment.build(root, { mode: "auto", scrub: 1.5, overrides: { scrub: 0.4 } }).scrollTrigger.scrub).toBe(0.4);
+    expect(alignment.build(root, { mode: "auto", scrub: false }).scrollTrigger.scrub).toBe(false);
+  });
+
+  it("keeps the active scrub tween and diagnostics consistent after resize", () => {
+    const root = document.createElement("div");
+    const alignment = createScrollAlignment({ gsap: {}, ScrollTrigger: {} });
+    const built = alignment.build(root, { mode: "auto", id: "responsive", profile: "composition" });
+    const self = { vars: { ...built.scrollTrigger }, scrubDuration: vi.fn() };
+    setViewport(390, 800);
+    installMatchMedia();
+    built.scrollTrigger.onRefresh(self);
+    expect(self.scrubDuration).toHaveBeenCalledWith(built.plan().scrub);
+    expect(built.diagnostics().scrub).toBe(self.vars.scrub);
+  });
+});

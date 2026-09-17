@@ -28,9 +28,16 @@ function normalizeStage(stage = {}) {
   const duration = Math.max(0, finite(stage.duration, 0));
   const start = Math.max(0, finite(stage.start, 0));
   const end = Math.max(start, finite(stage.end, start + duration));
+  // Percent transforms use the animated target's untransformed layout size.
+  // Measure each analysis so refresh follows responsive changes.
+  const width = finite(stage.target?.offsetWidth ?? stage.target?.getBoundingClientRect?.().width);
+  const height = finite(stage.target?.offsetHeight ?? stage.target?.getBoundingClientRect?.().height);
+  const delta = (from, to) => finite(to) - finite(from);
   const travel = Math.hypot(
-    optionalDelta(stage.xFrom ?? stage.x, stage.xTo, 0, 0),
-    optionalDelta(stage.yFrom ?? stage.y, stage.yTo, 0, 0)
+    delta(stage.xFrom ?? stage.x, stage.xTo) +
+      delta(stage.xPercentFrom, stage.xPercentTo) * width / 100,
+    delta(stage.yFrom ?? stage.y, stage.yTo) +
+      delta(stage.yPercentFrom, stage.yPercentTo) * height / 100
   );
   const scaleDelta = Math.max(
     optionalDelta(stage.scaleFrom ?? stage.scale, stage.scaleTo, 1, 1),
