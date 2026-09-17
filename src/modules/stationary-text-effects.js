@@ -1,19 +1,12 @@
 import { readBoolean, readNumber, readString, resolveTrigger } from "../core/config.js";
+import { captureStyles, createSurface, splitText, svgFilter, metricReader } from "./stationary-text-surface.js";
+import { createCounterSurface } from "./stationary-counter-raster.js";
 
 const CHAR_COUNTER_RE = /[ABDOPQR0689abdegopq]/i;
 
-function snapshot(element) {
-  return {
-    style: element.getAttribute("style"),
-    html: element.innerHTML
-  };
-}
-
-function restore(element, state) {
-  if (state.style == null) element.removeAttribute("style");
-  else element.setAttribute("style", state.style);
-  if (element.innerHTML !== state.html) element.innerHTML = state.html;
-}
+function snapshot(element) { return captureStyles(element); }
+function restore(_element, state) { state(); }
+let alignmentId = 0;
 
 function alignmentMode(element) {
   return element.getAttribute("data-motion-alignment") ||
@@ -21,146 +14,123 @@ function alignmentMode(element) {
     "auto";
 }
 
-function buildTrigger(element, services, name, { scrub = true, profile = "reveal" } = {}) {
-  const trigger = resolveTrigger(element);
+function timelineFor(element, services, name, { profile = "reveal" } = {}) {
+  // Build the motion first. The planner reads the live timeline on each refresh.
+  const tl = services.gsap.timeline({ defaults: { ease: readString(element, "motion-ease", "none") } });
   const mode = alignmentMode(element);
-  const start = readString(element, "motion-start", "top 85%");
-  const end = readString(element, "motion-end", "bottom 25%");
-  const once = readBoolean(element, "motion-once", !scrub);
-  const scrubValue = readNumber(element, "motion-scrub", scrub ? 0.65 : 0);
-
-  if (mode === "auto" && services.scrollAlignment) {
-    const aligned = services.scrollAlignment.build(element, {
-      mode: "auto",
-      id: readString(element, "motion-alignment-id", name),
-      trigger,
-      profile,
-      stages: [{ name, start: 0, end: 1, duration: 1 }],
-      scrub: scrub ? scrubValue : false,
-      invalidateOnRefresh: true
-    }).scrollTrigger;
-    return {
-      ...aligned,
-      scrub: scrub ? scrubValue : false,
-      once: scrub ? false : once,
-      invalidateOnRefresh: true,
-      ...(!scrub && !once ? { toggleActions: "play none none reverse" } : {})
-    };
-  }
-
-  return {
-    trigger,
-    start,
-    end,
-    scrub: scrub ? scrubValue : false,
-    once: scrub ? false : once,
-    invalidateOnRefresh: true,
-    ...(!scrub && !once ? { toggleActions: "play none none reverse" } : {})
+  const trigger = readString(element, "motion-alignment-trigger", null) || resolveTrigger(element);
+  const scrubRaw = element.getAttribute("data-motion-scrub");
+  const scrub = scrubRaw === "false" ? false : scrubRaw == null ? undefined : readNumber(element, "motion-scrub", 0.65);
+  const once = readBoolean(element, "motion-once", false);
+  // Attach after tween construction so initial planner measurements include all children.
+  tl.attachScroll = () => {
+    let config;
+    if ((mode === "auto" || mode === "aligned") && services.scrollAlignment) {
+      const alignment = services.scrollAlignment.build(element, {
+        mode,
+        id: readString(element, "motion-alignment-id", `${name}-${++alignmentId}`),
+        trigger, profile, motionTimeline: tl,
+        ...(scrub !== undefined && { scrub, overrides: { scrub } }),
+        ...(mode === "aligned" && {
+          anchor: readString(element, "motion-alignment-anchor", "top"),
+          viewport: readNumber(element, "motion-alignment-viewport", 0.7),
+          span: readString(element, "motion-alignment-span", "70vh")
+        }),
+        invalidateOnRefresh: true
+      });
+      if (!alignment.enabled) return;
+      config = alignment.scrollTrigger;
+    } else {
+      config = { trigger: resolveTrigger(element), start: readString(element, "motion-start", "top 85%"), end: readString(element, "motion-end", "bottom 25%"), scrub: scrub ?? 0.65, invalidateOnRefresh: true };
+    }
+    if (config.scrub === false) config = { ...config, once, ...(!once && { toggleActions: "play none none reverse" }) };
+    services.ScrollTrigger.create({ ...config, onRefreshInit: () => tl.onMeasure?.() }, tl);
   };
+  return tl;
 }
 
-function timelineFor(element, services, name, options = {}) {
-  return services.gsap.timeline({
-    defaults: { ease: readString(element, "motion-ease", "power2.out") },
-    scrollTrigger: buildTrigger(element, services, name, options)
+function splitChars(element) { return splitText(element, "chars"); }
+function splitWords(element) { return splitText(element, "words"); }
+function lockBoxes(targets) {
+  targets.forEach(target => {
+    const activeWeight = target.style.fontWeight;
+    target.style.width = ""; target.style.fontWeight = "";
+    const width = target.getBoundingClientRect().width;
+    if (width > 0) target.style.width = `${width}px`;
+    target.style.fontWeight = activeWeight;
   });
-}
-
-function splitChars(element, services) {
-  return services.SplitText.create(element, { type: "chars", aria: "auto" });
-}
-
-function splitWords(element, services) {
-  return services.SplitText.create(element, { type: "words", aria: "auto" });
 }
 
 function currentColor(element) {
   return getComputedStyle(element).color || "currentColor";
 }
 
-function parentBackground(element) {
-  let node = element.parentElement;
-  while (node) {
-    const color = getComputedStyle(node).backgroundColor;
-    if (color && color !== "rgba(0, 0, 0, 0)" && color !== "transparent") return color;
-    node = node.parentElement;
-  }
-  return "transparent";
-}
-
-function mountInnerLetterSpace(element, services) {
+function mountCounterEffect(element, services, name) {
   const state = snapshot(element);
-  const split = splitChars(element, services);
-  const mode = readString(element, "motion-mode", "pressure");
-  const amount = readNumber(element, "motion-amount", 0.12);
+  const explicit = [...element.querySelectorAll("[data-motion-counter]")];
+  const split = explicit.length ? null : splitChars(element);
+  const tl = timelineFor(element, services, name);
+  const scale = Math.max(0.1, Math.min(1, readNumber(element, "motion-counter-scale", 1 - readNumber(element, "motion-amount", name === "counter-expansion" ? 0.18 : 0.12))));
   const stagger = readNumber(element, "motion-stagger", 0.025);
-  const tl = timelineFor(element, services, "inner-letter-space");
-  element.style.transformOrigin = "50% 50%";
-
-  const targets = [...element.querySelectorAll("[data-motion-counter]")];
-  const active = targets.length ? targets : split.chars.filter((char) => CHAR_COUNTER_RE.test(char.textContent || ""));
-  const fallback = active.length ? active : split.chars;
-
-  if (mode === "distort") {
-    tl.fromTo(fallback,
-      { scaleX: 1 - amount, scaleY: 1 + amount * 0.7, skewX: amount * 18, transformOrigin: "50% 55%" },
-      { scaleX: 1, scaleY: 1, skewX: 0, stagger }
-    );
+  let surfaces = [];
+  if (explicit.length) {
+    tl.fromTo(explicit, { scaleX: scale, scaleY: scale, skewX: readString(element, "motion-mode", "pressure") === "distort" ? 6 : 0, transformOrigin: "50% 50%" }, { scaleX: 1, scaleY: 1, skewX: 0, stagger });
   } else {
-    tl.fromTo(fallback,
-      { scaleX: 1 - amount, scaleY: 1 + amount * 0.45, transformOrigin: "50% 55%" },
-      { scaleX: 1, scaleY: 1, stagger }
-    );
+    const states = split.chars.map(char => ({ char, progress: { value: 0 }, surface: null }));
+    const rebuild = () => {
+      surfaces.forEach(surface => surface.remove());
+      surfaces = [];
+      states.forEach(item => {
+        item.surface = createCounterSurface(item.char, { scale, distort: readString(element, "motion-mode", "pressure") === "distort" ? 0.35 : 0 });
+        if (item.surface) { surfaces.push(item.surface); item.surface.render(item.progress.value); }
+      });
+    };
+    rebuild(); tl.onMeasure = rebuild;
+    states.forEach((item, index) => tl.to(item.progress, { value: 1, duration: 1, onUpdate: () => item.surface?.render(item.progress.value) }, index * stagger));
+    if (!states.length) tl.to({ value: 0 }, { value: 1, duration: 1 });
   }
 
-  return () => { tl.kill(); split.revert(); restore(element, state); };
+  tl.attachScroll();
+  return () => { tl.scrollTrigger?.kill(); tl.kill(); surfaces.forEach(surface => surface.remove()); split?.revert(); restore(element, state); };
 }
+function mountInnerLetterSpace(element, services) { return mountCounterEffect(element, services, "inner-letter-space"); }
 
 function mountTypographyGapSpace(element, services) {
   const state = snapshot(element);
-  const style = getComputedStyle(element);
-  const toLetter = style.letterSpacing === "normal" ? 0 : parseFloat(style.letterSpacing) || 0;
-  const toWord = style.wordSpacing === "normal" ? 0 : parseFloat(style.wordSpacing) || 0;
-  const toLine = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.2;
-  const fromLetter = readNumber(element, "motion-letter-from", toLetter + 6);
-  const fromWord = readNumber(element, "motion-word-from", toWord + 12);
-  const lineFactor = readNumber(element, "motion-line-factor", 1.12);
-  const tl = timelineFor(element, services, "typography-gap-space");
+  const read = metricReader(element, ["letterSpacing", "wordSpacing", "lineHeight", "fontSize"]);
+  let metrics;
+  const measure = () => {
+    const style = read();
+    metrics = { letter: parseFloat(style.letterSpacing) || 0, word: parseFloat(style.wordSpacing) || 0, line: parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.2 };
+  };
+  measure();
+  const tl = timelineFor(element, services, "typography-gap-space", { profile: "editorial" });
+  tl.onMeasure = measure;
   tl.fromTo(element,
-    { letterSpacing: `${fromLetter}px`, wordSpacing: `${fromWord}px`, lineHeight: `${toLine * lineFactor}px` },
-    { letterSpacing: `${toLetter}px`, wordSpacing: `${toWord}px`, lineHeight: `${toLine}px` }
+    { letterSpacing: () => `${readNumber(element, "motion-letter-from", metrics.letter + 6)}px`, wordSpacing: () => `${readNumber(element, "motion-word-from", metrics.word + 12)}px`, lineHeight: () => `${metrics.line * readNumber(element, "motion-line-factor", 1.12)}px` },
+    { letterSpacing: () => `${metrics.letter}px`, wordSpacing: () => `${metrics.word}px`, lineHeight: () => `${metrics.line}px` }
   );
-  return () => { tl.kill(); restore(element, state); };
+  tl.attachScroll();
+  return () => { tl.scrollTrigger?.kill(); tl.kill(); restore(element, state); };
 }
 
 function mountSectionSpace(element, services) {
   const state = snapshot(element);
-  const style = getComputedStyle(element);
-  const toInline = parseFloat(style.paddingInlineStart) || 0;
-  const toBlock = parseFloat(style.paddingTop) || 0;
-  const toColumn = parseFloat(style.columnGap) || 0;
-  const toRow = parseFloat(style.rowGap) || 0;
+  const properties = ["paddingInlineStart", "paddingInlineEnd", "paddingTop", "paddingBottom", "columnGap", "rowGap"];
+  const read = metricReader(element, properties);
+  let metrics;
+  const measure = () => { const style = read(); metrics = Object.fromEntries(properties.map(property => [property, parseFloat(style[property]) || 0])); };
+  measure();
   const pressure = readNumber(element, "motion-space-pressure", 24);
   const tl = timelineFor(element, services, "section-space", { profile: "handoff" });
+  tl.onMeasure = measure;
+  const factor = { paddingTop: 0.6, paddingBottom: 0.6, rowGap: 0.65 };
   tl.fromTo(element,
-    {
-      paddingInlineStart: toInline + pressure,
-      paddingInlineEnd: toInline + pressure,
-      paddingTop: toBlock + pressure * 0.6,
-      paddingBottom: toBlock + pressure * 0.6,
-      columnGap: toColumn + pressure,
-      rowGap: toRow + pressure * 0.65
-    },
-    {
-      paddingInlineStart: toInline,
-      paddingInlineEnd: toInline,
-      paddingTop: toBlock,
-      paddingBottom: toBlock,
-      columnGap: toColumn,
-      rowGap: toRow
-    }
+    Object.fromEntries(properties.map(property => [property, () => metrics[property] + pressure * (factor[property] ?? 1)])),
+    Object.fromEntries(properties.map(property => [property, () => metrics[property]]))
   );
-  return () => { tl.kill(); restore(element, state); };
+  tl.attachScroll();
+  return () => { tl.scrollTrigger?.kill(); tl.kill(); restore(element, state); };
 }
 
 function makeArchitectureOverlay(element, color) {
@@ -206,20 +176,27 @@ function mountArchitectureSpace(element, services) {
       { clipPath: "inset(0% 0% 0% 0%)", stagger: 0.04 }, 0
     );
   }
-  return () => { tl.kill(); overlay.remove(); restore(element, state); };
+  tl.attachScroll();
+  return () => { tl.scrollTrigger?.kill(); tl.kill(); overlay.remove(); restore(element, state); };
 }
 
 function mountStrokeFill(element, services) {
   const state = snapshot(element);
-  const color = readString(element, "motion-fill-color", currentColor(element));
-  const stroke = readString(element, "motion-stroke-color", color);
+  const surface = createSurface(element);
+  const colors = surface.nodes.map(node => currentColor(node));
   const width = readNumber(element, "motion-stroke-width", 1);
   const direction = readString(element, "motion-direction", "fill");
   const tl = timelineFor(element, services, "stroke-fill");
-  const outlined = { color: "rgba(0,0,0,0)", WebkitTextStroke: `${width}px ${stroke}` };
-  const filled = { color, WebkitTextStroke: `0px ${stroke}` };
-  tl.fromTo(element, direction === "outline" ? filled : outlined, direction === "outline" ? outlined : filled);
-  return () => { tl.kill(); restore(element, state); };
+  tl.onMeasure = surface.update;
+  surface.nodes.forEach((node, i) => {
+    const color = readString(element, "motion-fill-color", colors[i]);
+    const stroke = readString(element, "motion-stroke-color", color);
+    const outlined = { color: "rgba(0,0,0,0)", WebkitTextStroke: `${width}px ${stroke}` };
+    const filled = { color, WebkitTextStroke: `0px ${stroke}` };
+    tl.fromTo(node, direction === "outline" ? filled : outlined, direction === "outline" ? outlined : filled, 0);
+  });
+  tl.attachScroll();
+  return () => { tl.scrollTrigger?.kill(); tl.kill(); surface.remove(); restore(element, state); };
 }
 
 function mountWeightPressure(element, services) {
@@ -227,57 +204,49 @@ function mountWeightPressure(element, services) {
   const splitMode = readString(element, "motion-split", "chars");
   const split = splitMode === "none" ? null : splitChars(element, services);
   const targets = split ? split.chars : [element];
+  if (split) lockBoxes(targets);
   const computed = parseFloat(getComputedStyle(element).fontWeight) || 400;
   const from = readNumber(element, "motion-weight-from", Math.max(100, computed - 180));
   const to = readNumber(element, "motion-weight-to", computed);
   const stagger = readNumber(element, "motion-stagger", 0.018);
-  const tl = timelineFor(element, services, "weight-pressure");
+  const tl = timelineFor(element, services, "weight-pressure", { profile: "editorial" });
+  if (split) tl.onMeasure = () => lockBoxes(targets);
   tl.fromTo(targets, { fontWeight: from }, { fontWeight: to, stagger });
-  return () => { tl.kill(); split?.revert(); restore(element, state); };
-}
-
-function maskGradient(type, fromColor, toColor, texture) {
-  if (texture) return texture;
-  if (type === "vertical") return `linear-gradient(180deg, ${toColor} 0 50%, ${fromColor} 50% 100%)`;
-  if (type === "radial") return `radial-gradient(circle at center, ${toColor} 0 50%, ${fromColor} 51% 100%)`;
-  if (type === "custom") return `var(--motion-custom-mask, linear-gradient(90deg, ${toColor}, ${fromColor}))`;
-  return `linear-gradient(90deg, ${toColor} 0 50%, ${fromColor} 50% 100%)`;
+  tl.attachScroll();
+  return () => { tl.scrollTrigger?.kill(); tl.kill(); split?.revert(); restore(element, state); };
 }
 
 function mountGlyphMaskReveal(element, services) {
   const state = snapshot(element);
-  const fromColor = readString(element, "motion-from-color", currentColor(element));
-  const toColor = readString(element, "motion-to-color", readString(element, "motion-fill-color", fromColor));
-  const mask = readString(element, "motion-mask", "horizontal");
+  const base = createSurface(element, { hide: false });
+  const reveal = createSurface(element);
+  const from = element.getAttribute("data-motion-from-color");
+  const to = readString(element, "motion-to-color", readString(element, "motion-fill-color", currentColor(base.layer)));
+  if (from) base.nodes.forEach(node => { node.style.color = from; });
   const texture = readString(element, "motion-texture", "");
+  reveal.nodes.forEach(node => {
+    node.style.color = to;
+    if (texture) Object.assign(node.style, { color: "transparent", backgroundImage: texture, backgroundClip: "text", WebkitBackgroundClip: "text", backgroundSize: "cover" });
+  });
+  const mask = readString(element, "motion-mask", "horizontal");
+  const origin = readString(element, "motion-mask-origin", "50% 50%");
   const tl = timelineFor(element, services, "glyph-mask-reveal");
-  element.style.color = "transparent";
-  element.style.WebkitBackgroundClip = "text";
-  element.style.backgroundClip = "text";
-  element.style.backgroundImage = maskGradient(mask, fromColor, toColor, texture);
-  element.style.backgroundRepeat = "no-repeat";
-  element.style.backgroundSize = mask === "vertical" ? "100% 200%" : "200% 100%";
-  const fromPosition = mask === "vertical" ? "0% 100%" : "100% 0%";
-  const toPosition = "0% 0%";
-  tl.fromTo(element, { backgroundPosition: fromPosition }, { backgroundPosition: toPosition });
-  return () => { tl.kill(); restore(element, state); };
+  tl.onMeasure = () => { base.update(); reveal.update(); };
+  if (mask === "radial") {
+    tl.fromTo(reveal.layer, { clipPath: `circle(0% at ${origin})` }, { clipPath: `circle(150% at ${origin})` });
+  } else {
+    if (mask === "custom") {
+      reveal.layer.style.maskImage = readString(element, "motion-custom-mask", "var(--motion-custom-mask)");
+      reveal.layer.style.maskSize = "100% 100%";
+      reveal.layer.style.maskRepeat = "no-repeat";
+    }
+    tl.fromTo(reveal.layer, { clipPath: mask === "vertical" ? "inset(100% 0% 0% 0%)" : "inset(0% 100% 0% 0%)" }, { clipPath: "inset(0% 0% 0% 0%)" });
+  }
+  tl.attachScroll();
+  return () => { tl.scrollTrigger?.kill(); tl.kill(); reveal.remove(); base.remove(); restore(element, state); };
 }
 
-function mountCounterExpansion(element, services) {
-  const state = snapshot(element);
-  const split = splitChars(element, services);
-  const explicit = [...element.querySelectorAll("[data-motion-counter]")];
-  const counters = explicit.length ? explicit : split.chars.filter((char) => CHAR_COUNTER_RE.test(char.textContent || ""));
-  const amount = readNumber(element, "motion-counter-scale", 0.82);
-  const stagger = readNumber(element, "motion-stagger", 0.025);
-  const tl = timelineFor(element, services, "counter-expansion");
-  const targets = counters.length ? counters : split.chars;
-  tl.fromTo(targets,
-    { scaleX: amount, scaleY: amount, transformOrigin: "50% 52%" },
-    { scaleX: 1, scaleY: 1, stagger }
-  );
-  return () => { tl.kill(); split.revert(); restore(element, state); };
-}
+function mountCounterExpansion(element, services) { return mountCounterEffect(element, services, "counter-expansion"); }
 
 function makeOcclusionBlocks(element, count, color, axis) {
   const holder = document.createElement("span");
@@ -304,15 +273,30 @@ function makeOcclusionBlocks(element, count, color, axis) {
 
 function mountOcclusionBlocks(element, services) {
   const state = snapshot(element);
-  if (getComputedStyle(element).position === "static") element.style.position = "relative";
-  const count = Math.max(2, Math.round(readNumber(element, "motion-blocks", 5)));
-  const color = readString(element, "motion-occlusion-color", parentBackground(element));
+  const count = Math.min(32, Math.max(2, Math.round(readNumber(element, "motion-blocks", 5))));
   const axis = readString(element, "motion-axis", "horizontal");
-  const { holder, blocks } = makeOcclusionBlocks(element, count, color, axis);
+  const color = element.getAttribute("data-motion-occlusion-color");
   const tl = timelineFor(element, services, "occlusion-blocks");
-  const property = axis === "vertical" ? "scaleY" : "scaleX";
-  tl.fromTo(blocks, { [property]: 1 }, { [property]: 0, stagger: 0.05, ease: "power3.inOut" });
-  return () => { tl.kill(); holder.remove(); restore(element, state); };
+  if (color) {
+    if (getComputedStyle(element).position === "static") element.style.position = "relative";
+    const { holder, blocks } = makeOcclusionBlocks(element, count, color, axis);
+    tl.fromTo(blocks, { [axis === "vertical" ? "scaleY" : "scaleX"]: 1 }, { [axis === "vertical" ? "scaleY" : "scaleX"]: 0, stagger: 0.05 });
+    tl.attachScroll();
+    return () => { tl.scrollTrigger?.kill(); tl.kill(); holder.remove(); restore(element, state); };
+  }
+  // Real clipping reveals the surface behind the letters, including video/gradients.
+  const surfaces = [];
+  for (let i = 0; i < count; i++) {
+    const surface = createSurface(element, { hide: i === count - 1 });
+    const start = i / count * 100, end = 100 - (i + 1) / count * 100;
+    const full = axis === "vertical" ? `inset(0% ${end}% 0% ${start}%)` : `inset(${start}% 0% ${end}% 0%)`;
+    const hidden = axis === "vertical" ? `inset(100% ${end}% 0% ${start}%)` : `inset(${start}% 100% ${end}% 0%)`;
+    surfaces.push(surface);
+    tl.fromTo(surface.layer, { clipPath: hidden }, { clipPath: full }, i * 0.05);
+  }
+  tl.onMeasure = () => surfaces.forEach(surface => surface.update());
+  tl.attachScroll();
+  return () => { tl.scrollTrigger?.kill(); tl.kill(); surfaces.forEach(surface => surface.remove()); restore(element, state); };
 }
 
 function mountEmphasisTransfer(element, services) {
@@ -322,8 +306,11 @@ function mountEmphasisTransfer(element, services) {
   const inactiveColor = readString(element, "motion-inactive-color", activeColor);
   const inactiveOpacity = readNumber(element, "motion-inactive-opacity", 0.34);
   const activeWeight = readNumber(element, "motion-active-weight", parseFloat(getComputedStyle(element).fontWeight) || 500);
+  lockBoxes(split.words);
+  const weights = split.words.map(word => getComputedStyle(word).fontWeight);
   const mode = readString(element, "motion-mode", "contrast");
-  const tl = timelineFor(element, services, "emphasis-transfer");
+  const tl = timelineFor(element, services, "emphasis-transfer", { profile: "editorial" });
+  tl.onMeasure = () => lockBoxes(split.words);
   services.gsap.set(split.words, { color: inactiveColor, opacity: inactiveOpacity });
   split.words.forEach((word, index) => {
     const at = index / Math.max(1, split.words.length - 1);
@@ -332,81 +319,92 @@ function mountEmphasisTransfer(element, services) {
       : { opacity: 1, color: activeColor, filter: "contrast(1.15)" };
     tl.to(word, { ...vars, duration: 0.22 }, at);
     if (index < split.words.length - 1) {
-      tl.to(word, { opacity: inactiveOpacity, color: inactiveColor, filter: "none", duration: 0.22 }, at + 0.28);
+      tl.to(word, { opacity: inactiveOpacity, color: inactiveColor, filter: "none", ...(mode === "weight" && { fontWeight: weights[index] }), duration: 0.22 }, at + 0.28);
     }
   });
-  return () => { tl.kill(); split.revert(); restore(element, state); };
+  tl.attachScroll();
+  return () => { tl.scrollTrigger?.kill(); tl.kill(); split.revert(); restore(element, state); };
 }
 
 function mountSliceFragmentReveal(element, services) {
   const state = snapshot(element);
-  const color = currentColor(element);
-  const count = Math.max(2, Math.round(readNumber(element, "motion-slices", 6)));
-  const offset = readNumber(element, "motion-fragment-offset", 12);
+  const count = Math.min(32, Math.max(2, Math.round(readNumber(element, "motion-slices", 6))));
   const axis = readString(element, "motion-axis", "horizontal");
-  if (getComputedStyle(element).position === "static") element.style.position = "relative";
-  const holder = document.createElement("span");
-  holder.setAttribute("aria-hidden", "true");
-  Object.assign(holder.style, { position: "absolute", inset: "0", pointerEvents: "none", color, zIndex: "1" });
   const fragments = [];
-  for (let i = 0; i < count; i += 1) {
-    const frag = document.createElement("span");
-    frag.textContent = element.textContent;
-    Object.assign(frag.style, { position: "absolute", inset: "0", color, whiteSpace: "pre-wrap" });
-    if (axis === "vertical") {
-      const left = (i / count) * 100;
-      const right = 100 - ((i + 1) / count) * 100;
-      frag.style.clipPath = `inset(0 ${right}% 0 ${left}%)`;
-    } else {
-      const top = (i / count) * 100;
-      const bottom = 100 - ((i + 1) / count) * 100;
-      frag.style.clipPath = `inset(${top}% 0 ${bottom}% 0)`;
-    }
-    holder.appendChild(frag); fragments.push(frag);
+  for (let i = 0; i < count; i++) {
+    const surface = createSurface(element, { hide: i === count - 1 });
+    const start = i / count * 100, end = 100 - (i + 1) / count * 100;
+    surface.layer.style.clipPath = axis === "vertical" ? `inset(0% ${end}% 0% ${start}%)` : `inset(${start}% 0% ${end}% 0%)`;
+    fragments.push(surface);
   }
-  element.appendChild(holder);
-  element.style.color = "transparent";
   const tl = timelineFor(element, services, "slice-fragment-reveal");
-  tl.fromTo(fragments,
-    { x: (i) => (i % 2 ? offset : -offset), opacity: 0.45 },
-    { x: 0, opacity: 1, stagger: 0.025, ease: "power3.out" }
-  );
-  return () => { tl.kill(); holder.remove(); restore(element, state); };
+  tl.onMeasure = () => fragments.forEach(surface => surface.update());
+  tl.fromTo(fragments.map(surface => surface.layer), { opacity: 0 }, { opacity: 1, stagger: readNumber(element, "motion-stagger", 0.025) });
+  tl.attachScroll();
+  return () => { tl.scrollTrigger?.kill(); tl.kill(); fragments.forEach(surface => surface.remove()); restore(element, state); };
 }
 
 function mountNegativeSpaceCutout(element, services) {
   const state = snapshot(element);
-  const source = currentColor(element);
-  const cutout = readString(element, "motion-cutout-color", parentBackground(element));
-  const stroke = readString(element, "motion-stroke-color", source);
+  const surface = createSurface(element);
+  const colors = surface.nodes.map(node => currentColor(node));
+  // Transparent paint exposes the actual background. No solid-color approximation.
+  const cutout = readString(element, "motion-cutout-color", "rgba(0,0,0,0)");
   const width = readNumber(element, "motion-stroke-width", 0.75);
   const tl = timelineFor(element, services, "negative-space-cutout");
-  tl.fromTo(element,
-    { color: source, WebkitTextStroke: `0px ${stroke}` },
-    { color: cutout, WebkitTextStroke: `${width}px ${stroke}` }
-  );
-  return () => { tl.kill(); restore(element, state); };
+  tl.onMeasure = surface.update;
+  surface.nodes.forEach((node, i) => {
+    const stroke = readString(element, "motion-stroke-color", colors[i]);
+    tl.fromTo(node, { color: colors[i], WebkitTextStroke: `0px ${stroke}` }, { color: cutout, WebkitTextStroke: `${width}px ${stroke}` }, 0);
+  });
+  tl.attachScroll();
+  return () => { tl.scrollTrigger?.kill(); tl.kill(); surface.remove(); restore(element, state); };
 }
 
-function materialPreset(name, element) {
-  const color = currentColor(element);
+function materialSurface(element, name, hide) {
+  const surface = createSurface(element, { hide });
+  const color = currentColor(surface.layer);
   const stroke = readString(element, "motion-stroke-color", color);
-  const grain = readNumber(element, "motion-grain", 0.35);
-  if (name === "outline") return { color: "rgba(0,0,0,0)", WebkitTextStroke: `1px ${stroke}`, filter: "none", opacity: 1 };
-  if (name === "glass") return { color, WebkitTextStroke: `0px ${stroke}`, filter: "blur(0.35px) saturate(0.75)", opacity: 0.72 };
-  if (name === "grain") return { color, WebkitTextStroke: `0px ${stroke}`, filter: `contrast(${1 + grain}) brightness(${1 - grain * 0.12})`, opacity: 0.96 };
-  if (name === "erosion") return { color, WebkitTextStroke: `0px ${stroke}`, filter: "blur(0.7px) contrast(1.55)", opacity: 0.52 };
-  if (name === "matte") return { color, WebkitTextStroke: `0px ${stroke}`, filter: "saturate(0.72) contrast(0.92)", opacity: 0.92 };
-  return { color, WebkitTextStroke: `0px ${stroke}`, filter: "none", opacity: 1 };
+  const grain = Math.max(0, Math.min(1, readNumber(element, "motion-grain", 0.35)));
+  let filter;
+  if (name === "outline") surface.nodes.forEach(node => Object.assign(node.style, { color: "transparent", WebkitTextStroke: `1px ${stroke}` }));
+  else if (name === "grain" || name === "matte") {
+    filter = svgFilter(element, `<feTurbulence type="fractalNoise" baseFrequency="${name === 'grain' ? 0.8 : 0.35}" numOctaves="3" seed="7" result="noise"/><feColorMatrix in="noise" type="saturate" values="0"/><feComponentTransfer><feFuncR type="linear" slope="${grain}" intercept="${1-grain}"/><feFuncG type="linear" slope="${grain}" intercept="${1-grain}"/><feFuncB type="linear" slope="${grain}" intercept="${1-grain}"/></feComponentTransfer><feComposite in2="SourceAlpha" operator="in" result="texture"/><feBlend in="SourceGraphic" in2="texture" mode="multiply"/>`);
+  } else if (name === "glass") {
+    filter = svgFilter(element, '<feTurbulence type="fractalNoise" baseFrequency="0.025" numOctaves="2" seed="7" result="noise"/><feDisplacementMap in="SourceGraphic" in2="noise" scale="3" xChannelSelector="R" yChannelSelector="G"/>');
+    surface.layer.style.opacity = "0.72";
+    surface.layer.style.backdropFilter = "blur(3px)";
+  } else if (name === "erosion") {
+    // Noise removes alpha locally inside fixed glyphs. This is a spatial dissolve.
+    filter = svgFilter(element, '<feTurbulence type="fractalNoise" baseFrequency="0.12" numOctaves="3" seed="7" result="noise"/><feColorMatrix in="noise" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  1 0 0 0 0"/><feComponentTransfer><feFuncA type="discrete" tableValues="0 0 1 1"/></feComponentTransfer><feComposite in="SourceGraphic" operator="in"/>');
+  }
+  if (filter) surface.layer.style.filter = filter.url;
+  return { ...surface, filter, remove() { surface.remove(); filter?.remove(); } };
 }
 
 function mountMaterialShift(element, services) {
   const state = snapshot(element);
-  const from = readString(element, "motion-from", "outline");
-  const to = readString(element, "motion-to", "fill");
+  const fromName = readString(element, "motion-from", "outline");
+  const toName = readString(element, "motion-to", "fill");
+  const from = materialSurface(element, fromName, false);
+  const to = materialSurface(element, toName, true);
+  const fromOpacity = parseFloat(from.layer.style.opacity) || 1;
+  const toOpacity = parseFloat(to.layer.style.opacity) || 1;
   const tl = timelineFor(element, services, "material-shift");
-  tl.fromTo(element, materialPreset(from, element), materialPreset(to, element));
-  return () => { tl.kill(); restore(element, state); };
+  tl.onMeasure = () => { from.update(); to.update(); };
+  tl.fromTo(from.layer, { opacity: fromOpacity }, { opacity: 0 }, 0);
+  tl.fromTo(to.layer, { opacity: 0 }, { opacity: toOpacity }, 0);
+  // Animate the noise threshold itself when entering/leaving erosion.
+  for (const surface of [from, to]) {
+    const threshold = surface.filter?.svg.querySelector('feFuncA');
+    if (!threshold) continue;
+    threshold.setAttribute('type', 'linear');
+    threshold.setAttribute('slope', '12');
+    const entering = surface === to;
+    tl.fromTo(threshold, { attr: { intercept: entering ? 1 : -6 } }, { attr: { intercept: entering ? -6 : 1 } }, 0);
+  }
+  tl.attachScroll();
+  return () => { tl.scrollTrigger?.kill(); tl.kill(); from.remove(); to.remove(); restore(element, state); };
 }
 
 function selectedGlyph(char, index, mode, custom, every) {
@@ -428,16 +426,19 @@ function mountSelectiveGlyphActivation(element, services) {
   const activeColor = readString(element, "motion-active-color", currentColor(element));
   const inactiveOpacity = readNumber(element, "motion-inactive-opacity", 0.42);
   const activeWeight = readNumber(element, "motion-active-weight", parseFloat(getComputedStyle(element).fontWeight) || 500);
+  lockBoxes(split.chars);
   const active = split.chars.filter((char, index) => selectedGlyph(char, index, mode, custom, every));
   const inactive = split.chars.filter((char) => !active.includes(char));
-  const tl = timelineFor(element, services, "selective-glyph-activation");
+  const tl = timelineFor(element, services, "selective-glyph-activation", { profile: "editorial" });
+  tl.onMeasure = () => lockBoxes(split.chars);
   services.gsap.set(inactive, { opacity: inactiveOpacity });
   tl.fromTo(active,
     { opacity: inactiveOpacity, color: currentColor(element), fontWeight: 300 },
     { opacity: 1, color: activeColor, fontWeight: activeWeight, stagger: readNumber(element, "motion-stagger", 0.035) }
   );
   tl.to(inactive, { opacity: 1, duration: 0.28 }, ">-0.12");
-  return () => { tl.kill(); split.revert(); restore(element, state); };
+  tl.attachScroll();
+  return () => { tl.scrollTrigger?.kill(); tl.kill(); split.revert(); restore(element, state); };
 }
 
 const mounts = {
@@ -466,12 +467,22 @@ export function createStationaryTextModule(name) {
     selector: `[data-motion~="${name}"]`,
     mount(element, services) {
       if (services.reducedMotion()) return;
-      element.style.willChange = "color, filter, transform, letter-spacing, word-spacing";
-      const cleanup = mountEffect(element, services);
-      return () => {
-        cleanup?.();
-        element.style.willChange = "";
-      };
+      const restoreStyles = captureStyles(element);
+      const structure = [element, ...element.querySelectorAll('*')].map(node => [node, [...node.childNodes]]);
+      const aria = element.getAttribute('aria-label');
+      let context;
+      try {
+        let cleanup;
+        context = services.gsap.context(() => {}, element);
+        context.add(() => { cleanup = mountEffect(element, services); });
+        return () => { context.revert(); cleanup?.(); restoreStyles(); };
+      } catch (error) {
+        context?.revert();
+        [...structure].reverse().forEach(([node, children]) => node.replaceChildren(...children));
+        if (aria == null) element.removeAttribute('aria-label'); else element.setAttribute('aria-label', aria);
+        restoreStyles();
+        throw error;
+      }
     }
   };
 }

@@ -65,6 +65,12 @@ For page-transition tools, destroy the outgoing container before removal, initia
 
 Detailed attributes and Webflow hierarchies are documented in `docs/WEBFLOW_INTEGRATION.md`.
 
+## Stationary typography and scroll migration
+
+The 14-module typography family is documented in [docs/stationary-text-library.md](docs/stationary-text-library.md). These modules default to the existing measured auto-alignment planner and supply their real timelines for analysis. Registration still happens in `src/modules/registry.js`; the runtime mounts discovered attributes, while `src/core/scroll-alignment/` owns automatic timing and migration classifications. Specialized scroll modules retain their own geometry contracts.
+
+`npm run check:alignment` includes typography behavior and registry checks as well as scroll geometry and migration tests.
+
 ## Optional advanced packages
 
 Six heavier systems build as separate ES-module entries under `dist/advanced/`: fluid canvas, velocity effects, WebGL work browser, infinite product world, aircraft scroll story, and canvas image sequence. They are not included in `motion-kit.js`; Webflow pages load only the package they use. Installation and markup contracts are documented in `docs/ADVANCED_PACKAGES.md`.

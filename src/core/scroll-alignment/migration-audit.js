@@ -1,5 +1,7 @@
+import { stationaryTypographyNames, stationaryTypographyPolicy } from "../../modules/stationary-text-policy.js";
 import { scrollContracts } from "../../modules/scroll/contracts.js";
 const SAFE_AUTO = new Set([
+  ...stationaryTypographyPolicy.safeAuto,
   "blur-reveal",
   "line-reveal",
   "text-reveal",
@@ -11,6 +13,7 @@ const SAFE_AUTO = new Set([
 ]);
 
 const MEDIUM_AUTO = new Set([
+  ...stationaryTypographyPolicy.mediumAuto,
   "scroll-highlight",
   "parallax",
   "pinned-media",
@@ -102,12 +105,13 @@ function classify(name, element) {
 
 export function auditScrollAlignment(root = document) {
   const elements = Array.from(root.querySelectorAll("[data-motion]"));
+  if (typeof Element !== "undefined" && root instanceof Element && root.matches("[data-motion]")) elements.unshift(root);
   const entries = [];
 
   elements.forEach((element, elementIndex) => {
     motionNames(element).forEach((name) => {
       const { status, strategy } = classify(name, element);
-      const selectedMode = element.getAttribute("data-motion-alignment") || element.getAttribute("data-motion-align") || "legacy";
+      const selectedMode = element.getAttribute("data-motion-alignment") || element.getAttribute("data-motion-align") || (stationaryTypographyNames.includes(name) ? stationaryTypographyPolicy.defaultAlignment : "legacy");
       const alignment = selectedMode === "manual" ? "legacy" : selectedMode;
       const contract = scrollContracts.find(entry => entry.name === name);
       const syncAttribute = {
