@@ -71,7 +71,7 @@ it("distinguishes manual scroll, native sticky layout, and optional viewport loa
   `;
   const report = auditScrollAlignment(document);
   expect(report.unclassified).toEqual([]);
-  expect(report.manualScroll).toHaveLength(6);
+  expect(report.manualScroll).toHaveLength(0);
   expect(report.entries.find(entry => entry.name === "stacked-cards").strategy).toBe("native-sticky-layout");
-  expect(report.entries.filter(entry => entry.name === "brand-load").map(entry => entry.status)).toEqual(["non-scroll", "manual-scroll", "manual-scroll", "manual-scroll"]);
+  expect(report.entries.filter(entry => entry.name === "brand-load").map(entry => entry.status)).toEqual(["non-scroll", "custom-ready", "custom-ready", "custom-ready"]);
 });

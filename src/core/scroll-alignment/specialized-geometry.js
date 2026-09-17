@@ -23,18 +23,19 @@ export function createCrossingLineTriggers({
   activation = 50,
   onEnter,
   onEnterBack,
-  onUpdate
+  onUpdate,
+  configureTrigger = (config) => config
 }) {
   const line = `${Math.max(0, Math.min(100, Number(activation) || 0))}%`;
   return triggers.map((trigger, index) =>
-    ScrollTrigger.create({
+    ScrollTrigger.create(configureTrigger({
       trigger,
       start: `top ${line}`,
       end: `bottom ${line}`,
       onEnter: () => onEnter?.(index, trigger),
       onEnterBack: () => onEnterBack?.(index, trigger),
       onUpdate: (self) => onUpdate?.(index, trigger, self)
-    })
+    }, index, trigger))
   );
 }
 

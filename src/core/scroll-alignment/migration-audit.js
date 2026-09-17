@@ -1,3 +1,4 @@
+import { scrollContracts } from "../../modules/scroll/contracts.js";
 const SAFE_AUTO = new Set([
   "blur-reveal",
   "line-reveal",
@@ -41,12 +42,15 @@ const CUSTOM_READY = new Map([
   ["media-room", "custom-depth-span"],
   ["tags-glitch", "custom-sticky-runway"],
   ["flip-relocation", "custom-flip-span"],
-  ["stacked-cards", "native-sticky-layout"]
+  ["stacked-cards", "native-sticky-layout"],
+  ["services-center-shift", "measured-center-span"],
+  ["footer-reveal", "measured-reveal-span"],
+  ["theme-switch", "measured-theme-window"],
+  ["morph-narrative", "measured-morph-span"]
 ]);
 
 const COMPLEX_REVIEW = new Set([
   "character-scatter-title-legacy",
-  "morph-narrative"
 ]);
 
 const NON_SCROLL = new Set([
@@ -71,7 +75,7 @@ const NON_SCROLL = new Set([
   "looping-labels"
 ]);
 
-const MANUAL_SCROLL = new Set(["services-center-shift", "footer-reveal", "theme-switch"]);
+const MANUAL_SCROLL = new Set();
 
 function motionNames(element) {
   return (element.getAttribute("data-motion") || "")
@@ -81,8 +85,11 @@ function motionNames(element) {
 }
 
 function classify(name, element) {
+  if (name === "scramble-text" && (element.getAttribute("data-motion-event") || "hover") !== "scroll") {
+    return { status: "non-scroll", strategy: "non-scroll" };
+  }
   if (MANUAL_SCROLL.has(name) || (name === "brand-load" && ["true", "1", ""].includes(element.getAttribute("data-motion-on-view")))) {
-    return { status: "manual-scroll", strategy: "manual-viewport" };
+    return { status: "custom-ready", strategy: "measured-reveal-span" };
   }
   if (SAFE_AUTO.has(name)) return { status: "safe-auto", strategy: "auto" };
   if (MEDIUM_AUTO.has(name)) return { status: "medium-auto", strategy: "auto" };
@@ -100,7 +107,18 @@ export function auditScrollAlignment(root = document) {
   elements.forEach((element, elementIndex) => {
     motionNames(element).forEach((name) => {
       const { status, strategy } = classify(name, element);
-      const alignment = element.getAttribute("data-motion-alignment") || "legacy";
+      const selectedMode = element.getAttribute("data-motion-alignment") || element.getAttribute("data-motion-align") || "legacy";
+      const alignment = selectedMode === "manual" ? "legacy" : selectedMode;
+      const contract = scrollContracts.find(entry => entry.name === name);
+      const syncAttribute = {
+        "element-blur-reveal": "data-motion-element-blur-sync-trigger-id",
+        "synced-fade": "data-motion-fade-sync-trigger-id",
+        "pin-overlap-next": "data-motion-pin-overlap-sync-trigger-id",
+        "depth-emerge": "data-motion-sync-trigger-id",
+        "element-layout-return": "data-motion-layout-return-sync-trigger-id",
+        "section-handoff": "data-motion-section-handoff-sync-trigger-id"
+      }[name];
+      const sync = syncAttribute ? element.getAttribute(syncAttribute) || null : null;
       const minWidth = element.getAttribute("data-motion-min-width");
       const trigger = element.getAttribute("data-motion-trigger");
 
@@ -110,6 +128,9 @@ export function auditScrollAlignment(root = document) {
         status,
         strategy,
         alignment,
+        ownership: sync ? "follower" : contract?.role || null,
+        parentTriggerId: sync,
+        autoControl: status === "non-scroll" ? null : sync ? "parent-owner" : contract?.role === "native-sticky" ? "browser-layout" : contract ? "module-geometry" : null,
         minWidth: minWidth == null ? null : Number(minWidth),
         trigger: trigger || null,
         id: element.id || null,
