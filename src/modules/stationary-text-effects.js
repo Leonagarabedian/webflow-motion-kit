@@ -499,59 +499,72 @@ function renderPlushGlyph(glyph, index, options) {
   ctx.fillStyle = body;
   ctx.fillRect(0, 0, width, height);
 
-  // Dense teddy-pile tufts. Each tuft follows the tangent of its nearest glyph contour.
-  const tuftCount = Math.max(180, Math.round(inside.length * 0.55 * options.density));
+  // Dense teddy-pile nap. Build each visible tuft as a small cluster of
+  // short overlapping hairs so the surface reads as plush, not etched lines.
+  const clusterCount = Math.max(240, Math.round(inside.length * 0.24 * options.density));
   const layers = [
-    { color: options.crease, alpha: 0.20, length: [3.8, 7.0], width: [0.8, 1.45] },
-    { color: options.shadow, alpha: 0.38, length: [3.2, 6.2], width: [0.72, 1.25] },
-    { color: options.base, alpha: 0.48, length: [2.8, 5.5], width: [0.62, 1.08] },
-    { color: options.highlight, alpha: 0.54, length: [2.2, 4.6], width: [0.48, 0.90] }
+    { color: options.crease, alpha: 0.10, length: [1.9, 3.4], width: [0.34, 0.58] },
+    { color: options.shadow, alpha: 0.16, length: [1.7, 3.1], width: [0.30, 0.52] },
+    { color: options.base, alpha: 0.20, length: [1.5, 2.8], width: [0.28, 0.48] },
+    { color: options.highlight, alpha: 0.18, length: [1.25, 2.45], width: [0.24, 0.42] }
   ];
 
-  for (let i = 0; i < tuftCount; i++) {
-    const p = inside[Math.floor(rand() * inside.length)];
-    const localAlpha = alpha[p[1] * width + p[0]];
-    if (localAlpha < 90) continue;
-    const layer = layers[Math.min(layers.length - 1, Math.floor(rand() * layers.length))];
-    const tangent = nearestContourDirection(p[0], p[1], edge);
-    const angle = tangent + (rand() - 0.5) * 0.52;
-    const len = (layer.length[0] + rand() * (layer.length[1] - layer.length[0])) * scale * 0.58;
-    const lw = (layer.width[0] + rand() * (layer.width[1] - layer.width[0])) * scale * 0.52;
-    const bend = (rand() - 0.5) * len * 0.42;
-    const x2 = p[0] + Math.cos(angle) * len;
-    const y2 = p[1] + Math.sin(angle) * len;
-    const cx = p[0] + (x2 - p[0]) * 0.5 - Math.sin(angle) * bend;
-    const cy = p[1] + (y2 - p[1]) * 0.5 + Math.cos(angle) * bend;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.shadowBlur = Math.max(0.35, scale * 0.18);
+  ctx.shadowColor = "rgba(255,255,255,0.08)";
 
-    ctx.globalAlpha = layer.alpha;
-    ctx.strokeStyle = layer.color;
-    ctx.lineWidth = lw;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(p[0], p[1]);
-    ctx.quadraticCurveTo(cx, cy, x2, y2);
-    ctx.stroke();
-  }
-  ctx.globalAlpha = 1;
-
-  // Small clustered pile breaks up individual strands into a dense plush surface.
-  const clusterCount = Math.max(90, Math.round(inside.length * 0.12 * options.density));
   for (let i = 0; i < clusterCount; i++) {
     const p = inside[Math.floor(rand() * inside.length)];
+    const localAlpha = alpha[p[1] * width + p[0]];
+    if (localAlpha < 96) continue;
+
     const tangent = nearestContourDirection(p[0], p[1], edge);
-    const radius = (0.65 + rand() * 1.4) * scale * 0.45;
-    ctx.globalAlpha = 0.08 + rand() * 0.12;
-    ctx.fillStyle = rand() > 0.56 ? options.highlight : options.shadow;
+    const hairCount = 2 + Math.floor(rand() * 3);
+    const spread = (0.7 + rand() * 1.5) * scale * 0.34;
+
+    for (let h = 0; h < hairCount; h++) {
+      const layer = layers[Math.min(layers.length - 1, Math.floor(rand() * layers.length))];
+      const angle = tangent + (rand() - 0.5) * 0.34;
+      const len = (layer.length[0] + rand() * (layer.length[1] - layer.length[0])) * scale * 0.74;
+      const lw = (layer.width[0] + rand() * (layer.width[1] - layer.width[0])) * scale * 0.66;
+      const offset = (rand() - 0.5) * spread;
+      const ox = -Math.sin(tangent) * offset;
+      const oy = Math.cos(tangent) * offset;
+      const x1 = p[0] + ox;
+      const y1 = p[1] + oy;
+      const x2 = x1 + Math.cos(angle) * len;
+      const y2 = y1 + Math.sin(angle) * len;
+      const bend = (rand() - 0.5) * len * 0.20;
+      const cx = x1 + (x2 - x1) * 0.5 - Math.sin(angle) * bend;
+      const cy = y1 + (y2 - y1) * 0.5 + Math.cos(angle) * bend;
+
+      ctx.globalAlpha = layer.alpha;
+      ctx.strokeStyle = layer.color;
+      ctx.lineWidth = lw;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.quadraticCurveTo(cx, cy, x2, y2);
+      ctx.stroke();
+    }
+  }
+
+  // Fine nap underneath the directional clusters removes empty gaps without
+  // introducing visible scratch marks.
+  const napCount = Math.max(220, Math.round(inside.length * 0.18 * options.density));
+  ctx.shadowBlur = 0;
+  for (let i = 0; i < napCount; i++) {
+    const p = inside[Math.floor(rand() * inside.length)];
+    const tangent = nearestContourDirection(p[0], p[1], edge);
+    const r = (0.32 + rand() * 0.62) * scale * 0.42;
+    ctx.globalAlpha = 0.035 + rand() * 0.055;
+    ctx.fillStyle = rand() > 0.58 ? options.highlight : options.shadow;
     ctx.beginPath();
-    ctx.ellipse(
-      p[0], p[1],
-      radius * 1.65, radius,
-      tangent,
-      0, Math.PI * 2
-    );
+    ctx.ellipse(p[0], p[1], r * 1.35, r, tangent, 0, Math.PI * 2);
     ctx.fill();
   }
   ctx.globalAlpha = 1;
+  ctx.shadowBlur = 0;
 
   // Clip the generated material to the exact glyph raster.
   const maskCanvas = document.createElement("canvas");
