@@ -361,69 +361,244 @@ function mountNegativeSpaceCutout(element, services) {
   return () => { tl.scrollTrigger?.kill(); tl.kill(); surface.remove(); restore(element, state); };
 }
 
-let plushTextureUrl;
-function createPlushTextureUrl() {
-  if (plushTextureUrl) return plushTextureUrl;
-  let seed = 92821;
-  const rand = () => ((seed = (seed * 48271) % 2147483647) / 2147483647);
-  const fibers = [];
 
-  const addFibers = (stroke, opacity, count, minLen, maxLen, minWidth, maxWidth) => {
-    for (let i = 0; i < count; i++) {
-      const x = rand() * 160;
-      const y = rand() * 160;
-      const angle = rand() * Math.PI * 2;
-      const len = minLen + rand() * (maxLen - minLen);
-      const width = minWidth + rand() * (maxWidth - minWidth);
-      const bend = (rand() - 0.5) * 6;
-      const dx = Math.cos(angle) * len;
-      const dy = Math.sin(angle) * len;
-      const cx = x + dx * 0.5 - Math.sin(angle) * bend;
-      const cy = y + dy * 0.5 + Math.cos(angle) * bend;
-      fibers.push(`<path d="M${x.toFixed(1)} ${y.toFixed(1)} Q${cx.toFixed(1)} ${cy.toFixed(1)} ${(x + dx).toFixed(1)} ${(y + dy).toFixed(1)}" fill="none" stroke="${stroke}" stroke-opacity="${opacity}" stroke-width="${width.toFixed(2)}" stroke-linecap="round"/>`);
-    }
+function plushOptions(element) {
+  return {
+    base: readString(element, "motion-plush-base", "#e98aae"),
+    highlight: readString(element, "motion-plush-highlight", "#f6b3c9"),
+    shadow: readString(element, "motion-plush-shadow", "#c96b92"),
+    crease: readString(element, "motion-plush-crease", "#8f4e70"),
+    density: Math.max(0.65, Math.min(1.8, readNumber(element, "motion-plush-density", 1.15))),
+    fuzz: Math.max(0.6, Math.min(1.8, readNumber(element, "motion-plush-fuzz", 1.05))),
+    puff: Math.max(0.6, Math.min(1.8, readNumber(element, "motion-plush-puff", 1.08)))
   };
+}
 
-  addFibers("#8f8f8f", 0.55, 300, 6, 12, 1.2, 2.0);
-  addFibers("#d0d0d0", 0.78, 360, 5, 10, 0.9, 1.6);
-  addFibers("#f7f7f7", 0.9, 260, 4, 8, 0.65, 1.15);
+function seededRandom(seedValue) {
+  let seed = Math.max(1, Math.abs(seedValue | 0)) % 2147483647;
+  return () => ((seed = (seed * 48271) % 2147483647) / 2147483647);
+}
 
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
-    <defs>
-      <radialGradient id="plushBase" cx="40%" cy="32%" r="80%">
-        <stop offset="0" stop-color="#eeeeee"/>
-        <stop offset="0.5" stop-color="#d2d2d2"/>
-        <stop offset="1" stop-color="#a9a9a9"/>
-      </radialGradient>
-    </defs>
-    <rect width="160" height="160" fill="url(#plushBase)"/>
-    <g>${fibers.join("")}</g>
-  </svg>`;
+function hashString(value) {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i++) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
 
-  plushTextureUrl = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
-  return plushTextureUrl;
+function splitPlushGlyphs(layer) {
+  const walker = document.createTreeWalker(layer, NodeFilter.SHOW_TEXT);
+  const texts = [];
+  while (walker.nextNode()) {
+    const node = walker.currentNode;
+    if (!node.parentElement.closest('[data-motion-filter],script,style')) texts.push(node);
+  }
+  const glyphs = [];
+  for (const text of texts) {
+    const fragment = document.createDocumentFragment();
+    const parts = typeof Intl.Segmenter === "function"
+      ? [...new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(text.data)].map(item => item.segment)
+      : Array.from(text.data);
+    for (const value of parts) {
+      if (/^\s+$/.test(value)) {
+        fragment.append(document.createTextNode(value));
+        continue;
+      }
+      const span = document.createElement("span");
+      span.textContent = value;
+      span.setAttribute("data-plush-glyph", "");
+      span.style.display = "inline";
+      span.style.position = "relative";
+      fragment.append(span);
+      glyphs.push(span);
+    }
+    text.replaceWith(fragment);
+  }
+  return glyphs;
+}
+
+function glyphMask(glyph) {
+  const rect = glyph.getBoundingClientRect();
+  const style = getComputedStyle(glyph);
+  const scale = Math.max(2, Math.min(3, window.devicePixelRatio || 2));
+  const width = Math.max(24, Math.ceil(rect.width * scale));
+  const height = Math.max(24, Math.ceil(rect.height * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return null;
+  const fontSize = parseFloat(style.fontSize) * scale;
+  const font = `${style.fontStyle || "normal"} ${style.fontWeight || 400} ${fontSize}px ${style.fontFamily}`;
+  ctx.font = font;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "#fff";
+  const value = glyph.textContent || "";
+  ctx.fillText(value, width / 2, height / 2 + fontSize * 0.015);
+  const image = ctx.getImageData(0, 0, width, height);
+  const alpha = new Uint8Array(width * height);
+  for (let i = 0; i < alpha.length; i++) alpha[i] = image.data[i * 4 + 3];
+  return { width, height, scale, alpha, style, value };
+}
+
+function contourData(mask) {
+  const { width, height, alpha } = mask;
+  const edge = [];
+  const inside = [];
+  const stride = 2;
+  const isInside = (x, y) => x >= 0 && y >= 0 && x < width && y < height && alpha[y * width + x] > 48;
+  for (let y = 1; y < height - 1; y += stride) {
+    for (let x = 1; x < width - 1; x += stride) {
+      if (!isInside(x, y)) continue;
+      inside.push([x, y]);
+      if (!isInside(x - 2, y) || !isInside(x + 2, y) || !isInside(x, y - 2) || !isInside(x, y + 2)) edge.push([x, y]);
+    }
+  }
+  return { edge, inside };
+}
+
+function nearestContourDirection(x, y, edge) {
+  if (!edge.length) return Math.PI / 2;
+  let nearest = edge[0];
+  let best = Infinity;
+  const step = Math.max(1, Math.floor(edge.length / 260));
+  for (let i = 0; i < edge.length; i += step) {
+    const p = edge[i];
+    const dx = p[0] - x;
+    const dy = p[1] - y;
+    const d = dx * dx + dy * dy;
+    if (d < best) { best = d; nearest = p; }
+  }
+  const normal = Math.atan2(nearest[1] - y, nearest[0] - x);
+  return normal + Math.PI / 2;
+}
+
+function renderPlushGlyph(glyph, index, options) {
+  const mask = glyphMask(glyph);
+  if (!mask) return null;
+  const { width, height, scale, alpha, value } = mask;
+  const { edge, inside } = contourData(mask);
+  if (!inside.length) return null;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  const rand = seededRandom(hashString(`${value}:${index}:${width}:${height}`));
+
+  // Padded body: bright, softly convex face with darker lower/perimeter tone.
+  const body = ctx.createRadialGradient(width * 0.42, height * 0.30, Math.min(width, height) * 0.05, width * 0.52, height * 0.55, Math.max(width, height) * 0.78);
+  body.addColorStop(0, options.highlight);
+  body.addColorStop(0.46, options.base);
+  body.addColorStop(0.78, options.shadow);
+  body.addColorStop(1, options.crease);
+  ctx.fillStyle = body;
+  ctx.fillRect(0, 0, width, height);
+
+  // Dense teddy-pile tufts. Each tuft follows the tangent of its nearest glyph contour.
+  const tuftCount = Math.max(180, Math.round(inside.length * 0.55 * options.density));
+  const layers = [
+    { color: options.crease, alpha: 0.20, length: [3.8, 7.0], width: [0.8, 1.45] },
+    { color: options.shadow, alpha: 0.38, length: [3.2, 6.2], width: [0.72, 1.25] },
+    { color: options.base, alpha: 0.48, length: [2.8, 5.5], width: [0.62, 1.08] },
+    { color: options.highlight, alpha: 0.54, length: [2.2, 4.6], width: [0.48, 0.90] }
+  ];
+
+  for (let i = 0; i < tuftCount; i++) {
+    const p = inside[Math.floor(rand() * inside.length)];
+    const localAlpha = alpha[p[1] * width + p[0]];
+    if (localAlpha < 90) continue;
+    const layer = layers[Math.min(layers.length - 1, Math.floor(rand() * layers.length))];
+    const tangent = nearestContourDirection(p[0], p[1], edge);
+    const angle = tangent + (rand() - 0.5) * 0.52;
+    const len = (layer.length[0] + rand() * (layer.length[1] - layer.length[0])) * scale * 0.58;
+    const lw = (layer.width[0] + rand() * (layer.width[1] - layer.width[0])) * scale * 0.52;
+    const bend = (rand() - 0.5) * len * 0.42;
+    const x2 = p[0] + Math.cos(angle) * len;
+    const y2 = p[1] + Math.sin(angle) * len;
+    const cx = p[0] + (x2 - p[0]) * 0.5 - Math.sin(angle) * bend;
+    const cy = p[1] + (y2 - p[1]) * 0.5 + Math.cos(angle) * bend;
+
+    ctx.globalAlpha = layer.alpha;
+    ctx.strokeStyle = layer.color;
+    ctx.lineWidth = lw;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(p[0], p[1]);
+    ctx.quadraticCurveTo(cx, cy, x2, y2);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  // Small clustered pile breaks up individual strands into a dense plush surface.
+  const clusterCount = Math.max(90, Math.round(inside.length * 0.12 * options.density));
+  for (let i = 0; i < clusterCount; i++) {
+    const p = inside[Math.floor(rand() * inside.length)];
+    const tangent = nearestContourDirection(p[0], p[1], edge);
+    const radius = (0.65 + rand() * 1.4) * scale * 0.45;
+    ctx.globalAlpha = 0.08 + rand() * 0.12;
+    ctx.fillStyle = rand() > 0.56 ? options.highlight : options.shadow;
+    ctx.beginPath();
+    ctx.ellipse(
+      p[0], p[1],
+      radius * 1.65, radius,
+      tangent,
+      0, Math.PI * 2
+    );
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // Clip the generated material to the exact glyph raster.
+  const maskCanvas = document.createElement("canvas");
+  maskCanvas.width = width;
+  maskCanvas.height = height;
+  const maskCtx = maskCanvas.getContext("2d");
+  if (!maskCtx) return null;
+  const image = maskCtx.createImageData(width, height);
+  for (let i = 0; i < alpha.length; i++) {
+    const a = alpha[i];
+    image.data[i * 4] = 255;
+    image.data[i * 4 + 1] = 255;
+    image.data[i * 4 + 2] = 255;
+    image.data[i * 4 + 3] = a;
+  }
+  maskCtx.putImageData(image, 0, 0);
+  ctx.globalCompositeOperation = "destination-in";
+  ctx.drawImage(maskCanvas, 0, 0);
+  ctx.globalCompositeOperation = "source-over";
+
+  return canvas.toDataURL("image/png");
 }
 
 function applyPlushTexture(surface, element) {
-  const texture = createPlushTextureUrl();
-  const shadowColor = readString(element, "motion-plush-shadow", "rgba(0,0,0,0.28)");
-  surface.nodes.forEach((node) => {
-    Object.assign(node.style, {
-      color: "transparent",
-      WebkitTextFillColor: "transparent",
-      backgroundImage: texture,
-      backgroundRepeat: "repeat",
-      backgroundSize: "72px 72px",
-      backgroundClip: "text",
-      WebkitBackgroundClip: "text",
-      WebkitTextStroke: "1.25px rgba(255,255,255,0.16)",
-      textShadow: `0 1px 0 rgba(255,255,255,0.35), 0 3px 7px ${shadowColor}`
+  const options = plushOptions(element);
+  const glyphs = splitPlushGlyphs(surface.layer);
+  const render = () => {
+    glyphs.forEach((glyph, index) => {
+      const texture = renderPlushGlyph(glyph, index, options);
+      if (!texture) return;
+      Object.assign(glyph.style, {
+        color: "transparent",
+        WebkitTextFillColor: "transparent",
+        backgroundImage: `url("${texture}")`,
+        backgroundRepeat: "no-repeat",
+        backgroundSize: "100% 100%",
+        backgroundPosition: "center",
+        backgroundClip: "text",
+        WebkitBackgroundClip: "text"
+      });
     });
-  });
+  };
+  render();
 
-  const edgeFilter = svgFilter(element, '<feMorphology in="SourceAlpha" operator="dilate" radius="1.4" result="dilated"/><feTurbulence type="fractalNoise" baseFrequency="0.045 0.32" numOctaves="2" seed="61" result="furNoise"/><feDisplacementMap in="dilated" in2="furNoise" scale="2.7" xChannelSelector="R" yChannelSelector="G" result="fuzzyAlpha"/><feGaussianBlur in="fuzzyAlpha" stdDeviation="0.28" result="softFuzz"/><feFlood flood-color="#cfcfcf" result="fuzzColor"/><feComposite in="fuzzColor" in2="softFuzz" operator="in" result="fuzz"/><feMerge><feMergeNode in="fuzz"/><feMergeNode in="SourceGraphic"/></feMerge>');
+  const edgeFilter = svgFilter(element, `<feMorphology in="SourceAlpha" operator="dilate" radius="${1.05 * options.fuzz}" result="dilated"/><feTurbulence type="fractalNoise" baseFrequency="0.055 0.24" numOctaves="2" seed="71" result="edgeNoise"/><feDisplacementMap in="dilated" in2="edgeNoise" scale="${1.7 * options.fuzz}" xChannelSelector="R" yChannelSelector="G" result="fuzzyAlpha"/><feGaussianBlur in="fuzzyAlpha" stdDeviation="${0.16 * options.fuzz}" result="softFuzz"/><feFlood flood-color="${options.base}" result="fuzzColor"/><feComposite in="fuzzColor" in2="softFuzz" operator="in" result="fuzz"/><feMerge><feMergeNode in="fuzz"/><feMergeNode in="SourceGraphic"/></feMerge>`);
   surface.layer.style.filter = edgeFilter.url;
-  return edgeFilter;
+  return { filter: edgeFilter, update: render };
 }
 
 
@@ -448,7 +623,9 @@ function materialSurface(element, name, hide) {
     filter = svgFilter(element, '<feTurbulence type="fractalNoise" baseFrequency="0.035 0.5" numOctaves="2" seed="11" result="fiberNoise"/><feColorMatrix in="fiberNoise" type="saturate" values="0" result="fiberMono"/><feGaussianBlur in="fiberMono" stdDeviation="0.18 1.1" result="fiberSoft"/><feDisplacementMap in="fiberSoft" in2="fiberMono" scale="2.2" xChannelSelector="R" yChannelSelector="G" result="fiberShape"/><feComponentTransfer in="fiberShape" result="fiberTone"><feFuncR type="linear" slope="0.55" intercept="0.22"/><feFuncG type="linear" slope="0.55" intercept="0.22"/><feFuncB type="linear" slope="0.55" intercept="0.22"/></feComponentTransfer><feComposite in="fiberTone" in2="SourceAlpha" operator="in" result="clippedFibers"/><feBlend in="SourceGraphic" in2="clippedFibers" mode="soft-light"/>');
     surface.layer.style.filter = filter.url;
   } else if (name === "plush-bloom") {
-    filter = applyPlushTexture(surface, element);
+    const plush = applyPlushTexture(surface, element);
+    filter = plush.filter;
+    surface.plushUpdate = plush.update;
     surface.layer.style.clipPath = "circle(0% at 50% 50%)";
   } else if (name === "rubber") {
     filter = svgFilter(element, '<feGaussianBlur in="SourceAlpha" stdDeviation="2.4" result="softAlpha"/><feSpecularLighting in="softAlpha" surfaceScale="4" specularConstant="0.55" specularExponent="24" lighting-color="#ffffff" result="spec"><feDistantLight azimuth="225" elevation="42"/></feSpecularLighting><feComposite in="spec" in2="SourceAlpha" operator="in" result="specClip"/><feBlend in="SourceGraphic" in2="specClip" mode="screen"/>');
@@ -465,7 +642,16 @@ function materialSurface(element, name, hide) {
   }
 
   if (filter && !surface.layer.style.filter) surface.layer.style.filter = filter.url;
-  return { ...surface, filter, remove() { surface.remove(); filter?.remove(); } };
+  const baseUpdate = surface.update;
+  return {
+    ...surface,
+    filter,
+    update() {
+      baseUpdate();
+      surface.plushUpdate?.();
+    },
+    remove() { surface.remove(); filter?.remove(); }
+  };
 }
 
 function mountMaterialShift(element, services) {
