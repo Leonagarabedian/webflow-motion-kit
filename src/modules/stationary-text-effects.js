@@ -367,25 +367,45 @@ function createPlushTextureUrl() {
   let seed = 92821;
   const rand = () => ((seed = (seed * 48271) % 2147483647) / 2147483647);
   const fibers = [];
-  const makeFiber = (stroke, opacity, count, minLen, maxLen, minWidth, maxWidth) => {
+
+  const makeFiber = ({ stroke, opacity, count, minLen, maxLen, minWidth, maxWidth, shadow = false }) => {
     for (let i = 0; i < count; i++) {
-      const x = rand() * 256;
-      const y = rand() * 256;
-      const angle = (rand() * Math.PI * 2);
+      const x = rand() * 192;
+      const y = rand() * 192;
+      const angle = rand() * Math.PI * 2;
       const len = minLen + rand() * (maxLen - minLen);
       const width = minWidth + rand() * (maxWidth - minWidth);
-      const bend = (rand() - 0.5) * 4;
+      const bend = (rand() - 0.5) * 8;
       const dx = Math.cos(angle) * len;
       const dy = Math.sin(angle) * len;
       const cx = x + dx * 0.5 - Math.sin(angle) * bend;
       const cy = y + dy * 0.5 + Math.cos(angle) * bend;
-      fibers.push(`<path d="M${x.toFixed(1)} ${y.toFixed(1)} Q${cx.toFixed(1)} ${cy.toFixed(1)} ${(x + dx).toFixed(1)} ${(y + dy).toFixed(1)}" fill="none" stroke="${stroke}" stroke-opacity="${opacity}" stroke-width="${width.toFixed(2)}" stroke-linecap="round"/>`);
+      fibers.push(`<path d="M${x.toFixed(1)} ${y.toFixed(1)} Q${cx.toFixed(1)} ${cy.toFixed(1)} ${(x + dx).toFixed(1)} ${(y + dy).toFixed(1)}" fill="none" stroke="${stroke}" stroke-opacity="${opacity}" stroke-width="${width.toFixed(2)}" stroke-linecap="round"${shadow ? ' filter="url(#strandShadow)"' : ''}/>`);
     }
   };
-  makeFiber("#7f7f7f", 0.26, 260, 4, 9, 0.65, 1.25);
-  makeFiber("#f7f7f7", 0.34, 240, 3, 7, 0.55, 1.0);
-  makeFiber("#a9a9a9", 0.2, 180, 6, 12, 0.45, 0.9);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256"><rect width="256" height="256" fill="#d8d8d8"/><g>${fibers.join("")}</g></svg>`;
+
+  // Dense dark undercoat gives the material depth.
+  makeFiber({ stroke:"#6f6f6f", opacity:0.38, count:220, minLen:8, maxLen:16, minWidth:1.3, maxWidth:2.4, shadow:true });
+  // Mid-tone strands create the visible furry body.
+  makeFiber({ stroke:"#b8b8b8", opacity:0.72, count:300, minLen:7, maxLen:14, minWidth:1.0, maxWidth:1.8 });
+  // Light top hairs catch light and make the surface feel plush.
+  makeFiber({ stroke:"#f4f4f4", opacity:0.84, count:240, minLen:6, maxLen:12, minWidth:0.75, maxWidth:1.35 });
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+    <defs>
+      <filter id="strandShadow" x="-30%" y="-30%" width="160%" height="160%">
+        <feGaussianBlur stdDeviation="0.7"/>
+      </filter>
+      <radialGradient id="base" cx="45%" cy="38%" r="78%">
+        <stop offset="0" stop-color="#dddddd"/>
+        <stop offset="0.62" stop-color="#c9c9c9"/>
+        <stop offset="1" stop-color="#b7b7b7"/>
+      </radialGradient>
+    </defs>
+    <rect width="192" height="192" fill="url(#base)"/>
+    <g>${fibers.join("")}</g>
+  </svg>`;
+
   plushTextureUrl = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
   return plushTextureUrl;
 }
@@ -398,12 +418,13 @@ function applyPlushTexture(surface) {
       WebkitTextFillColor: "transparent",
       backgroundImage: texture,
       backgroundRepeat: "repeat",
-      backgroundSize: "128px 128px",
+      backgroundSize: "92px 92px",
       backgroundClip: "text",
       WebkitBackgroundClip: "text"
     });
   });
 }
+
 
 function materialSurface(element, name, hide) {
   const surface = createSurface(element, { hide });

@@ -103,6 +103,7 @@ describe('stationary typography behavior and migration',()=>{
     expect(plush).toBeTruthy();
     expect(plush.style.clipPath).toContain('circle');
     expect(plush.style.backgroundImage).toContain('data:image/svg+xml');
+    expect(plush.style.backgroundSize).toBe('92px 92px');
     expect(plush.style.backgroundClip || plush.style.webkitBackgroundClip).toContain('text');
     cleanup();
   });
