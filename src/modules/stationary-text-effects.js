@@ -367,18 +367,35 @@ function materialSurface(element, name, hide) {
   const stroke = readString(element, "motion-stroke-color", color);
   const grain = Math.max(0, Math.min(1, readNumber(element, "motion-grain", 0.35)));
   let filter;
-  if (name === "outline") surface.nodes.forEach(node => Object.assign(node.style, { color: "transparent", WebkitTextStroke: `1px ${stroke}` }));
-  else if (name === "grain" || name === "matte") {
+
+  if (name === "outline") {
+    surface.nodes.forEach(node => Object.assign(node.style, { color: "transparent", WebkitTextStroke: `1px ${stroke}` }));
+  } else if (name === "grain" || name === "matte") {
     filter = svgFilter(element, `<feTurbulence type="fractalNoise" baseFrequency="${name === 'grain' ? 0.8 : 0.35}" numOctaves="3" seed="7" result="noise"/><feColorMatrix in="noise" type="saturate" values="0"/><feComponentTransfer><feFuncR type="linear" slope="${grain}" intercept="${1-grain}"/><feFuncG type="linear" slope="${grain}" intercept="${1-grain}"/><feFuncB type="linear" slope="${grain}" intercept="${1-grain}"/></feComponentTransfer><feComposite in2="SourceAlpha" operator="in" result="texture"/><feBlend in="SourceGraphic" in2="texture" mode="multiply"/>`);
   } else if (name === "glass") {
     filter = svgFilter(element, '<feTurbulence type="fractalNoise" baseFrequency="0.025" numOctaves="2" seed="7" result="noise"/><feDisplacementMap in="SourceGraphic" in2="noise" scale="3" xChannelSelector="R" yChannelSelector="G"/>');
     surface.layer.style.opacity = "0.72";
     surface.layer.style.backdropFilter = "blur(3px)";
   } else if (name === "erosion") {
-    // Noise removes alpha locally inside fixed glyphs. This is a spatial dissolve.
     filter = svgFilter(element, '<feTurbulence type="fractalNoise" baseFrequency="0.12" numOctaves="3" seed="7" result="noise"/><feColorMatrix in="noise" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  1 0 0 0 0"/><feComponentTransfer><feFuncA type="discrete" tableValues="0 0 1 1"/></feComponentTransfer><feComposite in="SourceGraphic" operator="in"/>');
+  } else if (name === "furry") {
+    filter = svgFilter(element, '<feTurbulence type="fractalNoise" baseFrequency="0.035 0.5" numOctaves="2" seed="11" result="fiberNoise"/><feDisplacementMap in="SourceGraphic" in2="fiberNoise" scale="5" xChannelSelector="R" yChannelSelector="G" result="ruffled"/><feGaussianBlur in="fiberNoise" stdDeviation="0.2 1.15" result="fibers"/><feComposite in="fibers" in2="SourceAlpha" operator="in" result="clippedFibers"/><feBlend in="ruffled" in2="clippedFibers" mode="screen"/>');
+    surface.layer.style.filter = filter.url;
+  } else if (name === "rubber") {
+    filter = svgFilter(element, '<feGaussianBlur in="SourceAlpha" stdDeviation="2.4" result="softAlpha"/><feSpecularLighting in="softAlpha" surfaceScale="4" specularConstant="0.55" specularExponent="24" lighting-color="#ffffff" result="spec"><feDistantLight azimuth="225" elevation="42"/></feSpecularLighting><feComposite in="spec" in2="SourceAlpha" operator="in" result="specClip"/><feBlend in="SourceGraphic" in2="specClip" mode="screen"/>');
+    surface.layer.style.filter = filter.url;
+  } else if (name === "marble") {
+    filter = svgFilter(element, '<feTurbulence type="fractalNoise" baseFrequency="0.014 0.07" numOctaves="4" seed="19" result="veins"/><feColorMatrix in="veins" type="matrix" values="1.8 0 0 0 -0.35  0 1.8 0 0 -0.35  0 0 1.8 0 -0.35  0 0 0 1 0" result="veinContrast"/><feDisplacementMap in="SourceGraphic" in2="veinContrast" scale="2.2" xChannelSelector="R" yChannelSelector="G" result="marbled"/><feBlend in="marbled" in2="veinContrast" mode="multiply"/><feComposite in2="SourceAlpha" operator="in"/>');
+    surface.layer.style.filter = filter.url;
+  } else if (name === "rock") {
+    filter = svgFilter(element, '<feTurbulence type="fractalNoise" baseFrequency="0.055" numOctaves="5" seed="23" result="stoneNoise"/><feColorMatrix in="stoneNoise" type="saturate" values="0" result="stoneMono"/><feDiffuseLighting in="stoneMono" surfaceScale="3.2" diffuseConstant="1.15" lighting-color="#ffffff" result="stoneLight"><feDistantLight azimuth="210" elevation="38"/></feDiffuseLighting><feComposite in="stoneLight" in2="SourceAlpha" operator="in" result="litStone"/><feBlend in="SourceGraphic" in2="litStone" mode="multiply"/>');
+    surface.layer.style.filter = filter.url;
+  } else if (name === "crumpled-paper") {
+    filter = svgFilter(element, '<feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="4" seed="31" result="broadFolds"/><feTurbulence type="fractalNoise" baseFrequency="0.24" numOctaves="2" seed="37" result="paperFiber"/><feDisplacementMap in="SourceGraphic" in2="broadFolds" scale="4.5" xChannelSelector="R" yChannelSelector="G" result="crumpled"/><feDiffuseLighting in="broadFolds" surfaceScale="5" diffuseConstant="0.85" lighting-color="#ffffff" result="foldLight"><feDistantLight azimuth="235" elevation="36"/></feDiffuseLighting><feComposite in="foldLight" in2="SourceAlpha" operator="in" result="foldClip"/><feBlend in="crumpled" in2="foldClip" mode="multiply" result="paperFolded"/><feComposite in="paperFiber" in2="SourceAlpha" operator="in" result="fiberClip"/><feBlend in="paperFolded" in2="fiberClip" mode="soft-light"/>');
+    surface.layer.style.filter = filter.url;
   }
-  if (filter) surface.layer.style.filter = filter.url;
+
+  if (filter && !surface.layer.style.filter) surface.layer.style.filter = filter.url;
   return { ...surface, filter, remove() { surface.remove(); filter?.remove(); } };
 }
 
