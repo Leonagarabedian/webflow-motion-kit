@@ -429,6 +429,7 @@ function glyphMask(glyph) {
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return null;
   const fontSize = parseFloat(style.fontSize) * scale;
   const font = `${style.fontStyle || "normal"} ${style.fontWeight || 400} ${fontSize}px ${style.fontFamily}`;
   ctx.font = font;
@@ -477,6 +478,7 @@ function nearestContourDirection(x, y, edge) {
 
 function renderPlushGlyph(glyph, index, options) {
   const mask = glyphMask(glyph);
+  if (!mask) return null;
   const { width, height, scale, alpha, value } = mask;
   const { edge, inside } = contourData(mask);
   if (!inside.length) return null;
@@ -485,6 +487,7 @@ function renderPlushGlyph(glyph, index, options) {
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
   const rand = seededRandom(hashString(`${value}:${index}:${width}:${height}`));
 
   // Padded body: bright, softly convex face with darker lower/perimeter tone.
@@ -555,6 +558,7 @@ function renderPlushGlyph(glyph, index, options) {
   maskCanvas.width = width;
   maskCanvas.height = height;
   const maskCtx = maskCanvas.getContext("2d");
+  if (!maskCtx) return null;
   const image = maskCtx.createImageData(width, height);
   for (let i = 0; i < alpha.length; i++) {
     const a = alpha[i];
