@@ -112,6 +112,15 @@ function nearestEdgeDirection(x,y,edge){
   const normal=Math.atan2(ny-y,nx-x);
   return {normal,tangent:normal+Math.PI/2};
 }
+function contourNormalFromMask(mask,x,y){
+  const {width,height,alpha}=mask;
+  const sample=(sx,sy)=>alpha[Math.max(0,Math.min(height-1,sy))*width+Math.max(0,Math.min(width-1,sx))]||0;
+  const gx=sample(x-2,y)-sample(x+2,y);
+  const gy=sample(x,y-2)-sample(x,y+2);
+  const mag=Math.hypot(gx,gy);
+  if(mag<1)return null;
+  return Math.atan2(gy,gx);
+}
 function makeMaskCanvas(mask){
   const canvas=document.createElement("canvas");canvas.width=mask.width;canvas.height=mask.height;
   const ctx=canvas.getContext("2d");if(!ctx)return null;
@@ -144,12 +153,12 @@ function renderGlyph(glyph,index,opts){
   ctx.globalCompositeOperation="destination-in";ctx.drawImage(maskCanvas,0,0);ctx.globalCompositeOperation="source-over";
 
   // Dense short-pile tuft clusters, tangential to nearest contour.
-  const tuftClusters=Math.min(1000,Math.max(180,Math.round(geo.inside.length*.18*opts.density)));
+  const tuftClusters=Math.min(1400,Math.max(240,Math.round(geo.inside.length*.24*opts.density)));
   const palette=[
-    {c:opts.crease,a:.09,l:[1.1,2.1],w:[.34,.56]},
-    {c:opts.shadow,a:.15,l:[1.0,1.9],w:[.30,.50]},
-    {c:opts.base,a:.20,l:[.9,1.75],w:[.28,.46]},
-    {c:opts.highlight,a:.21,l:[.8,1.55],w:[.24,.42]}
+    {c:opts.crease,a:.13,l:[1.1,2.0],w:[.34,.56]},
+    {c:opts.shadow,a:.19,l:[1.0,1.9],w:[.30,.50]},
+    {c:opts.base,a:.24,l:[.9,1.7],w:[.28,.46]},
+    {c:opts.highlight,a:.28,l:[.8,1.55],w:[.24,.42]}
   ];
   const pile=document.createElement("canvas");pile.width=mask.width;pile.height=mask.height;
   const pc=pile.getContext("2d");if(!pc)return null;
@@ -171,16 +180,27 @@ function renderGlyph(glyph,index,opts){
   pc.globalCompositeOperation="destination-in";pc.drawImage(maskCanvas,0,0);pc.globalCompositeOperation="source-over";
   ctx.drawImage(pile,0,0);
 
-  // Fuzzy silhouette: short fibers grow from sampled contour points.
+  // Fuzzy silhouette: fibers extend OUTWARD from the actual glyph mask gradient.
   ctx.shadowBlur=0;
-  const edgeStride=Math.max(1,Math.floor(geo.edge.length/240));
+  const edgeStride=Math.max(1,Math.floor(geo.edge.length/320));
   for(let i=0;i<geo.edge.length;i+=edgeStride){
-    if(rand()>.72)continue;
+    if(rand()>.86)continue;
     const p=geo.edge[i];
-    const dir=nearestEdgeDirection(p[0],p[1],geo.edge);
-    const angle=dir.tangent+(rand()-.5)*.7;
-    const len=(.7+rand()*1.25)*mask.dpr*opts.fuzz;
-    drawHair(ctx,p[0],p[1],angle,len,.28*mask.dpr,rand()>.55?opts.highlight:opts.base,.22,(rand()-.5)*len*.12);
+    const normal=contourNormalFromMask(mask,p[0],p[1]);
+    if(normal==null)continue;
+    const angle=normal+(rand()-.5)*.38;
+    const len=(1.0+rand()*1.65)*mask.dpr*opts.fuzz;
+    const width=(.24+rand()*.16)*mask.dpr;
+    drawHair(
+      ctx,
+      p[0],p[1],
+      angle,
+      len,
+      width,
+      rand()>.58?opts.highlight:opts.base,
+      .30+rand()*.12,
+      (rand()-.5)*len*.10
+    );
   }
   ctx.globalAlpha=1;
 
