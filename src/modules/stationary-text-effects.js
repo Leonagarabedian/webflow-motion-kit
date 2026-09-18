@@ -361,6 +361,50 @@ function mountNegativeSpaceCutout(element, services) {
   return () => { tl.scrollTrigger?.kill(); tl.kill(); surface.remove(); restore(element, state); };
 }
 
+let plushTextureUrl;
+function createPlushTextureUrl() {
+  if (plushTextureUrl) return plushTextureUrl;
+  let seed = 92821;
+  const rand = () => ((seed = (seed * 48271) % 2147483647) / 2147483647);
+  const fibers = [];
+  const makeFiber = (stroke, opacity, count, minLen, maxLen, minWidth, maxWidth) => {
+    for (let i = 0; i < count; i++) {
+      const x = rand() * 256;
+      const y = rand() * 256;
+      const angle = (rand() * Math.PI * 2);
+      const len = minLen + rand() * (maxLen - minLen);
+      const width = minWidth + rand() * (maxWidth - minWidth);
+      const bend = (rand() - 0.5) * 4;
+      const dx = Math.cos(angle) * len;
+      const dy = Math.sin(angle) * len;
+      const cx = x + dx * 0.5 - Math.sin(angle) * bend;
+      const cy = y + dy * 0.5 + Math.cos(angle) * bend;
+      fibers.push(`<path d="M${x.toFixed(1)} ${y.toFixed(1)} Q${cx.toFixed(1)} ${cy.toFixed(1)} ${(x + dx).toFixed(1)} ${(y + dy).toFixed(1)}" fill="none" stroke="${stroke}" stroke-opacity="${opacity}" stroke-width="${width.toFixed(2)}" stroke-linecap="round"/>`);
+    }
+  };
+  makeFiber("#7f7f7f", 0.26, 260, 4, 9, 0.65, 1.25);
+  makeFiber("#f7f7f7", 0.34, 240, 3, 7, 0.55, 1.0);
+  makeFiber("#a9a9a9", 0.2, 180, 6, 12, 0.45, 0.9);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256"><rect width="256" height="256" fill="#d8d8d8"/><g>${fibers.join("")}</g></svg>`;
+  plushTextureUrl = `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+  return plushTextureUrl;
+}
+
+function applyPlushTexture(surface) {
+  const texture = createPlushTextureUrl();
+  surface.nodes.forEach((node) => {
+    Object.assign(node.style, {
+      color: "transparent",
+      WebkitTextFillColor: "transparent",
+      backgroundImage: texture,
+      backgroundRepeat: "repeat",
+      backgroundSize: "128px 128px",
+      backgroundClip: "text",
+      WebkitBackgroundClip: "text"
+    });
+  });
+}
+
 function materialSurface(element, name, hide) {
   const surface = createSurface(element, { hide });
   const color = currentColor(surface.layer);
@@ -382,8 +426,7 @@ function materialSurface(element, name, hide) {
     filter = svgFilter(element, '<feTurbulence type="fractalNoise" baseFrequency="0.035 0.5" numOctaves="2" seed="11" result="fiberNoise"/><feColorMatrix in="fiberNoise" type="saturate" values="0" result="fiberMono"/><feGaussianBlur in="fiberMono" stdDeviation="0.18 1.1" result="fiberSoft"/><feDisplacementMap in="fiberSoft" in2="fiberMono" scale="2.2" xChannelSelector="R" yChannelSelector="G" result="fiberShape"/><feComponentTransfer in="fiberShape" result="fiberTone"><feFuncR type="linear" slope="0.55" intercept="0.22"/><feFuncG type="linear" slope="0.55" intercept="0.22"/><feFuncB type="linear" slope="0.55" intercept="0.22"/></feComponentTransfer><feComposite in="fiberTone" in2="SourceAlpha" operator="in" result="clippedFibers"/><feBlend in="SourceGraphic" in2="clippedFibers" mode="soft-light"/>');
     surface.layer.style.filter = filter.url;
   } else if (name === "plush-bloom") {
-    filter = svgFilter(element, '<feTurbulence type="fractalNoise" baseFrequency="0.018 0.32" numOctaves="3" seed="43" result="furNoise"/><feColorMatrix in="furNoise" type="saturate" values="0" result="furMono"/><feGaussianBlur in="furMono" stdDeviation="0.25 0.8" result="furSoft"/><feDisplacementMap in="furSoft" in2="furMono" scale="1.4" xChannelSelector="R" yChannelSelector="G" result="furShape"/><feDiffuseLighting in="furShape" surfaceScale="2.2" diffuseConstant="0.9" lighting-color="#ffffff" result="furLight"><feDistantLight azimuth="225" elevation="50"/></feDiffuseLighting><feComposite in="furLight" in2="SourceAlpha" operator="in" result="furLit"/><feBlend in="SourceGraphic" in2="furLit" mode="soft-light"/>');
-    surface.layer.style.filter = filter.url;
+    applyPlushTexture(surface);
     surface.layer.style.clipPath = "circle(0% at 50% 50%)";
   } else if (name === "rubber") {
     filter = svgFilter(element, '<feGaussianBlur in="SourceAlpha" stdDeviation="2.4" result="softAlpha"/><feSpecularLighting in="softAlpha" surfaceScale="4" specularConstant="0.55" specularExponent="24" lighting-color="#ffffff" result="spec"><feDistantLight azimuth="225" elevation="42"/></feSpecularLighting><feComposite in="spec" in2="SourceAlpha" operator="in" result="specClip"/><feBlend in="SourceGraphic" in2="specClip" mode="screen"/>');

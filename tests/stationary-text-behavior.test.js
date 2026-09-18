@@ -96,15 +96,14 @@ describe('stationary typography behavior and migration',()=>{
     cleanup();expect(f.el.outerHTML).toBe(before);
   });
 
-  it('reveals plush-bloom from the center with a neutral fur treatment',()=>{
+  it('reveals plush-bloom from the center with a procedural fiber texture',()=>{
     const f=fixture('material-shift','data-motion-from="fill" data-motion-to="plush-bloom"'),cleanup=createStationaryTextModule('material-shift').mount(f.el,f.services);
-    const filter=f.el.querySelector('filter');
-    expect(filter).not.toBeNull();
-    expect(filter.querySelector('feColorMatrix[type="saturate"][values="0"]')).not.toBeNull();
     const layers=[...f.el.querySelectorAll('[data-motion-surface]')];
     const plush=layers.find(layer=>layer.style.clipPath);
     expect(plush).toBeTruthy();
     expect(plush.style.clipPath).toContain('circle');
+    expect(plush.style.backgroundImage).toContain('data:image/svg+xml');
+    expect(plush.style.backgroundClip || plush.style.webkitBackgroundClip).toContain('text');
     cleanup();
   });
 
