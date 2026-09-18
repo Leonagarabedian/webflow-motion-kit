@@ -368,41 +368,35 @@ function createPlushTextureUrl() {
   const rand = () => ((seed = (seed * 48271) % 2147483647) / 2147483647);
   const fibers = [];
 
-  const makeFiber = ({ stroke, opacity, count, minLen, maxLen, minWidth, maxWidth, shadow = false }) => {
+  const addFibers = (stroke, opacity, count, minLen, maxLen, minWidth, maxWidth) => {
     for (let i = 0; i < count; i++) {
-      const x = rand() * 192;
-      const y = rand() * 192;
+      const x = rand() * 160;
+      const y = rand() * 160;
       const angle = rand() * Math.PI * 2;
       const len = minLen + rand() * (maxLen - minLen);
       const width = minWidth + rand() * (maxWidth - minWidth);
-      const bend = (rand() - 0.5) * 8;
+      const bend = (rand() - 0.5) * 6;
       const dx = Math.cos(angle) * len;
       const dy = Math.sin(angle) * len;
       const cx = x + dx * 0.5 - Math.sin(angle) * bend;
       const cy = y + dy * 0.5 + Math.cos(angle) * bend;
-      fibers.push(`<path d="M${x.toFixed(1)} ${y.toFixed(1)} Q${cx.toFixed(1)} ${cy.toFixed(1)} ${(x + dx).toFixed(1)} ${(y + dy).toFixed(1)}" fill="none" stroke="${stroke}" stroke-opacity="${opacity}" stroke-width="${width.toFixed(2)}" stroke-linecap="round"${shadow ? ' filter="url(#strandShadow)"' : ''}/>`);
+      fibers.push(`<path d="M${x.toFixed(1)} ${y.toFixed(1)} Q${cx.toFixed(1)} ${cy.toFixed(1)} ${(x + dx).toFixed(1)} ${(y + dy).toFixed(1)}" fill="none" stroke="${stroke}" stroke-opacity="${opacity}" stroke-width="${width.toFixed(2)}" stroke-linecap="round"/>`);
     }
   };
 
-  // Dense dark undercoat gives the material depth.
-  makeFiber({ stroke:"#6f6f6f", opacity:0.38, count:220, minLen:8, maxLen:16, minWidth:1.3, maxWidth:2.4, shadow:true });
-  // Mid-tone strands create the visible furry body.
-  makeFiber({ stroke:"#b8b8b8", opacity:0.72, count:300, minLen:7, maxLen:14, minWidth:1.0, maxWidth:1.8 });
-  // Light top hairs catch light and make the surface feel plush.
-  makeFiber({ stroke:"#f4f4f4", opacity:0.84, count:240, minLen:6, maxLen:12, minWidth:0.75, maxWidth:1.35 });
+  addFibers("#8f8f8f", 0.55, 300, 6, 12, 1.2, 2.0);
+  addFibers("#d0d0d0", 0.78, 360, 5, 10, 0.9, 1.6);
+  addFibers("#f7f7f7", 0.9, 260, 4, 8, 0.65, 1.15);
 
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
     <defs>
-      <filter id="strandShadow" x="-30%" y="-30%" width="160%" height="160%">
-        <feGaussianBlur stdDeviation="0.7"/>
-      </filter>
-      <radialGradient id="base" cx="45%" cy="38%" r="78%">
-        <stop offset="0" stop-color="#dddddd"/>
-        <stop offset="0.62" stop-color="#c9c9c9"/>
-        <stop offset="1" stop-color="#b7b7b7"/>
+      <radialGradient id="plushBase" cx="40%" cy="32%" r="80%">
+        <stop offset="0" stop-color="#eeeeee"/>
+        <stop offset="0.5" stop-color="#d2d2d2"/>
+        <stop offset="1" stop-color="#a9a9a9"/>
       </radialGradient>
     </defs>
-    <rect width="192" height="192" fill="url(#base)"/>
+    <rect width="160" height="160" fill="url(#plushBase)"/>
     <g>${fibers.join("")}</g>
   </svg>`;
 
@@ -410,19 +404,26 @@ function createPlushTextureUrl() {
   return plushTextureUrl;
 }
 
-function applyPlushTexture(surface) {
+function applyPlushTexture(surface, element) {
   const texture = createPlushTextureUrl();
+  const shadowColor = readString(element, "motion-plush-shadow", "rgba(0,0,0,0.28)");
   surface.nodes.forEach((node) => {
     Object.assign(node.style, {
       color: "transparent",
       WebkitTextFillColor: "transparent",
       backgroundImage: texture,
       backgroundRepeat: "repeat",
-      backgroundSize: "92px 92px",
+      backgroundSize: "72px 72px",
       backgroundClip: "text",
-      WebkitBackgroundClip: "text"
+      WebkitBackgroundClip: "text",
+      WebkitTextStroke: "1.25px rgba(255,255,255,0.16)",
+      textShadow: `0 1px 0 rgba(255,255,255,0.35), 0 3px 7px ${shadowColor}`
     });
   });
+
+  const edgeFilter = svgFilter(element, '<feMorphology in="SourceAlpha" operator="dilate" radius="1.4" result="dilated"/><feTurbulence type="fractalNoise" baseFrequency="0.045 0.32" numOctaves="2" seed="61" result="furNoise"/><feDisplacementMap in="dilated" in2="furNoise" scale="2.7" xChannelSelector="R" yChannelSelector="G" result="fuzzyAlpha"/><feGaussianBlur in="fuzzyAlpha" stdDeviation="0.28" result="softFuzz"/><feFlood flood-color="#cfcfcf" result="fuzzColor"/><feComposite in="fuzzColor" in2="softFuzz" operator="in" result="fuzz"/><feMerge><feMergeNode in="fuzz"/><feMergeNode in="SourceGraphic"/></feMerge>');
+  surface.layer.style.filter = edgeFilter.url;
+  return edgeFilter;
 }
 
 
@@ -447,7 +448,7 @@ function materialSurface(element, name, hide) {
     filter = svgFilter(element, '<feTurbulence type="fractalNoise" baseFrequency="0.035 0.5" numOctaves="2" seed="11" result="fiberNoise"/><feColorMatrix in="fiberNoise" type="saturate" values="0" result="fiberMono"/><feGaussianBlur in="fiberMono" stdDeviation="0.18 1.1" result="fiberSoft"/><feDisplacementMap in="fiberSoft" in2="fiberMono" scale="2.2" xChannelSelector="R" yChannelSelector="G" result="fiberShape"/><feComponentTransfer in="fiberShape" result="fiberTone"><feFuncR type="linear" slope="0.55" intercept="0.22"/><feFuncG type="linear" slope="0.55" intercept="0.22"/><feFuncB type="linear" slope="0.55" intercept="0.22"/></feComponentTransfer><feComposite in="fiberTone" in2="SourceAlpha" operator="in" result="clippedFibers"/><feBlend in="SourceGraphic" in2="clippedFibers" mode="soft-light"/>');
     surface.layer.style.filter = filter.url;
   } else if (name === "plush-bloom") {
-    applyPlushTexture(surface);
+    filter = applyPlushTexture(surface, element);
     surface.layer.style.clipPath = "circle(0% at 50% 50%)";
   } else if (name === "rubber") {
     filter = svgFilter(element, '<feGaussianBlur in="SourceAlpha" stdDeviation="2.4" result="softAlpha"/><feSpecularLighting in="softAlpha" surfaceScale="4" specularConstant="0.55" specularExponent="24" lighting-color="#ffffff" result="spec"><feDistantLight azimuth="225" elevation="42"/></feSpecularLighting><feComposite in="spec" in2="SourceAlpha" operator="in" result="specClip"/><feBlend in="SourceGraphic" in2="specClip" mode="screen"/>');
