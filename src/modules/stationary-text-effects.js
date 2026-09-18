@@ -1,6 +1,7 @@
 import { readBoolean, readNumber, readString, resolveTrigger } from "../core/config.js";
 import { captureStyles, createSurface, splitText, svgFilter, metricReader } from "./stationary-text-surface.js";
 import { createCounterSurface } from "./stationary-counter-raster.js";
+import { attachSafePlushRenderer } from "./stationary-plush-renderer.js";
 
 const CHAR_COUNTER_RE = /[ABDOPQR0689abdegopq]/i;
 
@@ -448,7 +449,8 @@ function materialSurface(element, name, hide) {
     filter = svgFilter(element, '<feTurbulence type="fractalNoise" baseFrequency="0.035 0.5" numOctaves="2" seed="11" result="fiberNoise"/><feColorMatrix in="fiberNoise" type="saturate" values="0" result="fiberMono"/><feGaussianBlur in="fiberMono" stdDeviation="0.18 1.1" result="fiberSoft"/><feDisplacementMap in="fiberSoft" in2="fiberMono" scale="2.2" xChannelSelector="R" yChannelSelector="G" result="fiberShape"/><feComponentTransfer in="fiberShape" result="fiberTone"><feFuncR type="linear" slope="0.55" intercept="0.22"/><feFuncG type="linear" slope="0.55" intercept="0.22"/><feFuncB type="linear" slope="0.55" intercept="0.22"/></feComponentTransfer><feComposite in="fiberTone" in2="SourceAlpha" operator="in" result="clippedFibers"/><feBlend in="SourceGraphic" in2="clippedFibers" mode="soft-light"/>');
     surface.layer.style.filter = filter.url;
   } else if (name === "plush-bloom") {
-    filter = applyPlushTexture(surface, element);
+    const plush = attachSafePlushRenderer(surface, element);
+    surface.plush = plush;
     surface.layer.style.clipPath = "circle(0% at 50% 50%)";
   } else if (name === "rubber") {
     filter = svgFilter(element, '<feGaussianBlur in="SourceAlpha" stdDeviation="2.4" result="softAlpha"/><feSpecularLighting in="softAlpha" surfaceScale="4" specularConstant="0.55" specularExponent="24" lighting-color="#ffffff" result="spec"><feDistantLight azimuth="225" elevation="42"/></feSpecularLighting><feComposite in="spec" in2="SourceAlpha" operator="in" result="specClip"/><feBlend in="SourceGraphic" in2="specClip" mode="screen"/>');
@@ -465,7 +467,20 @@ function materialSurface(element, name, hide) {
   }
 
   if (filter && !surface.layer.style.filter) surface.layer.style.filter = filter.url;
-  return { ...surface, filter, remove() { surface.remove(); filter?.remove(); } };
+  const baseUpdate = surface.update;
+  return {
+    ...surface,
+    filter,
+    update() {
+      baseUpdate();
+      surface.plush?.update?.();
+    },
+    remove() {
+      surface.plush?.destroy?.();
+      surface.remove();
+      filter?.remove();
+    }
+  };
 }
 
 function mountMaterialShift(element, services) {
