@@ -101,7 +101,7 @@ describe('stationary typography behavior and migration',()=>{
     const filter=f.el.querySelector('filter');
     expect(filter).not.toBeNull();
     expect(filter.querySelector('feColorMatrix[type="saturate"][values="0"]')).not.toBeNull();
-    const layers=[...f.el.parentElement.querySelectorAll('[data-motion-generated]')];
+    const layers=[...f.el.querySelectorAll('[data-motion-surface]')];
     const plush=layers.find(layer=>layer.style.clipPath);
     expect(plush).toBeTruthy();
     expect(plush.style.clipPath).toContain('circle');
