@@ -96,6 +96,18 @@ describe('stationary typography behavior and migration',()=>{
     cleanup();expect(f.el.outerHTML).toBe(before);
   });
 
+  it.each(['furry','rubber','marble','rock','crumpled-paper'])('provides a distinct tactile SVG %s treatment',material=>{
+    const f=fixture('material-shift',`data-motion-from="${material}"`),cleanup=createStationaryTextModule('material-shift').mount(f.el,f.services);
+    const filter=f.el.querySelector('filter');
+    expect(filter).not.toBeNull();
+    if(material==='furry'){expect(filter.querySelector('feDisplacementMap')).not.toBeNull();expect(filter.querySelector('feGaussianBlur')).not.toBeNull();}
+    if(material==='rubber')expect(filter.querySelector('feSpecularLighting')).not.toBeNull();
+    if(material==='marble'){expect(filter.querySelector('feTurbulence')).not.toBeNull();expect(filter.querySelector('feDisplacementMap')).not.toBeNull();}
+    if(material==='rock')expect(filter.querySelector('feDiffuseLighting')).not.toBeNull();
+    if(material==='crumpled-paper'){expect(filter.querySelectorAll('feTurbulence').length).toBeGreaterThanOrEqual(2);expect(filter.querySelector('feDiffuseLighting')).not.toBeNull();}
+    cleanup();
+  });
+
   it.each(['grain','matte','glass','erosion'])('provides an actual SVG %s treatment',material=>{
     const f=fixture('material-shift',`data-motion-from="${material}"`),cleanup=createStationaryTextModule('material-shift').mount(f.el,f.services);
     expect(f.el.querySelector('feTurbulence')).not.toBeNull();
