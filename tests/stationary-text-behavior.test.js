@@ -104,6 +104,7 @@ describe('stationary typography behavior and migration',()=>{
     if(material==='rubber')expect(filter.querySelector('feSpecularLighting')).not.toBeNull();
     if(material==='marble'){expect(filter.querySelector('feTurbulence')).not.toBeNull();expect(filter.querySelector('feDisplacementMap')).not.toBeNull();}
     if(material==='rock')expect(filter.querySelector('feDiffuseLighting')).not.toBeNull();
+    if(material==='furry'||material==='marble'||material==='crumpled-paper')expect(filter.querySelector('feColorMatrix[type="saturate"][values="0"]')).not.toBeNull();
     if(material==='crumpled-paper'){expect(filter.querySelectorAll('feTurbulence').length).toBeGreaterThanOrEqual(2);expect(filter.querySelector('feDiffuseLighting')).not.toBeNull();}
     cleanup();
   });
