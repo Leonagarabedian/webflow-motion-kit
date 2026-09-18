@@ -381,6 +381,10 @@ function materialSurface(element, name, hide) {
   } else if (name === "furry") {
     filter = svgFilter(element, '<feTurbulence type="fractalNoise" baseFrequency="0.035 0.5" numOctaves="2" seed="11" result="fiberNoise"/><feColorMatrix in="fiberNoise" type="saturate" values="0" result="fiberMono"/><feGaussianBlur in="fiberMono" stdDeviation="0.18 1.1" result="fiberSoft"/><feDisplacementMap in="fiberSoft" in2="fiberMono" scale="2.2" xChannelSelector="R" yChannelSelector="G" result="fiberShape"/><feComponentTransfer in="fiberShape" result="fiberTone"><feFuncR type="linear" slope="0.55" intercept="0.22"/><feFuncG type="linear" slope="0.55" intercept="0.22"/><feFuncB type="linear" slope="0.55" intercept="0.22"/></feComponentTransfer><feComposite in="fiberTone" in2="SourceAlpha" operator="in" result="clippedFibers"/><feBlend in="SourceGraphic" in2="clippedFibers" mode="soft-light"/>');
     surface.layer.style.filter = filter.url;
+  } else if (name === "plush-bloom") {
+    filter = svgFilter(element, '<feTurbulence type="fractalNoise" baseFrequency="0.018 0.32" numOctaves="3" seed="43" result="furNoise"/><feColorMatrix in="furNoise" type="saturate" values="0" result="furMono"/><feGaussianBlur in="furMono" stdDeviation="0.25 0.8" result="furSoft"/><feDisplacementMap in="furSoft" in2="furMono" scale="1.4" xChannelSelector="R" yChannelSelector="G" result="furShape"/><feDiffuseLighting in="furShape" surfaceScale="2.2" diffuseConstant="0.9" lighting-color="#ffffff" result="furLight"><feDistantLight azimuth="225" elevation="50"/></feDiffuseLighting><feComposite in="furLight" in2="SourceAlpha" operator="in" result="furLit"/><feBlend in="SourceGraphic" in2="furLit" mode="soft-light"/>');
+    surface.layer.style.filter = filter.url;
+    surface.layer.style.clipPath = "circle(0% at 50% 50%)";
   } else if (name === "rubber") {
     filter = svgFilter(element, '<feGaussianBlur in="SourceAlpha" stdDeviation="2.4" result="softAlpha"/><feSpecularLighting in="softAlpha" surfaceScale="4" specularConstant="0.55" specularExponent="24" lighting-color="#ffffff" result="spec"><feDistantLight azimuth="225" elevation="42"/></feSpecularLighting><feComposite in="spec" in2="SourceAlpha" operator="in" result="specClip"/><feBlend in="SourceGraphic" in2="specClip" mode="screen"/>');
     surface.layer.style.filter = filter.url;
@@ -411,6 +415,22 @@ function mountMaterialShift(element, services) {
   tl.onMeasure = () => { from.update(); to.update(); };
   tl.fromTo(from.layer, { opacity: fromOpacity }, { opacity: 0 }, 0);
   tl.fromTo(to.layer, { opacity: 0 }, { opacity: toOpacity }, 0);
+
+  // Plush bloom is a center-out material reveal, not a generic crossfade.
+  if (toName === "plush-bloom") {
+    tl.fromTo(to.layer,
+      { clipPath: "circle(0% at 50% 50%)" },
+      { clipPath: "circle(150% at 50% 50%)", ease: "power1.inOut" },
+      0
+    );
+  }
+  if (fromName === "plush-bloom") {
+    tl.fromTo(from.layer,
+      { clipPath: "circle(150% at 50% 50%)" },
+      { clipPath: "circle(0% at 50% 50%)", ease: "power1.inOut" },
+      0
+    );
+  }
   // Animate the noise threshold itself when entering/leaving erosion.
   for (const surface of [from, to]) {
     const threshold = surface.filter?.svg.querySelector('feFuncA');
