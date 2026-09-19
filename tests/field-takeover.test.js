@@ -30,7 +30,7 @@ function createContext({ reducedMotion = false } = {}) {
     matchMedia: () => ({
       add: (_conditions, callback) => {
         mediaCleanup = callback({
-          conditions: { desktop: true, reduceMotion }
+          conditions: { desktop: true, reduceMotion: reducedMotion }
         });
       },
       revert: () => mediaCleanup?.()
