@@ -15,8 +15,12 @@ const DEFAULTS = Object.freeze({
   contentOpacityTo: 0,
   contentStart: 0.35,
   contentY: 0,
+  contentLock: false,
   minWidth: 992,
   pin: true,
+  preserveSpace: true,
+  reparent: false,
+  scale: false,
   scrub: 1,
   scrollVh: 100,
   start: "top top",
@@ -83,6 +87,22 @@ export const fieldTakeover = {
     const scrub = readNumber(element, "motion-scrub", DEFAULTS.scrub);
     const start = readString(element, "motion-start", DEFAULTS.start);
     const pin = readBoolean(element, "motion-pin", DEFAULTS.pin);
+    const preserveSpace = readBoolean(
+      element,
+      "motion-preserve-space",
+      DEFAULTS.preserveSpace
+    );
+    const reparent = readBoolean(
+      element,
+      "motion-reparent",
+      DEFAULTS.reparent
+    );
+    const scale = readBoolean(element, "motion-scale", DEFAULTS.scale);
+    const contentLock = readBoolean(
+      element,
+      "motion-content-lock",
+      DEFAULTS.contentLock
+    );
 
     const contentStart = clamp(
       readNumber(element, "motion-content-start", DEFAULTS.contentStart)
@@ -109,9 +129,24 @@ export const fieldTakeover = {
     const originalFieldStyle = field.getAttribute("style");
     const originalContentStyle = content?.getAttribute("style") ?? null;
     const fieldHadStateClass = field.classList.contains(stateClass);
+    const originalParent = field.parentNode;
+    const originalNextSibling = field.nextSibling;
+    let placeholder = null;
 
     const restoreAuthoredState = () => {
       field.classList.toggle(stateClass, fieldHadStateClass);
+
+      if (reparent && field.parentNode !== originalParent) {
+        if (originalNextSibling?.parentNode === originalParent) {
+          originalParent.insertBefore(field, originalNextSibling);
+        } else {
+          originalParent.appendChild(field);
+        }
+      }
+
+      placeholder?.remove();
+      placeholder = null;
+
       restoreInlineStyle(element, originalRootStyle);
       restoreInlineStyle(field, originalFieldStyle);
       if (content) restoreInlineStyle(content, originalContentStyle);
@@ -139,6 +174,7 @@ export const fieldTakeover = {
         const startState = Flip.getState(field, {
           props: "borderRadius"
         });
+        const contentRect = content?.getBoundingClientRect() ?? null;
 
         const contentOpacityFrom = content
           ? Number(gsap.getProperty(content, "opacity")) || 0
@@ -147,20 +183,44 @@ export const fieldTakeover = {
           ? Number(gsap.getProperty(content, "yPercent")) || 0
           : 0;
 
+        if (preserveSpace) {
+          placeholder = field.cloneNode(false);
+          placeholder.removeAttribute("id");
+          placeholder.removeAttribute("data-motion");
+          placeholder.removeAttribute("data-motion-target");
+          placeholder.setAttribute("aria-hidden", "true");
+          placeholder.style.visibility = "hidden";
+          placeholder.style.pointerEvents = "none";
+          originalParent.insertBefore(placeholder, field);
+        }
+
+        if (reparent) {
+          element.appendChild(field);
+        }
+
         // State B stays authored in Webflow. The state class should make the
         // field occupy the takeover geometry, normally absolute/inset: 0.
         field.classList.add(stateClass);
+
+        if (content && contentLock && contentRect) {
+          gsap.set(content, {
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: contentRect.width
+          });
+        }
 
         const flip = Flip.from(startState, {
           duration: 1,
           ease: "none",
           nested: true,
           paused: true,
-          scale: true
+          scale
         });
         flip.progress(0);
 
-        const contentTween = content
+        const contentTween = content && !contentLock
           ? gsap.fromTo(
               content,
               {
@@ -218,9 +278,18 @@ export const fieldTakeover = {
           onUpdate() {
             const progress = clamp(progressDriver.value);
             flip.progress(progress);
-            contentTween?.progress(
-              phaseProgress(progress, contentStart, contentEnd)
-            );
+
+            if (content && contentLock && contentRect) {
+              const fieldRect = field.getBoundingClientRect();
+              gsap.set(content, {
+                x: contentRect.left - fieldRect.left,
+                y: contentRect.top - fieldRect.top
+              });
+            } else {
+              contentTween?.progress(
+                phaseProgress(progress, contentStart, contentEnd)
+              );
+            }
           }
         });
 
