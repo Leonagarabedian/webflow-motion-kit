@@ -136,8 +136,7 @@ export const fieldTakeover = {
         // State A is the authored field before takeover.
         field.classList.remove(stateClass);
 
-        const flipTargets = content ? [field, content] : [field];
-        const startState = Flip.getState(flipTargets, {
+        const startState = Flip.getState(field, {
           props: "borderRadius"
         });
 
