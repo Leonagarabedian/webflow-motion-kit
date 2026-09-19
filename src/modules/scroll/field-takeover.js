@@ -16,6 +16,7 @@ const DEFAULTS = Object.freeze({
   contentStart: 0.35,
   contentY: 0,
   contentLock: false,
+  backgroundOnly: false,
   minWidth: 992,
   pin: true,
   preserveSpace: true,
@@ -70,7 +71,7 @@ export const fieldTakeover = {
     const boundary = selectTarget(element, "takeover-boundary", null);
     const frame = selectTarget(element, "takeover-frame", null);
 
-    if (!field || !Flip) return;
+    if (!field) return;
 
     const stateClass = readString(
       element,
@@ -105,6 +106,13 @@ export const fieldTakeover = {
       "motion-content-lock",
       DEFAULTS.contentLock
     );
+    const backgroundOnly = readBoolean(
+      element,
+      "motion-background-only",
+      DEFAULTS.backgroundOnly
+    );
+
+    if (!backgroundOnly && !Flip) return;
 
     const contentStart = clamp(
       readNumber(element, "motion-content-start", DEFAULTS.contentStart)
@@ -168,6 +176,108 @@ export const fieldTakeover = {
 
         if (window.getComputedStyle(element).position === "static") {
           gsap.set(element, { position: "relative" });
+        }
+
+        if (backgroundOnly) {
+          const childStyles = new Map();
+          const proxy = document.createElement("div");
+          const fieldStyle = window.getComputedStyle(field);
+          let startRect;
+          let rootRect;
+
+          proxy.setAttribute("aria-hidden", "true");
+          Object.assign(proxy.style, {
+            position: "absolute",
+            pointerEvents: "none",
+            zIndex: "0",
+            margin: "0",
+            backgroundColor: fieldStyle.backgroundColor,
+            backgroundImage: fieldStyle.backgroundImage,
+            backgroundPosition: fieldStyle.backgroundPosition,
+            backgroundSize: fieldStyle.backgroundSize,
+            backgroundRepeat: fieldStyle.backgroundRepeat,
+            borderRadius: fieldStyle.borderRadius,
+            willChange: "left, top, width, height"
+          });
+
+          element.prepend(proxy);
+
+          Array.from(element.children).forEach(child => {
+            if (child === proxy) return;
+            childStyles.set(child, child.getAttribute("style"));
+            const computed = window.getComputedStyle(child);
+            if (computed.position === "static") {
+              child.style.position = "relative";
+            }
+            if (computed.zIndex === "auto") {
+              child.style.zIndex = "1";
+            }
+          });
+
+          const measureBackground = () => {
+            rootRect = element.getBoundingClientRect();
+            const rect = field.getBoundingClientRect();
+            startRect = {
+              left: rect.left - rootRect.left,
+              top: rect.top - rootRect.top,
+              width: rect.width,
+              height: rect.height
+            };
+          };
+
+          const renderBackground = progress => {
+            const p = clamp(progress);
+            const left = startRect.left * (1 - p);
+            const top = startRect.top * (1 - p);
+            const width = startRect.width + (rootRect.width - startRect.width) * p;
+            const height = startRect.height + (rootRect.height - startRect.height) * p;
+
+            gsap.set(proxy, { left, top, width, height });
+          };
+
+          measureBackground();
+          renderBackground(0);
+
+          const legacy = {
+            trigger: element,
+            start,
+            end: () => relativeSpan(window.innerHeight * (scrollVh / 100)),
+            scrub,
+            invalidateOnRefresh: true,
+            onRefreshInit() {
+              measureBackground();
+            },
+            onRefresh() {
+              renderBackground(progressDriver.value);
+            },
+            ...(pin
+              ? {
+                  anticipatePin: 1,
+                  pin: element,
+                  pinSpacing: true
+                }
+              : {})
+          };
+
+          const scrollTrigger = resolveScrollContract(element, legacy, () => legacy);
+          const progressDriver = { value: 0 };
+          const driver = gsap.to(progressDriver, {
+            value: 1,
+            duration: 1,
+            ease: "none",
+            scrollTrigger,
+            onUpdate() {
+              renderBackground(progressDriver.value);
+            }
+          });
+
+          return () => {
+            driver.scrollTrigger?.kill();
+            driver.kill();
+            proxy.remove();
+            childStyles.forEach((style, child) => restoreInlineStyle(child, style));
+            restoreInlineStyle(element, originalRootStyle);
+          };
         }
 
         // State A is the authored field before takeover.
