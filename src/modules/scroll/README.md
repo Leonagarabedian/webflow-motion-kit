@@ -1,6 +1,6 @@
 # Existing scroll animation contracts
 
-This directory organizes the 38 existing modules that own, follow, or respond to scrolling. The 14 stationary typography modules are excluded. Original src/modules/<name>.js entry points re-export the same module objects, so existing imports and Webflow data-motion values remain valid.
+This directory organizes the existing modules that own, follow, or respond to scrolling. The 14 stationary typography modules are excluded. Original src/modules/<name>.js entry points re-export the same module objects, so existing imports and Webflow data-motion values remain valid.
 
 ## Controls
 
@@ -38,6 +38,7 @@ The scroll-synced-gallery uses per-item ranges. Manual start/end apply to each i
 | `element-layout-return` | Own geometry/manual settings; no consistent mode | Measured placeholder-to-stage delta, or inherited parent progress | Own range settings, or parent mode + local progress window |
 | `flip-relocation` | Own geometry/manual settings; no consistent mode | Measured source-parent-to-target displacement | start / end / scroll-distance / scroll-vh; scrub where relevant |
 | `footer-reveal` | Own geometry/manual settings; no consistent mode | Footer size and existing reveal duration | start / end / scroll-distance / scroll-vh; scrub where relevant |
+| `field-takeover` | New reusable composition | Authored Webflow A/B field geometry with geometry-derived auto runway | start / end / scroll-distance / scroll-vh; scrub, pin and content phase controls |
 | `hero-frame-transition` | Own geometry/manual settings; no consistent mode | Module-owned phase pacing; frame/side sizes and phase fractions | start / end / scroll-distance / scroll-vh; scrub where relevant |
 | `hero-heart-transition` | Own geometry/manual settings; no consistent mode | Module-owned phase pacing; slit, rotation, shrink, heart and surface phases | start / end / scroll-distance / scroll-vh; scrub where relevant |
 | `hero-slit-transition` | Own geometry/manual settings; no consistent mode | Module-owned phase pacing; slit, rotation and shrink fractions | start / end / scroll-distance / scroll-vh; scrub where relevant |
@@ -74,7 +75,7 @@ The PR validates module contracts, legacy defaults, custom hero phase preservati
 
 pinned-media-return is a velocity-responsive scroll effect, not a trigger owner. Its auto mode calculates the normalization threshold from current media height and response duration. Legacy preserves the existing 1400px/s default or authored crop-velocity-max. The crop shape, maximum inset, easing and smoothing remain authored.
 
-All 57 existing animation modules were checked: 38 scroll-related modules above, plus 19 non-scroll/support modules. The latter stay outside this folder: accordion-media, branda-spatial-pin-layout, branda-spatial-shell, cursor, grid-video-reveal, hover-background-swap, hover-highlight-box, hover-linked-illuminate, link-swap, loader-composition, looping-labels, magnetic, nav-flip, page-transition, paired-tag-intro, responsive-menu, stacked-image-hover, view-switch, works-services-transition. view-switch refreshes scroll measurements after switching views but does not own an animation range.
+The scroll inventory above includes the reusable field-takeover composition alongside the previously audited scroll modules. Non-scroll/support modules remain outside this folder. The latter stay outside this folder: accordion-media, branda-spatial-pin-layout, branda-spatial-shell, cursor, grid-video-reveal, hover-background-swap, hover-highlight-box, hover-linked-illuminate, link-swap, loader-composition, looping-labels, magnetic, nav-flip, page-transition, paired-tag-intro, responsive-menu, stacked-image-hover, view-switch, works-services-transition. view-switch refreshes scroll measurements after switching views but does not own an animation range.
 
 The root-level page-scroll service remains in src/core/page-scroll.js. It manages page smoothing; it is not an animation module. branda-spatial-shell and branda-spatial-pin-layout remain supporting layout helpers.
 
