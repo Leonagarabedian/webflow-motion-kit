@@ -6,6 +6,7 @@ export { depthEmerge } from "./depth-emerge.js";
 export { elementBlurReveal } from "./element-blur-reveal.js";
 export { elementLayoutReturn } from "./element-layout-return.js";
 export { flipRelocation } from "./flip-relocation.js";
+export { fieldTakeover } from "./field-takeover.js";
 export { footerReveal } from "./footer-reveal.js";
 export { heroFrameTransition } from "./hero-frame-transition.js";
 export { heroHeartTransition } from "./hero-heart-transition.js";

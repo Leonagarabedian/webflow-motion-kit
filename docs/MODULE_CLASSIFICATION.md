@@ -1,6 +1,6 @@
 # Motion module classification
 
-Status: code-aligned inventory for the current `0.4.2` toolkit.
+Status: code-aligned inventory for the current `0.5.0` toolkit.
 
 The category is now stored on each module/package as `category` and is not only documentation.
 
@@ -46,6 +46,7 @@ A reusable interaction that requires a defined DOM contract or coordinated sub-e
 A higher-level experience assembled around a specific interaction model. These should not be treated as generic one-element commands.
 
 - `hero-frame-transition`
+- `field-takeover`
 - Advanced: `infinite-product-world`
 - Advanced: `webgl-work-browser`
 - Advanced: `aircraft-scroll-story`

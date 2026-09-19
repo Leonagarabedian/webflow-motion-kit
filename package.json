@@ -10,7 +10,7 @@
     "build": "vite build && vite build --config vite.advanced.config.js",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:alignment": "vitest run tests/scroll-alignment.test.js tests/specialized-geometry.test.js tests/migration-audit.test.js tests/existing-scroll-regressions.test.js tests/scroll-contracts.test.js tests/scroll-owners.test.js tests/scroll-velocity.test.js tests/phase-plan.test.js tests/stationary-text-library.test.js tests/stationary-text-behavior.test.js tests/registry.test.js",
+    "test:alignment": "vitest run tests/scroll-alignment.test.js tests/specialized-geometry.test.js tests/migration-audit.test.js tests/existing-scroll-regressions.test.js tests/scroll-contracts.test.js tests/scroll-owners.test.js tests/scroll-velocity.test.js tests/phase-plan.test.js tests/stationary-text-library.test.js tests/stationary-text-behavior.test.js tests/registry.test.js tests/field-takeover.test.js",
     "test:watch": "vitest",
     "check": "npm run test && npm run build",
     "check:alignment": "npm run test:alignment && npm run build"

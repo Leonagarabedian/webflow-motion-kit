@@ -261,6 +261,29 @@ The cursor target must be a descendant of the hit area. The stylesheet supplies 
 Items and targets are paired in DOM order. Default behavior is the sampled Noth-style journey: `1.4s`, `power4.inOut`, stagger `.2` from the end, repeat once, yoyo, scroll scrub `3`. It is disabled below `992px` and for reduced motion.
 
 
+## Field takeover
+
+```html
+<section data-motion="field-takeover"
+         data-motion-state-class="is-field-takeover"
+         data-motion-min-width="992"
+         data-motion-scroll-vh="100"
+         data-motion-scrub="1"
+         data-motion-pin="true">
+  <div data-motion-target="takeover-field">
+    <div data-motion-target="takeover-content">...</div>
+  </div>
+</section>
+```
+
+Author the start geometry in Webflow as the normal state. Author the takeover geometry with the state/combo class named by `data-motion-state-class`, which defaults to `is-field-takeover`. The module captures the authored start state, applies the takeover class, and uses GSAP Flip to scrub only the field geometry between those two states. It does not hardcode colors, dimensions, section names, or About-page selectors.
+
+The optional `takeover-content` target has independent transform ownership. By default it begins retiring after 35% progress and finishes by 85%. Configure that with `data-motion-content-start`, `data-motion-content-end`, `data-motion-content-opacity-to`, and `data-motion-content-y`. Use a nested wrapper when the field contains content that should move independently from the field's Flip transform.
+
+Useful controls are `data-motion-state-class`, `data-motion-min-width`, `data-motion-start`, `data-motion-scroll-vh`, `data-motion-scroll-distance`, `data-motion-end`, `data-motion-scrub`, and `data-motion-pin`. `data-motion-alignment="auto"` replaces the authored runway with a geometry-derived range while preserving the same motion. Manual `end` takes priority over scroll distance and viewport-height distance through the shared scroll contract. The composition reverses continuously with scroll. Reduced-motion and sub-minimum-width layouts remain in the authored start state.
+
+The takeover class should describe geometry only where practical. For a full-field takeover, a typical authored state makes the field cover its root using absolute positioning and inset edges. The root must provide the intended spatial context. Visual styling remains in Webflow so the same module can be reused for dark fields, color fields, media panels, or other authored surfaces.
+
 ## Hero frame transition
 
 ```html

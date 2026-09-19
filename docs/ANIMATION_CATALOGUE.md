@@ -33,6 +33,11 @@ Status: implementation catalogue. Checked items ship in the current bundle.
 11. [x] MorphSVG narrative mask.
 12. [x] Responsive sticky card stack.
 
+## Composition modules
+
+1. [x] Hero frame transition between authored Webflow states.
+2. [x] Field takeover composition that expands an authored panel into a takeover state while optionally retiring its inner content.
+
 ## Advanced packages
 
 1. [x] Nothin’-informed fluid canvas engine.
