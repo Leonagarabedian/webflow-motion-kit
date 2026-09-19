@@ -68,6 +68,7 @@ export const fieldTakeover = {
     const field = selectTarget(element, "takeover-field", null);
     const content = selectTarget(element, "takeover-content", null);
     const boundary = selectTarget(element, "takeover-boundary", null);
+    const frame = selectTarget(element, "takeover-frame", null);
 
     if (!field || !Flip) return;
 
@@ -205,15 +206,22 @@ export const fieldTakeover = {
         // percentages.
         field.classList.add(stateClass);
 
-        if (boundary) {
+        if (boundary || frame) {
           const rootRect = element.getBoundingClientRect();
-          const boundaryRect = boundary.getBoundingClientRect();
+          const boundaryRect = boundary?.getBoundingClientRect() ?? rootRect;
+          const frameRect = frame?.getBoundingClientRect() ?? rootRect;
+          const top = frameRect.top - rootRect.top;
+          const height = frameRect.height;
+
           gsap.set(field, {
             left: 0,
-            top: 0,
-            bottom: 0,
+            top,
+            bottom: "auto",
             right: "auto",
-            width: Math.max(0, boundaryRect.left - rootRect.left)
+            width: boundary
+              ? Math.max(0, boundaryRect.left - rootRect.left)
+              : rootRect.width,
+            height
           });
         }
 
