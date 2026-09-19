@@ -52,6 +52,7 @@ import { scrollHighlight } from "./scroll-highlight.js";
 import { scrollSyncedGallery } from "./scroll-synced-gallery.js";
 import { scrollTravel } from "./scroll-travel.js";
 import { sectionHandoff } from "./section-handoff.js";
+import { sectionField } from "./section-field.js";
 import { sectionSpace } from "./section-space.js";
 import { selectiveGlyphActivation } from "./selective-glyph-activation.js";
 import { servicesCenterShift } from "./services-center-shift.js";
