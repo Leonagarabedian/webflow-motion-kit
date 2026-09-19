@@ -6,15 +6,27 @@ import {
   resolveTrigger
 } from "../../core/config.js";
 
-function buildLineRevealStages(lines, { duration, stagger, yPercent, yPx, useYPx, fade }) {
+function buildLineRevealStages(lines, {
+  duration,
+  stagger,
+  delay,
+  xPx,
+  useXPx,
+  yPercent,
+  yPx,
+  useYPx,
+  fade
+}) {
   return Array.from({ length: lines.length }, (_, index) => {
-    const start = index * stagger;
+    const start = delay + index * stagger;
     return {
       name: `line-reveal-${index + 1}`,
       start,
       end: start + duration,
       duration,
       target: lines[index],
+      xFrom: useXPx ? xPx : 0,
+      xTo: 0,
       yFrom: useYPx ? yPx : 0,
       yTo: 0,
       yPercentFrom: useYPx ? 0 : yPercent,
@@ -38,6 +50,9 @@ export const lineReveal = {
     const trigger = resolveTrigger(element);
     const duration = readNumber(element, "motion-duration", 1);
     const stagger = readNumber(element, "motion-stagger", 0.08);
+    const delay = Math.max(0, readNumber(element, "motion-delay", 0));
+    const xPx = readNumber(element, "motion-x-px", 0);
+    const useXPx = element.hasAttribute("data-motion-x-px");
     const yPercent = readNumber(element, "motion-y", 110);
     const yPx = readNumber(element, "motion-y-px", 0);
     const useYPx = element.hasAttribute("data-motion-y-px");
@@ -56,6 +71,7 @@ export const lineReveal = {
       type: "lines",
       onSplit(self) {
         const fromState = useYPx ? { y: yPx } : { yPercent };
+        if (useXPx) fromState.x = xPx;
         if (fade) fromState.autoAlpha = 0;
 
         const scrollTrigger = mode === "auto"
@@ -68,6 +84,9 @@ export const lineReveal = {
                 stages: buildLineRevealStages(self.lines, {
                   duration,
                   stagger,
+                  delay,
+                  xPx,
+                  useXPx,
                   yPercent,
                   yPx,
                   useYPx,
@@ -91,9 +110,11 @@ export const lineReveal = {
           self.lines,
           fromState,
           {
+            delay,
             duration,
             ease,
             stagger,
+            x: 0,
             y: 0,
             yPercent: 0,
             ...(fade ? { autoAlpha: 1 } : {}),
