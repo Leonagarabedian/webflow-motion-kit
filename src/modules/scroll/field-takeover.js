@@ -226,10 +226,17 @@ export const fieldTakeover = {
         const boundaryRect = boundary?.getBoundingClientRect() ?? rootRect;
         const frameRect = frame?.getBoundingClientRect() ?? rootRect;
         const boundsRect = bounds?.getBoundingClientRect() ?? rootRect;
-        const endLeft = boundsRect.left - rootRect.left;
+        const boundsStyle = bounds ? window.getComputedStyle(bounds) : null;
+        const boundsPaddingLeft = boundsStyle
+          ? parseFloat(boundsStyle.paddingLeft) || 0
+          : 0;
+        const boundsPaddingRight = boundsStyle
+          ? parseFloat(boundsStyle.paddingRight) || 0
+          : 0;
+        const endLeft = boundsRect.left - rootRect.left + boundsPaddingLeft;
         const endRight = boundary
           ? boundaryRect.left - rootRect.left
-          : boundsRect.right - rootRect.left;
+          : boundsRect.right - rootRect.left - boundsPaddingRight;
         const endGeometry = {
           left: endLeft,
           top: frameRect.top - rootRect.top,
