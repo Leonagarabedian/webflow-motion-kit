@@ -237,6 +237,7 @@ export const fieldTakeover = {
         const flip = Flip.from(startState, {
           duration: 1,
           ease: "none",
+          absolute: true,
           nested: true,
           paused: true,
           scale
