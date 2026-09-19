@@ -71,6 +71,7 @@ export const fieldTakeover = {
     const boundary = selectTarget(element, "takeover-boundary", null);
     const frame = selectTarget(element, "takeover-frame", null);
     const bounds = selectTarget(element, "takeover-bounds", null);
+    const host = bounds || element;
 
     if (!field || !Flip) return;
 
@@ -180,7 +181,7 @@ export const fieldTakeover = {
         // State A is the authored field before takeover.
         field.classList.remove(stateClass);
 
-        const rootRectBefore = element.getBoundingClientRect();
+        const rootRectBefore = host.getBoundingClientRect();
         const fieldRectBefore = field.getBoundingClientRect();
         const startGeometry = {
           left: fieldRectBefore.left - rootRectBefore.left,
@@ -213,7 +214,7 @@ export const fieldTakeover = {
         }
 
         if (reparent) {
-          element.appendChild(field);
+          host.appendChild(field);
         }
 
         // State B stays authored in Webflow. When a boundary target exists,
@@ -222,21 +223,16 @@ export const fieldTakeover = {
         // percentages.
         field.classList.add(stateClass);
 
-        const rootRect = element.getBoundingClientRect();
+        const rootRect = host.getBoundingClientRect();
         const boundaryRect = boundary?.getBoundingClientRect() ?? rootRect;
         const frameRect = frame?.getBoundingClientRect() ?? rootRect;
-        const boundsRect = bounds?.getBoundingClientRect() ?? rootRect;
-        const boundsStyle = bounds ? window.getComputedStyle(bounds) : null;
-        const boundsPaddingLeft = boundsStyle
-          ? parseFloat(boundsStyle.paddingLeft) || 0
-          : 0;
-        const boundsPaddingRight = boundsStyle
-          ? parseFloat(boundsStyle.paddingRight) || 0
-          : 0;
-        const endLeft = boundsRect.left - rootRect.left + boundsPaddingLeft;
+        const hostStyle = window.getComputedStyle(host);
+        const hostPaddingLeft = parseFloat(hostStyle.paddingLeft) || 0;
+        const hostPaddingRight = parseFloat(hostStyle.paddingRight) || 0;
+        const endLeft = hostPaddingLeft;
         const endRight = boundary
           ? boundaryRect.left - rootRect.left
-          : boundsRect.right - rootRect.left - boundsPaddingRight;
+          : rootRect.width - hostPaddingRight;
         const endGeometry = {
           left: endLeft,
           top: frameRect.top - rootRect.top,
