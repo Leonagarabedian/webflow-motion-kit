@@ -70,6 +70,7 @@ export const fieldTakeover = {
     const content = selectTarget(element, "takeover-content", null);
     const boundary = selectTarget(element, "takeover-boundary", null);
     const frame = selectTarget(element, "takeover-frame", null);
+    const bounds = selectTarget(element, "takeover-bounds", null);
 
     if (!field || !Flip) return;
 
@@ -224,12 +225,15 @@ export const fieldTakeover = {
         const rootRect = element.getBoundingClientRect();
         const boundaryRect = boundary?.getBoundingClientRect() ?? rootRect;
         const frameRect = frame?.getBoundingClientRect() ?? rootRect;
+        const boundsRect = bounds?.getBoundingClientRect() ?? rootRect;
+        const endLeft = boundsRect.left - rootRect.left;
+        const endRight = boundary
+          ? boundaryRect.left - rootRect.left
+          : boundsRect.right - rootRect.left;
         const endGeometry = {
-          left: 0,
+          left: endLeft,
           top: frameRect.top - rootRect.top,
-          width: boundary
-            ? Math.max(0, boundaryRect.left - rootRect.left)
-            : rootRect.width,
+          width: Math.max(0, endRight - endLeft),
           height: frameRect.height
         };
 
