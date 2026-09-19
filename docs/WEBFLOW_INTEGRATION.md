@@ -38,7 +38,7 @@ Example: `data-motion-duration="slow" data-motion-ease="enter" data-motion-stagg
 </h2>
 ```
 
-Optional: `data-motion-y`, `data-motion-ease`, `data-motion-once`, and `data-motion-trigger`.
+Optional: `data-motion-y`, `data-motion-y-px`, `data-motion-x-px`, `data-motion-delay`, `data-motion-ease`, `data-motion-once`, and `data-motion-trigger`. Use `data-motion-x-px` with `data-motion-y-px="0"` for a horizontal line entrance while preserving the same masked line-reveal module.
 
 ## Word, character, and blur reveals
 
