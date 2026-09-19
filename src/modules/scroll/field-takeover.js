@@ -16,6 +16,7 @@ const DEFAULTS = Object.freeze({
   contentStart: 0.35,
   contentY: 0,
   contentLock: false,
+  directGeometry: false,
   minWidth: 992,
   pin: true,
   preserveSpace: true,
@@ -105,6 +106,11 @@ export const fieldTakeover = {
       "motion-content-lock",
       DEFAULTS.contentLock
     );
+    const directGeometry = readBoolean(
+      element,
+      "motion-direct-geometry",
+      DEFAULTS.directGeometry
+    );
 
     const contentStart = clamp(
       readNumber(element, "motion-content-start", DEFAULTS.contentStart)
@@ -173,10 +179,18 @@ export const fieldTakeover = {
         // State A is the authored field before takeover.
         field.classList.remove(stateClass);
 
-        const flipTargets = [field, ...field.children];
-        const startState = Flip.getState(flipTargets, {
-          props: "borderRadius"
-        });
+        const rootRectBefore = element.getBoundingClientRect();
+        const fieldRectBefore = field.getBoundingClientRect();
+        const startGeometry = {
+          left: fieldRectBefore.left - rootRectBefore.left,
+          top: fieldRectBefore.top - rootRectBefore.top,
+          width: fieldRectBefore.width,
+          height: fieldRectBefore.height
+        };
+
+        const startState = directGeometry
+          ? null
+          : Flip.getState(field, { props: "borderRadius" });
         const contentRect = content?.getBoundingClientRect() ?? null;
 
         const contentOpacityFrom = content
@@ -207,22 +221,41 @@ export const fieldTakeover = {
         // percentages.
         field.classList.add(stateClass);
 
-        if (boundary || frame) {
-          const rootRect = element.getBoundingClientRect();
-          const boundaryRect = boundary?.getBoundingClientRect() ?? rootRect;
-          const frameRect = frame?.getBoundingClientRect() ?? rootRect;
-          const top = frameRect.top - rootRect.top;
-          const height = frameRect.height;
+        const rootRect = element.getBoundingClientRect();
+        const boundaryRect = boundary?.getBoundingClientRect() ?? rootRect;
+        const frameRect = frame?.getBoundingClientRect() ?? rootRect;
+        const endGeometry = {
+          left: 0,
+          top: frameRect.top - rootRect.top,
+          width: boundary
+            ? Math.max(0, boundaryRect.left - rootRect.left)
+            : rootRect.width,
+          height: frameRect.height
+        };
 
+        if (directGeometry) {
           gsap.set(field, {
-            left: 0,
-            top,
+            position: "absolute",
+            left: startGeometry.left,
+            top: startGeometry.top,
+            right: "auto",
+            bottom: "auto",
+            width: startGeometry.width,
+            height: startGeometry.height,
+            minHeight: 0,
+            x: 0,
+            y: 0,
+            scaleX: 1,
+            scaleY: 1
+          });
+        } else if (boundary || frame) {
+          gsap.set(field, {
+            left: endGeometry.left,
+            top: endGeometry.top,
             bottom: "auto",
             right: "auto",
-            width: boundary
-              ? Math.max(0, boundaryRect.left - rootRect.left)
-              : rootRect.width,
-            height
+            width: endGeometry.width,
+            height: endGeometry.height
           });
         }
 
@@ -235,16 +268,17 @@ export const fieldTakeover = {
           });
         }
 
-        const flip = Flip.from(startState, {
-          targets: flipTargets,
-          duration: 1,
-          ease: "none",
-          absolute: true,
-          nested: true,
-          paused: true,
-          scale
-        });
-        flip.progress(0);
+        const flip = directGeometry
+          ? null
+          : Flip.from(startState, {
+              duration: 1,
+              ease: "none",
+              absolute: true,
+              nested: true,
+              paused: true,
+              scale
+            });
+        flip?.progress(0);
 
         const contentTween = content && !contentLock
           ? gsap.fromTo(
@@ -303,7 +337,18 @@ export const fieldTakeover = {
           scrollTrigger,
           onUpdate() {
             const progress = clamp(progressDriver.value);
-            flip.progress(progress);
+
+            if (directGeometry) {
+              const lerp = (a, b) => a + (b - a) * progress;
+              gsap.set(field, {
+                left: lerp(startGeometry.left, endGeometry.left),
+                top: lerp(startGeometry.top, endGeometry.top),
+                width: lerp(startGeometry.width, endGeometry.width),
+                height: lerp(startGeometry.height, endGeometry.height)
+              });
+            } else {
+              flip?.progress(progress);
+            }
 
             if (content && contentLock && contentRect) {
               const fieldRect = field.getBoundingClientRect();
@@ -323,7 +368,7 @@ export const fieldTakeover = {
           driver.scrollTrigger?.kill();
           driver.kill();
           contentTween?.kill();
-          flip.kill();
+          flip?.kill();
           restoreAuthoredState();
         };
       }
