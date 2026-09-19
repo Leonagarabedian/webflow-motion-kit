@@ -261,6 +261,30 @@ The cursor target must be a descendant of the hit area. The stylesheet supplies 
 Items and targets are paired in DOM order. Default behavior is the sampled Noth-style journey: `1.4s`, `power4.inOut`, stagger `.2` from the end, repeat once, yoyo, scroll scrub `3`. It is disabled below `992px` and for reduced motion.
 
 
+## Section field
+
+Use `section-field` when the visual background plane of a composition must expand or compress independently from its content. The module never moves the source content. It clips a dedicated full-size field from the measured source geometry to the full field bounds, or reverses that relationship for compression.
+
+```html
+<section data-motion="section-field"
+         data-motion-field-mode="expand"
+         data-motion-field-axis="both"
+         data-motion-field-progress-start="0"
+         data-motion-field-progress-end="0.5"
+         data-motion-scroll-vh="100"
+         data-motion-scrub="1">
+  <div class="section-field-layer" data-motion-target="section-field"></div>
+  <div class="founder-panel" data-motion-target="section-field-source">...</div>
+  <div class="founder-image">...</div>
+</section>
+```
+
+The `section-field` target should already occupy the full visual bounds you want at the end of expansion, typically the composition or viewport-sized section. The `section-field-source` target is only measured, never transformed. This avoids FLIP reflow, detached proxy surfaces, and content movement.
+
+Controls: `data-motion-field-mode="expand|compress"`, `data-motion-field-axis="both|x|y"`, `data-motion-field-progress-start`, `data-motion-field-progress-end`, `data-motion-min-width`, `data-motion-start`, `data-motion-scroll-vh`, `data-motion-scrub`, and `data-motion-pin`.
+
+For staged handoffs, finish the field expansion before starting a separate transform owner such as `scroll-travel` on an image wrapper. Keep the background clip and image transform on different elements.
+
 ## Field takeover
 
 ```html
