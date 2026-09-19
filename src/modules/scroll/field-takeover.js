@@ -67,6 +67,7 @@ export const fieldTakeover = {
   mount(element, { Flip, gsap }) {
     const field = selectTarget(element, "takeover-field", null);
     const content = selectTarget(element, "takeover-content", null);
+    const boundary = selectTarget(element, "takeover-boundary", null);
 
     if (!field || !Flip) return;
 
@@ -198,9 +199,23 @@ export const fieldTakeover = {
           element.appendChild(field);
         }
 
-        // State B stays authored in Webflow. The state class should make the
-        // field occupy the takeover geometry, normally absolute/inset: 0.
+        // State B stays authored in Webflow. When a boundary target exists,
+        // its live left edge defines the field's final right edge. This keeps
+        // the takeover aligned to authored grid geometry without hardcoded
+        // percentages.
         field.classList.add(stateClass);
+
+        if (boundary) {
+          const rootRect = element.getBoundingClientRect();
+          const boundaryRect = boundary.getBoundingClientRect();
+          gsap.set(field, {
+            left: 0,
+            top: 0,
+            bottom: 0,
+            right: "auto",
+            width: Math.max(0, boundaryRect.left - rootRect.left)
+          });
+        }
 
         if (content && contentLock && contentRect) {
           gsap.set(content, {
