@@ -177,15 +177,6 @@ export const fieldTakeover = {
           props: "borderRadius"
         });
         const contentRect = content?.getBoundingClientRect() ?? null;
-        const lockedTargets = contentLock
-          ? (content ? [content] : Array.from(field.children))
-          : [];
-        const lockedRects = new Map(
-          lockedTargets.map(target => [target, target.getBoundingClientRect()])
-        );
-        const lockedStyles = new Map(
-          lockedTargets.map(target => [target, target.getAttribute("style")])
-        );
 
         const contentOpacityFrom = content
           ? Number(gsap.getProperty(content, "opacity")) || 0
@@ -234,21 +225,12 @@ export const fieldTakeover = {
           });
         }
 
-        if (contentLock && lockedTargets.length) {
-          const fieldRect = field.getBoundingClientRect();
-
-          lockedTargets.forEach(target => {
-            const rect = lockedRects.get(target);
-            if (!rect) return;
-
-            gsap.set(target, {
-              position: "absolute",
-              left: 0,
-              top: 0,
-              width: rect.width,
-              x: rect.left - fieldRect.left,
-              y: rect.top - fieldRect.top
-            });
+        if (content && contentLock && contentRect) {
+          gsap.set(content, {
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: contentRect.width
           });
         }
 
@@ -320,17 +302,11 @@ export const fieldTakeover = {
             const progress = clamp(progressDriver.value);
             flip.progress(progress);
 
-            if (contentLock && lockedTargets.length) {
+            if (content && contentLock && contentRect) {
               const fieldRect = field.getBoundingClientRect();
-
-              lockedTargets.forEach(target => {
-                const rect = lockedRects.get(target);
-                if (!rect) return;
-
-                gsap.set(target, {
-                  x: rect.left - fieldRect.left,
-                  y: rect.top - fieldRect.top
-                });
+              gsap.set(content, {
+                x: contentRect.left - fieldRect.left,
+                y: contentRect.top - fieldRect.top
               });
             } else {
               contentTween?.progress(
@@ -345,7 +321,6 @@ export const fieldTakeover = {
           driver.kill();
           contentTween?.kill();
           flip.kill();
-          lockedStyles.forEach((style, target) => restoreInlineStyle(target, style));
           restoreAuthoredState();
         };
       }
