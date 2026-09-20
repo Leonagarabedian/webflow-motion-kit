@@ -16,7 +16,6 @@ import { elementLayoutReturn } from "./element-layout-return.js";
 import { emphasisTransfer } from "./emphasis-transfer.js";
 import { flipRelocation } from "./flip-relocation.js";
 import { fieldTakeover } from "./field-takeover.js";
-import { createdTakeover } from "./scroll/created-takeover.js";
 import { footerReveal } from "./footer-reveal.js";
 import { glyphMaskReveal } from "./glyph-mask-reveal.js";
 import { gridVideoReveal } from "./grid-video-reveal.js";
@@ -127,7 +126,6 @@ export const modules = [
   gridVideoReveal,
   flipRelocation,
   fieldTakeover,
-  createdTakeover,
   worksServicesTransition,
   depthEmerge,
   elementLayoutReturn,
