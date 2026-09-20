@@ -126,7 +126,7 @@ export const sectionHandoff = {
       });
 
       const overlapTrigger = ScrollTrigger.create({
-        trigger: outgoing,
+        trigger: element,
         start,
         endTrigger: element,
         end,
