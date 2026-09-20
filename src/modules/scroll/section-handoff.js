@@ -86,12 +86,6 @@ export const sectionHandoff = {
 
     if (useNaturalOverlap) {
       const fromSelector = readString(element, "motion-section-handoff-from", "");
-      const pinTargetSelector = readString(
-        element,
-        "motion-section-handoff-pin-target",
-        ""
-      );
-
       let outgoing = null;
       if (fromSelector) {
         try {
@@ -108,26 +102,7 @@ export const sectionHandoff = {
       outgoing ||= element.previousElementSibling;
       if (!outgoing) return;
 
-      let pinTarget = outgoing;
-      if (pinTargetSelector) {
-        try {
-          pinTarget =
-            outgoing.querySelector(pinTargetSelector) ||
-            document.querySelector(pinTargetSelector) ||
-            outgoing;
-        } catch (error) {
-          console.warn(
-            "[motion-kit] Invalid section-handoff pin target selector:",
-            pinTargetSelector,
-            error
-          );
-          pinTarget = outgoing;
-        }
-      }
-
       const originalOutgoingStyle = outgoing.getAttribute("style");
-      const originalPinTargetStyle =
-        pinTarget !== outgoing ? pinTarget.getAttribute("style") : null;
       const panelZ = readNumber(element, "motion-section-handoff-z-index", 6);
       const start = readString(
         element,
@@ -144,14 +119,6 @@ export const sectionHandoff = {
         zIndex: Math.max(0, panelZ - 1)
       });
 
-      gsap.set(pinTarget, {
-        position:
-          window.getComputedStyle(pinTarget).position === "static"
-            ? "relative"
-            : window.getComputedStyle(pinTarget).position,
-        zIndex: Math.max(0, panelZ - 1)
-      });
-
       gsap.set(element, {
         position: "relative",
         zIndex: panelZ,
@@ -159,11 +126,11 @@ export const sectionHandoff = {
       });
 
       const overlapTrigger = ScrollTrigger.create({
-        trigger: pinTarget,
+        trigger: outgoing,
         start,
         endTrigger: element,
         end,
-        pin: pinTarget,
+        pin: outgoing,
         pinSpacing: false,
         pinReparent: true,
         anticipatePin: 1,
@@ -176,11 +143,6 @@ export const sectionHandoff = {
         if (originalOutgoingStyle == null) outgoing.removeAttribute("style");
         else outgoing.setAttribute("style", originalOutgoingStyle);
 
-        if (pinTarget !== outgoing) {
-          if (originalPinTargetStyle == null) pinTarget.removeAttribute("style");
-          else pinTarget.setAttribute("style", originalPinTargetStyle);
-        }
-
         if (originalStyle == null) element.removeAttribute("style");
         else element.setAttribute("style", originalStyle);
       };
@@ -188,7 +150,6 @@ export const sectionHandoff = {
 
     if (usePanel) {
       const fromSelector = readString(element, "motion-section-handoff-from", "");
-      const pinTargetSelector = readString(element, "motion-section-handoff-pin-target", "");
       const distance = readString(element, "motion-section-handoff-distance", "edge");
 
       let outgoing = null;
@@ -203,19 +164,7 @@ export const sectionHandoff = {
       outgoing ||= element.previousElementSibling;
       if (!outgoing) return;
 
-      let pinTarget = outgoing;
-      if (pinTargetSelector) {
-        try {
-          pinTarget = outgoing.querySelector(pinTargetSelector) || document.querySelector(pinTargetSelector) || outgoing;
-        } catch (error) {
-          console.warn("[motion-kit] Invalid section-handoff pin target selector:", pinTargetSelector, error);
-          pinTarget = outgoing;
-        }
-      }
-
       const originalOutgoingStyle = outgoing.getAttribute("style");
-      const originalPinTargetStyle =
-        pinTarget !== outgoing ? pinTarget.getAttribute("style") : null;
       const panelZ = readNumber(element, "motion-section-handoff-z-index", 6);
       const start = readString(
         element,
@@ -263,7 +212,7 @@ export const sectionHandoff = {
         trigger: element,
         start,
         end: resolveEnd,
-        pin: pinTarget,
+        pin: outgoing,
         pinSpacing: false,
         pinReparent: true,
         anticipatePin: 1,
@@ -275,11 +224,6 @@ export const sectionHandoff = {
 
         if (originalOutgoingStyle == null) outgoing.removeAttribute("style");
         else outgoing.setAttribute("style", originalOutgoingStyle);
-
-        if (pinTarget !== outgoing) {
-          if (originalPinTargetStyle == null) pinTarget.removeAttribute("style");
-          else pinTarget.setAttribute("style", originalPinTargetStyle);
-        }
 
         if (originalStyle == null) element.removeAttribute("style");
         else element.setAttribute("style", originalStyle);
