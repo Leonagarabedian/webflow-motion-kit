@@ -61,6 +61,7 @@ import { servicesCenterShift } from "./services-center-shift.js";
 import { sliceFragmentReveal } from "./slice-fragment-reveal.js";
 import { spatialLoop } from "./spatial-loop.js";
 import { stackedCards } from "./stacked-cards.js";
+import { stackedDivsSectionReveal } from "./stacked-divs-section-reveal.js";
 import { stackedImageHover } from "./stacked-image-hover.js";
 import { strokeFill } from "./stroke-fill.js";
 import { svgReveal } from "./svg-reveal.js";
@@ -117,6 +118,7 @@ export const modules = [
   viewSwitch,
   loopingLabels,
   stackedCards,
+  stackedDivsSectionReveal,
   stackedImageHover,
   hoverHighlightBox,
   hoverBackgroundSwap,
