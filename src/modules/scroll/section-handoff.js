@@ -74,6 +74,7 @@ export const sectionHandoff = {
     const usePosition = mode === "position" || mode === "both";
     const useBackground = mode === "background" || mode === "both";
     const usePanel = mode === "panel" || mode === "slide-over";
+    const useNaturalOverlap = mode === "natural-overlap" || mode === "overlap";
     const syncTriggerId = readString(element, "motion-section-handoff-sync-trigger-id", "");
     const originalStyle = element.getAttribute("style");
     let backgroundLayer = null;
@@ -82,6 +83,108 @@ export const sectionHandoff = {
     let rafId = null;
     let destroyed = false;
     let currentY = 0;
+
+    if (useNaturalOverlap) {
+      const fromSelector = readString(element, "motion-section-handoff-from", "");
+      const pinTargetSelector = readString(
+        element,
+        "motion-section-handoff-pin-target",
+        ""
+      );
+
+      let outgoing = null;
+      if (fromSelector) {
+        try {
+          outgoing = document.querySelector(fromSelector);
+        } catch (error) {
+          console.warn(
+            "[motion-kit] Invalid section-handoff from selector:",
+            fromSelector,
+            error
+          );
+        }
+      }
+
+      outgoing ||= element.previousElementSibling;
+      if (!outgoing) return;
+
+      let pinTarget = outgoing;
+      if (pinTargetSelector) {
+        try {
+          pinTarget =
+            outgoing.querySelector(pinTargetSelector) ||
+            document.querySelector(pinTargetSelector) ||
+            outgoing;
+        } catch (error) {
+          console.warn(
+            "[motion-kit] Invalid section-handoff pin target selector:",
+            pinTargetSelector,
+            error
+          );
+          pinTarget = outgoing;
+        }
+      }
+
+      const originalOutgoingStyle = outgoing.getAttribute("style");
+      const originalPinTargetStyle =
+        pinTarget !== outgoing ? pinTarget.getAttribute("style") : null;
+      const panelZ = readNumber(element, "motion-section-handoff-z-index", 6);
+      const start = readString(
+        element,
+        "motion-section-handoff-start",
+        "top top"
+      );
+      const end = readString(
+        element,
+        "motion-section-handoff-end",
+        "top top"
+      );
+
+      gsap.set(outgoing, {
+        zIndex: Math.max(0, panelZ - 1)
+      });
+
+      gsap.set(pinTarget, {
+        position:
+          window.getComputedStyle(pinTarget).position === "static"
+            ? "relative"
+            : window.getComputedStyle(pinTarget).position,
+        zIndex: Math.max(0, panelZ - 1)
+      });
+
+      gsap.set(element, {
+        position: "relative",
+        zIndex: panelZ,
+        isolation: "isolate"
+      });
+
+      const overlapTrigger = ScrollTrigger.create({
+        trigger: pinTarget,
+        start,
+        endTrigger: element,
+        end,
+        pin: pinTarget,
+        pinSpacing: false,
+        pinReparent: true,
+        anticipatePin: 1,
+        invalidateOnRefresh: true
+      });
+
+      return () => {
+        overlapTrigger.kill(true);
+
+        if (originalOutgoingStyle == null) outgoing.removeAttribute("style");
+        else outgoing.setAttribute("style", originalOutgoingStyle);
+
+        if (pinTarget !== outgoing) {
+          if (originalPinTargetStyle == null) pinTarget.removeAttribute("style");
+          else pinTarget.setAttribute("style", originalPinTargetStyle);
+        }
+
+        if (originalStyle == null) element.removeAttribute("style");
+        else element.setAttribute("style", originalStyle);
+      };
+    }
 
     if (usePanel) {
       const fromSelector = readString(element, "motion-section-handoff-from", "");
