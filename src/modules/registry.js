@@ -40,6 +40,7 @@ import { navFlip } from "./nav-flip.js";
 import { negativeSpaceCutout } from "./negative-space-cutout.js";
 import { occlusionBlocks } from "./occlusion-blocks.js";
 import { observerSlideupSectionTransition } from "./observer-slideup-section-transition.js";
+import { observerHorizontalSectionTransition } from "./observer-horizontal-section-transition.js";
 import { pageTransition } from "./page-transition.js";
 import { pairedTagIntro } from "./paired-tag-intro.js";
 import { parallax } from "./parallax.js";
@@ -96,6 +97,7 @@ export const modules = [
   counterExpansion,
   occlusionBlocks,
   observerSlideupSectionTransition,
+  observerHorizontalSectionTransition,
   emphasisTransfer,
   sliceFragmentReveal,
   negativeSpaceCutout,
