@@ -89,11 +89,18 @@ export const sectionHandoff = {
 
       const originalOutgoingStyle = outgoing.getAttribute("style");
       const panelZ = readNumber(element, "motion-section-handoff-z-index", 6);
-      const panelTop = readString(element, "motion-section-handoff-panel-top", "0px");
+      const start = readString(
+        element,
+        "motion-section-handoff-start",
+        "top bottom"
+      );
+      const end = readString(
+        element,
+        "motion-section-handoff-end",
+        "top top"
+      );
 
       gsap.set(outgoing, {
-        position: "sticky",
-        top: panelTop,
         zIndex: Math.max(0, panelZ - 1)
       });
 
@@ -103,7 +110,20 @@ export const sectionHandoff = {
         isolation: "isolate"
       });
 
+      const panelTrigger = ScrollTrigger.create({
+        trigger: element,
+        start,
+        end,
+        pin: outgoing,
+        pinSpacing: false,
+        pinReparent: true,
+        anticipatePin: 1,
+        invalidateOnRefresh: true
+      });
+
       return () => {
+        panelTrigger.kill(true);
+
         if (originalOutgoingStyle == null) outgoing.removeAttribute("style");
         else outgoing.setAttribute("style", originalOutgoingStyle);
 
