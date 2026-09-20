@@ -156,13 +156,7 @@ export const sectionHandoff = {
         isolation: "isolate"
       });
 
-      const scrub = readNumber(
-        element,
-        "motion-section-handoff-scrub",
-        1
-      );
-
-      const outgoingPin = ScrollTrigger.create({
+      const panelTrigger = ScrollTrigger.create({
         trigger: element,
         start,
         end: resolveEnd,
@@ -173,45 +167,8 @@ export const sectionHandoff = {
         invalidateOnRefresh: true
       });
 
-      const slideFrom = readString(
-        element,
-        "motion-section-handoff-slide-from",
-        "18vh"
-      );
-
-      const resolveSlideFrom = () => {
-        if (/^-?\\d*\\.?\\d+vh$/.test(slideFrom)) {
-          return window.innerHeight * (parseFloat(slideFrom) / 100);
-        }
-
-        if (/^-?\\d+(?:\\.\\d+)?px$/.test(slideFrom)) {
-          return parseFloat(slideFrom);
-        }
-
-        const numeric = Number(slideFrom);
-        return Number.isFinite(numeric) ? numeric : window.innerHeight * 0.18;
-      };
-
-      const panelTween = gsap.fromTo(
-        element,
-        { y: resolveSlideFrom },
-        {
-          y: 0,
-          ease: "none",
-          scrollTrigger: {
-            trigger: element,
-            start,
-            end: resolveEnd,
-            scrub,
-            invalidateOnRefresh: true
-          }
-        }
-      );
-
       return () => {
-        outgoingPin.kill(true);
-        panelTween.scrollTrigger?.kill(true);
-        panelTween.kill();
+        panelTrigger.kill(true);
 
         if (originalOutgoingStyle == null) outgoing.removeAttribute("style");
         else outgoing.setAttribute("style", originalOutgoingStyle);
