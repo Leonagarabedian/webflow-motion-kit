@@ -5,6 +5,7 @@ import { modules } from "../src/modules/registry.js";
 describe("module registry", () => {
   it("publishes unique mountable modules and registers every stationary typography module", () => {
     expect(modules.length).toBeGreaterThan(0);
+    expect(modules.some(({ name, selector }) => name === "created-takeover" && selector === '[data-motion~="created-takeover"]')).toBe(true);
     expect(modules.map(({ name }) => name)).toEqual(expect.arrayContaining(stationaryTypographyNames));
     expect(new Set(modules.map(({ name }) => name))).toHaveProperty("size", modules.length);
     expect(modules.every(({ mount, selector }) => typeof mount === "function" && selector)).toBe(true);
