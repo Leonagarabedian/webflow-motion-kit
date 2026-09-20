@@ -72,9 +72,9 @@ describe("Created bounded takeover", () => {
     expect(c.timelineVars.scrollTrigger).toEqual(expect.objectContaining({
       trigger: c.root,
       start: "top 90%",
-      end: "bottom 75%",
-      pin: undefined
+      end: "bottom 75%"
     }));
+    expect(c.timelineVars.scrollTrigger.pin).toBeUndefined();
     expect(c.steps).toEqual([
       { vars: { portrait: 1, duration: 0.8 }, at: 0.05 },
       { vars: { panel: 1, duration: 0.75 }, at: 0.25 }
