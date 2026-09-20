@@ -73,6 +73,7 @@ export const sectionHandoff = {
     const mode = readString(element, "motion-section-handoff-mode", DEFAULTS.mode);
     const usePosition = mode === "position" || mode === "both";
     const useBackground = mode === "background" || mode === "both";
+    const usePanel = mode === "panel" || mode === "slide-over";
     const syncTriggerId = readString(element, "motion-section-handoff-sync-trigger-id", "");
     const originalStyle = element.getAttribute("style");
     let backgroundLayer = null;
@@ -81,6 +82,35 @@ export const sectionHandoff = {
     let rafId = null;
     let destroyed = false;
     let currentY = 0;
+
+    if (usePanel) {
+      const outgoing = element.previousElementSibling;
+      if (!outgoing) return;
+
+      const originalOutgoingStyle = outgoing.getAttribute("style");
+      const panelZ = readNumber(element, "motion-section-handoff-z-index", 6);
+      const panelTop = readString(element, "motion-section-handoff-panel-top", "0px");
+
+      gsap.set(outgoing, {
+        position: "sticky",
+        top: panelTop,
+        zIndex: Math.max(0, panelZ - 1)
+      });
+
+      gsap.set(element, {
+        position: "relative",
+        zIndex: panelZ,
+        isolation: "isolate"
+      });
+
+      return () => {
+        if (originalOutgoingStyle == null) outgoing.removeAttribute("style");
+        else outgoing.setAttribute("style", originalOutgoingStyle);
+
+        if (originalStyle == null) element.removeAttribute("style");
+        else element.setAttribute("style", originalStyle);
+      };
+    }
 
     if (useBackground) {
       backgroundLayer = createBackgroundLayer(element, gsap);
