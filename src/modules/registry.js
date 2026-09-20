@@ -39,6 +39,7 @@ import { morphNarrative } from "./morph-narrative.js";
 import { navFlip } from "./nav-flip.js";
 import { negativeSpaceCutout } from "./negative-space-cutout.js";
 import { occlusionBlocks } from "./occlusion-blocks.js";
+import { observerSectionTransition } from "./observer-section-transition.js";
 import { pageTransition } from "./page-transition.js";
 import { pairedTagIntro } from "./paired-tag-intro.js";
 import { parallax } from "./parallax.js";
@@ -94,6 +95,7 @@ export const modules = [
   glyphMaskReveal,
   counterExpansion,
   occlusionBlocks,
+  observerSectionTransition,
   emphasisTransfer,
   sliceFragmentReveal,
   negativeSpaceCutout,
