@@ -1,4 +1,4 @@
-/** Scoped review implementation: the frame owns geometry; neither child is reparented. */
+/** Keep the Created panel and portrait inside one measured frame. */
 export function mountCreatedTakeover(root, { gsap, ScrollTrigger }) {
   const frame = root.querySelector('[data-motion-target="takeover-frame"]');
   const panel = root.querySelector('[data-motion-target="takeover-field"]');
@@ -92,3 +92,12 @@ export function mountCreatedTakeover(root, { gsap, ScrollTrigger }) {
   });
   return () => mm.revert();
 }
+
+export const createdTakeover = {
+  name: "created-takeover",
+  category: "composition",
+  selector: '[data-motion~="created-takeover"]',
+  mount(element, { gsap, ScrollTrigger }) {
+    return mountCreatedTakeover(element, { gsap, ScrollTrigger });
+  }
+};
