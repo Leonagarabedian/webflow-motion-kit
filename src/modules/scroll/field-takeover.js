@@ -209,16 +209,8 @@ export const fieldTakeover = {
           placeholder.removeAttribute("data-motion-target");
           placeholder.setAttribute("aria-hidden", "true");
 
-          // Preserve the real rendered footprint of the field before it leaves
-          // normal flow. A shallow clone has no content, so relying on authored
-          // min-height alone can let the grid/section collapse during takeover.
-          Object.assign(placeholder.style, {
-            visibility: "hidden",
-            pointerEvents: "none",
-            boxSizing: "border-box",
-            height: `${fieldRectBefore.height}px`,
-            minHeight: `${fieldRectBefore.height}px`
-          });
+          placeholder.style.visibility = "hidden";
+          placeholder.style.pointerEvents = "none";
 
           originalParent.insertBefore(placeholder, field);
         }
