@@ -84,21 +84,67 @@ export const sectionHandoff = {
     let currentY = 0;
 
     if (usePanel) {
-      const outgoing = element.previousElementSibling;
+      const fromSelector = readString(element, "motion-section-handoff-from", "");
+      const pinTargetSelector = readString(element, "motion-section-handoff-pin-target", "");
+      const distance = readString(element, "motion-section-handoff-distance", "edge");
+
+      let outgoing = null;
+      if (fromSelector) {
+        try {
+          outgoing = document.querySelector(fromSelector);
+        } catch (error) {
+          console.warn("[motion-kit] Invalid section-handoff from selector:", fromSelector, error);
+        }
+      }
+
+      outgoing ||= element.previousElementSibling;
       if (!outgoing) return;
 
+      let pinTarget = outgoing;
+      if (pinTargetSelector) {
+        try {
+          pinTarget = outgoing.querySelector(pinTargetSelector) || document.querySelector(pinTargetSelector) || outgoing;
+        } catch (error) {
+          console.warn("[motion-kit] Invalid section-handoff pin target selector:", pinTargetSelector, error);
+          pinTarget = outgoing;
+        }
+      }
+
       const originalOutgoingStyle = outgoing.getAttribute("style");
+      const originalPinTargetStyle =
+        pinTarget !== outgoing ? pinTarget.getAttribute("style") : null;
       const panelZ = readNumber(element, "motion-section-handoff-z-index", 6);
       const start = readString(
         element,
         "motion-section-handoff-start",
         "top bottom"
       );
-      const end = readString(
+      const authoredEnd = readString(
         element,
         "motion-section-handoff-end",
         "top top"
       );
+
+      const resolveEnd = () => {
+        if (distance === "viewport") {
+          return `+=${Math.max(1, window.innerHeight)}`;
+        }
+
+        if (/^-?\\d*\\.?\\d+vh$/.test(distance)) {
+          const vh = parseFloat(distance);
+          return `+=${Math.max(1, window.innerHeight * (vh / 100))}`;
+        }
+
+        if (/^\\d+(?:\\.\\d+)?px$/.test(distance)) {
+          return `+=${Math.max(1, parseFloat(distance))}`;
+        }
+
+        if (distance !== "edge" && distance !== "auto") {
+          return distance;
+        }
+
+        return authoredEnd;
+      };
 
       gsap.set(outgoing, {
         zIndex: Math.max(0, panelZ - 1)
@@ -113,8 +159,8 @@ export const sectionHandoff = {
       const panelTrigger = ScrollTrigger.create({
         trigger: element,
         start,
-        end,
-        pin: outgoing,
+        end: resolveEnd,
+        pin: pinTarget,
         pinSpacing: false,
         pinReparent: true,
         anticipatePin: 1,
@@ -126,6 +172,11 @@ export const sectionHandoff = {
 
         if (originalOutgoingStyle == null) outgoing.removeAttribute("style");
         else outgoing.setAttribute("style", originalOutgoingStyle);
+
+        if (pinTarget !== outgoing) {
+          if (originalPinTargetStyle == null) pinTarget.removeAttribute("style");
+          else pinTarget.setAttribute("style", originalPinTargetStyle);
+        }
 
         if (originalStyle == null) element.removeAttribute("style");
         else element.setAttribute("style", originalStyle);
