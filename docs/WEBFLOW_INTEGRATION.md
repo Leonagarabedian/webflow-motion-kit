@@ -427,3 +427,26 @@ Initialization is idempotent: running it twice does not mount duplicate listener
 - Check desktop, tablet and mobile branches in a fresh published preview.
 - Enable OS reduced motion and confirm essential content remains visible.
 - Verify outgoing page containers are destroyed before removal.
+
+
+## Section replacement
+
+Use `section-replacement` when the next section should replace the current viewport in place instead of physically sliding over it. The outgoing section is pinned only for the replacement span. MotionKit creates an aria-hidden visual proxy of the incoming target, keeps that proxy fixed in its final authored position, and moves only a bottom-to-top clip boundary. At the end of the span the proxy disappears and the real Webflow layout continues in normal flow.
+
+```html
+<section class="team-section"
+         data-motion="section-replacement"
+         data-motion-replacement-from=".mission-section"
+         data-motion-replacement-target=".team-hero"
+         data-motion-alignment="auto"
+         data-motion-replacement-min-width="992"
+         data-motion-replacement-scrub="1">
+  <div class="team-hero">...</div>
+  <div class="team-body">...</div>
+  <div data-motion="media-room">...</div>
+</section>
+```
+
+Only the element selected by `data-motion-replacement-target` is cloned into the transition proxy. Sibling content, later section body content, and modules such as `media-room` remain outside the replacement animation. The default legacy range is `top bottom` to `top top`, which corresponds to one viewport of travel for a normal adjacent section. `data-motion-alignment="auto"` derives the same runway from viewport geometry. Generic `data-motion-start`, `data-motion-end`, `data-motion-scroll-distance`, `data-motion-scroll-vh`, and `data-motion-scrub` overrides continue to work through the shared scroll contract.
+
+Useful module-specific controls are `data-motion-replacement-from`, `data-motion-replacement-target`, `data-motion-replacement-start`, `data-motion-replacement-end`, `data-motion-replacement-scrub`, `data-motion-replacement-ease`, `data-motion-replacement-z-index`, `data-motion-replacement-top`, and `data-motion-replacement-min-width`.

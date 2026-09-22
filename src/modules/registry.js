@@ -54,6 +54,7 @@ import { scrollHighlight } from "./scroll-highlight.js";
 import { scrollSyncedGallery } from "./scroll-synced-gallery.js";
 import { scrollTravel } from "./scroll-travel.js";
 import { sectionHandoff } from "./section-handoff.js";
+import { sectionReplacement } from "./section-replacement.js";
 import { sectionBlendHandoff } from "./section-blend-handoff.js";
 import { sectionField } from "./section-field.js";
 import { sectionSpace } from "./section-space.js";
@@ -132,6 +133,7 @@ export const modules = [
   elementLayoutReturn,
   syncedFade,
   sectionHandoff,
+  sectionReplacement,
   sectionBlendHandoff,
   pinOverlapNext,
   heroFrameTransition,

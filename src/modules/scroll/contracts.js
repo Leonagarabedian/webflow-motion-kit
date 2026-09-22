@@ -85,6 +85,10 @@ export const scrollContracts = Object.freeze([
     "role": "owner-or-follower"
   },
   {
+    "name": "section-replacement",
+    "role": "owner"
+  },
+  {
     "name": "services-center-shift",
     "role": "owner"
   },
