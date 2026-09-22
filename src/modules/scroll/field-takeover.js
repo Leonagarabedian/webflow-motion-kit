@@ -15,13 +15,8 @@ const DEFAULTS = Object.freeze({
   contentOpacityTo: 0,
   contentStart: 0.35,
   contentY: 0,
-  contentLock: false,
-  directGeometry: false,
   minWidth: 992,
   pin: true,
-  preserveSpace: true,
-  reparent: false,
-  scale: false,
   scrub: 1,
   scrollVh: 100,
   start: "top top",
@@ -68,10 +63,6 @@ export const fieldTakeover = {
   mount(element, { Flip, gsap }) {
     const field = selectTarget(element, "takeover-field", null);
     const content = selectTarget(element, "takeover-content", null);
-    const boundary = selectTarget(element, "takeover-boundary", null);
-    const frame = selectTarget(element, "takeover-frame", null);
-    const bounds = selectTarget(element, "takeover-bounds", null);
-    const host = bounds || element;
 
     if (!field || !Flip) return;
 
@@ -92,27 +83,6 @@ export const fieldTakeover = {
     const scrub = readNumber(element, "motion-scrub", DEFAULTS.scrub);
     const start = readString(element, "motion-start", DEFAULTS.start);
     const pin = readBoolean(element, "motion-pin", DEFAULTS.pin);
-    const preserveSpace = readBoolean(
-      element,
-      "motion-preserve-space",
-      DEFAULTS.preserveSpace
-    );
-    const reparent = readBoolean(
-      element,
-      "motion-reparent",
-      DEFAULTS.reparent
-    );
-    const scale = readBoolean(element, "motion-scale", DEFAULTS.scale);
-    const contentLock = readBoolean(
-      element,
-      "motion-content-lock",
-      DEFAULTS.contentLock
-    );
-    const directGeometry = readBoolean(
-      element,
-      "motion-direct-geometry",
-      DEFAULTS.directGeometry
-    );
 
     const contentStart = clamp(
       readNumber(element, "motion-content-start", DEFAULTS.contentStart)
@@ -139,24 +109,9 @@ export const fieldTakeover = {
     const originalFieldStyle = field.getAttribute("style");
     const originalContentStyle = content?.getAttribute("style") ?? null;
     const fieldHadStateClass = field.classList.contains(stateClass);
-    const originalParent = field.parentNode;
-    const originalNextSibling = field.nextSibling;
-    let placeholder = null;
 
     const restoreAuthoredState = () => {
       field.classList.toggle(stateClass, fieldHadStateClass);
-
-      if (reparent && field.parentNode !== originalParent) {
-        if (originalNextSibling?.parentNode === originalParent) {
-          originalParent.insertBefore(field, originalNextSibling);
-        } else {
-          originalParent.appendChild(field);
-        }
-      }
-
-      placeholder?.remove();
-      placeholder = null;
-
       restoreInlineStyle(element, originalRootStyle);
       restoreInlineStyle(field, originalFieldStyle);
       if (content) restoreInlineStyle(content, originalContentStyle);
@@ -181,19 +136,9 @@ export const fieldTakeover = {
         // State A is the authored field before takeover.
         field.classList.remove(stateClass);
 
-        const rootRectBefore = host.getBoundingClientRect();
-        const fieldRectBefore = field.getBoundingClientRect();
-        const startGeometry = {
-          left: fieldRectBefore.left - rootRectBefore.left,
-          top: fieldRectBefore.top - rootRectBefore.top,
-          width: fieldRectBefore.width,
-          height: fieldRectBefore.height
-        };
-
-        const startState = directGeometry
-          ? null
-          : Flip.getState(field, { props: "borderRadius" });
-        const contentRect = content?.getBoundingClientRect() ?? null;
+        const startState = Flip.getState(field, {
+          props: "borderRadius"
+        });
 
         const contentOpacityFrom = content
           ? Number(gsap.getProperty(content, "opacity")) || 0
@@ -202,94 +147,20 @@ export const fieldTakeover = {
           ? Number(gsap.getProperty(content, "yPercent")) || 0
           : 0;
 
-        if (preserveSpace) {
-          placeholder = field.cloneNode(false);
-          placeholder.removeAttribute("id");
-          placeholder.removeAttribute("data-motion");
-          placeholder.removeAttribute("data-motion-target");
-          placeholder.setAttribute("aria-hidden", "true");
-
-          placeholder.style.visibility = "hidden";
-          placeholder.style.pointerEvents = "none";
-
-          originalParent.insertBefore(placeholder, field);
-        }
-
-        if (reparent) {
-          host.appendChild(field);
-        }
-
-        // State B stays authored in Webflow. When a boundary target exists,
-        // its live left edge defines the field's final right edge. This keeps
-        // the takeover aligned to authored grid geometry without hardcoded
-        // percentages.
+        // State B stays authored in Webflow. The state class should make the
+        // field occupy the takeover geometry, normally absolute/inset: 0.
         field.classList.add(stateClass);
 
-        const rootRect = host.getBoundingClientRect();
-        const boundaryRect = boundary?.getBoundingClientRect() ?? rootRect;
-        const frameRect = frame?.getBoundingClientRect() ?? rootRect;
-        const hostStyle = window.getComputedStyle(host);
-        const hostPaddingLeft = parseFloat(hostStyle.paddingLeft) || 0;
-        const hostPaddingRight = parseFloat(hostStyle.paddingRight) || 0;
-        const endLeft = hostPaddingLeft;
-        const endRight = boundary
-          ? boundaryRect.left - rootRect.left
-          : rootRect.width - hostPaddingRight;
-        const endGeometry = {
-          left: endLeft,
-          top: frameRect.top - rootRect.top,
-          width: Math.max(0, endRight - endLeft),
-          height: frameRect.height
-        };
+        const flip = Flip.from(startState, {
+          duration: 1,
+          ease: "none",
+          nested: true,
+          paused: true,
+          scale: true
+        });
+        flip.progress(0);
 
-        if (directGeometry) {
-          gsap.set(field, {
-            position: "absolute",
-            left: startGeometry.left,
-            top: startGeometry.top,
-            right: "auto",
-            bottom: "auto",
-            width: startGeometry.width,
-            height: startGeometry.height,
-            minHeight: 0,
-            x: 0,
-            y: 0,
-            scaleX: 1,
-            scaleY: 1
-          });
-        } else if (boundary || frame) {
-          gsap.set(field, {
-            left: endGeometry.left,
-            top: endGeometry.top,
-            bottom: "auto",
-            right: "auto",
-            width: endGeometry.width,
-            height: endGeometry.height
-          });
-        }
-
-        if (content && contentLock && contentRect) {
-          gsap.set(content, {
-            position: "absolute",
-            left: 0,
-            top: 0,
-            width: contentRect.width
-          });
-        }
-
-        const flip = directGeometry
-          ? null
-          : Flip.from(startState, {
-              duration: 1,
-              ease: "none",
-              absolute: true,
-              nested: true,
-              paused: true,
-              scale
-            });
-        flip?.progress(0);
-
-        const contentTween = content && !contentLock
+        const contentTween = content
           ? gsap.fromTo(
               content,
               {
@@ -346,30 +217,10 @@ export const fieldTakeover = {
           scrollTrigger,
           onUpdate() {
             const progress = clamp(progressDriver.value);
-
-            if (directGeometry) {
-              const lerp = (a, b) => a + (b - a) * progress;
-              gsap.set(field, {
-                left: lerp(startGeometry.left, endGeometry.left),
-                top: lerp(startGeometry.top, endGeometry.top),
-                width: lerp(startGeometry.width, endGeometry.width),
-                height: lerp(startGeometry.height, endGeometry.height)
-              });
-            } else {
-              flip?.progress(progress);
-            }
-
-            if (content && contentLock && contentRect) {
-              const fieldRect = field.getBoundingClientRect();
-              gsap.set(content, {
-                x: contentRect.left - fieldRect.left,
-                y: contentRect.top - fieldRect.top
-              });
-            } else {
-              contentTween?.progress(
-                phaseProgress(progress, contentStart, contentEnd)
-              );
-            }
+            flip.progress(progress);
+            contentTween?.progress(
+              phaseProgress(progress, contentStart, contentEnd)
+            );
           }
         });
 
@@ -377,7 +228,7 @@ export const fieldTakeover = {
           driver.scrollTrigger?.kill();
           driver.kill();
           contentTween?.kill();
-          flip?.kill();
+          flip.kill();
           restoreAuthoredState();
         };
       }
