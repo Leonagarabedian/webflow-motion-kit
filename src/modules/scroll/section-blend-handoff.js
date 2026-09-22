@@ -20,7 +20,12 @@ const DEFAULTS = Object.freeze({
   pinSpacing: false,
   target: "body",
   opacityFrom: 0,
-  opacityTo: 1
+  opacityTo: 1,
+  depthOutgoingScale: 0.9,
+  depthIncomingScale: 0.9,
+  depthOutgoingY: -2.5,
+  depthIncomingY: 4,
+  depthTransformOrigin: "50% 50%"
 });
 
 function clamp(value, min = 0, max = 1) {
@@ -95,6 +100,33 @@ export const sectionBlendHandoff = {
     const originalIncomingStyle = element.getAttribute("style");
     const originalOutgoingStyle = outgoing.getAttribute("style");
     const originalTargetStyle = sharedTarget?.getAttribute("style") ?? null;
+
+    const outgoingVisualSelector = readString(
+      element,
+      "motion-section-blend-handoff-outgoing-target",
+      ""
+    );
+    const incomingVisualSelector = readString(
+      element,
+      "motion-section-blend-handoff-incoming-target",
+      ""
+    );
+
+    const outgoingVisual = resolveElement(
+      outgoing,
+      outgoingVisualSelector,
+      outgoing
+    );
+    const incomingVisual = resolveElement(
+      element,
+      incomingVisualSelector,
+      element
+    );
+
+    const originalOutgoingVisualStyle =
+      outgoingVisual !== outgoing ? outgoingVisual.getAttribute("style") : null;
+    const originalIncomingVisualStyle =
+      incomingVisual !== element ? incomingVisual.getAttribute("style") : null;
 
     const start = readString(
       element,
@@ -254,6 +286,125 @@ export const sectionBlendHandoff = {
         tween?.kill();
         trigger.kill();
         restoreInlineStyle(sharedTarget, originalTargetStyle);
+      };
+    }
+
+
+    if (mode === "depth-handoff") {
+      const outgoingScale = clamp(
+        readNumber(
+          element,
+          "motion-section-blend-handoff-outgoing-scale",
+          DEFAULTS.depthOutgoingScale
+        ),
+        0.5,
+        1.5
+      );
+      const incomingScale = clamp(
+        readNumber(
+          element,
+          "motion-section-blend-handoff-incoming-scale",
+          DEFAULTS.depthIncomingScale
+        ),
+        0.5,
+        1.5
+      );
+      const outgoingY = readNumber(
+        element,
+        "motion-section-blend-handoff-outgoing-y",
+        DEFAULTS.depthOutgoingY
+      );
+      const incomingY = readNumber(
+        element,
+        "motion-section-blend-handoff-incoming-y",
+        DEFAULTS.depthIncomingY
+      );
+      const transformOrigin = readString(
+        element,
+        "motion-section-blend-handoff-transform-origin",
+        DEFAULTS.depthTransformOrigin
+      );
+
+      const outgoingComputed = window.getComputedStyle(outgoing);
+      const incomingComputed = window.getComputedStyle(element);
+      const outgoingPosition = outgoingComputed.position;
+      const incomingPosition = incomingComputed.position;
+      const parsedOutgoingZ = Number.parseInt(outgoingComputed.zIndex, 10);
+      const parsedIncomingZ = Number.parseInt(incomingComputed.zIndex, 10);
+      const outgoingZ = Number.isFinite(parsedOutgoingZ) ? parsedOutgoingZ : 0;
+      const incomingZ = Math.max(
+        Number.isFinite(parsedIncomingZ) ? parsedIncomingZ : outgoingZ + 1,
+        outgoingZ + 1
+      );
+
+      gsap.set(outgoing, {
+        position: outgoingPosition === "static" ? "relative" : outgoingPosition,
+        zIndex: outgoingZ
+      });
+      gsap.set(element, {
+        position: incomingPosition === "static" ? "relative" : incomingPosition,
+        zIndex: incomingZ,
+        isolation: "isolate"
+      });
+
+      gsap.set([outgoingVisual, incomingVisual], {
+        transformOrigin,
+        willChange: "transform"
+      });
+
+      const timeline = gsap.timeline({
+        scrollTrigger: {
+          ...scrollTrigger,
+          ...(pin
+            ? {
+                pin: outgoing,
+                pinSpacing,
+                anticipatePin: 1
+              }
+            : {})
+        }
+      });
+
+      timeline
+        .fromTo(
+          outgoingVisual,
+          { scale: 1, yPercent: 0 },
+          {
+            scale: outgoingScale,
+            yPercent: outgoingY,
+            ease,
+            immediateRender: false
+          },
+          0
+        )
+        .fromTo(
+          incomingVisual,
+          {
+            scale: incomingScale,
+            yPercent: incomingY
+          },
+          {
+            scale: 1,
+            yPercent: 0,
+            ease,
+            immediateRender: false
+          },
+          0
+        );
+
+      return () => {
+        timeline.scrollTrigger?.kill();
+        timeline.kill();
+
+        if (outgoingVisual !== outgoing) {
+          restoreInlineStyle(outgoingVisual, originalOutgoingVisualStyle);
+        }
+        if (incomingVisual !== element) {
+          restoreInlineStyle(incomingVisual, originalIncomingVisualStyle);
+        }
+
+        restoreInlineStyle(outgoing, originalOutgoingStyle);
+        restoreInlineStyle(element, originalIncomingStyle);
       };
     }
 
