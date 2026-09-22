@@ -295,23 +295,27 @@ export const sectionBlendHandoff = {
         "motion-section-blend-handoff-stage",
         ""
       );
+      const stage = resolveElement(element, stageSelector, element);
+      const pinTarget = stage || element;
 
-      if (!stageSelector) {
-        console.warn(
-          "[motion-kit] depth-handoff requires data-motion-section-blend-handoff-stage so the published stacked-panels pattern can pin a dedicated transition stage."
-        );
-        return;
-      }
-
-      const stage = resolveElement(document, stageSelector, null);
-      if (!stage) {
-        console.warn(
-          "[motion-kit] depth-handoff stage not found:",
-          stageSelector
-        );
-        return;
-      }
-
+      const depthStart = readString(
+        element,
+        "motion-section-blend-handoff-depth-start",
+        "top top"
+      );
+      const depthEnd = readString(
+        element,
+        "motion-section-blend-handoff-depth-end",
+        ""
+      );
+      const scrollVh = Math.max(
+        80,
+        readNumber(
+          element,
+          "motion-section-blend-handoff-scroll-vh",
+          readNumber(element, "motion-scroll-vh", 220)
+        )
+      );
       const scale = clamp(
         readNumber(
           element,
@@ -321,18 +325,15 @@ export const sectionBlendHandoff = {
         0.5,
         1
       );
-      const depthDuration = Math.max(
-        0,
-        readNumber(
-          element,
-          "motion-section-blend-handoff-depth-duration",
-          DEFAULTS.depthDuration
-        )
+      const yFrom = readNumber(
+        element,
+        "motion-section-blend-handoff-y-from",
+        8
       );
       const depthEase = readString(
         element,
         "motion-section-blend-handoff-depth-ease",
-        DEFAULTS.depthEase
+        "none"
       );
       const transformOrigin = readString(
         element,
@@ -340,90 +341,80 @@ export const sectionBlendHandoff = {
         DEFAULTS.depthTransformOrigin
       );
 
-      const originalStageStyle = stage.getAttribute("style");
+      const originalStageStyle =
+        pinTarget !== element && pinTarget !== incomingVisual
+          ? pinTarget.getAttribute("style")
+          : null;
 
-      gsap.set(outgoingVisual, {
-        scale: 1,
-        autoAlpha: 1,
-        transformOrigin,
-        willChange: "transform,opacity"
+      if (window.getComputedStyle(element).position === "static") {
+        gsap.set(element, { position: "relative" });
+      }
+      gsap.set(element, {
+        zIndex: readNumber(element, "motion-section-blend-handoff-z-index", 6)
+      });
+
+      gsap.set(pinTarget, {
+        overflow: "hidden",
+        willChange: "transform"
       });
 
       gsap.set(incomingVisual, {
-        scale,
         autoAlpha: 0,
+        scale,
+        yPercent: yFrom,
         transformOrigin,
         willChange: "transform,opacity"
       });
 
-      let handoffTimeline = null;
+      if (outgoingVisual && outgoingVisual !== incomingVisual) {
+        gsap.set(outgoingVisual, {
+          scale: 1,
+          autoAlpha: 1,
+          transformOrigin,
+          willChange: "transform,opacity"
+        });
+      }
 
-      const createForwardTimeline = () => {
-        handoffTimeline?.kill();
-        handoffTimeline = gsap
-          .timeline()
-          .to(outgoingVisual, {
-            scale,
+      const timeline = gsap.timeline({
+        scrollTrigger: {
+          trigger: element,
+          start: depthStart,
+          end: depthEnd || `+=${scrollVh}%`,
+          scrub,
+          pin: pinTarget,
+          pinSpacing: true,
+          anticipatePin: 1,
+          invalidateOnRefresh: true
+        }
+      });
+
+      if (outgoingVisual && outgoingVisual !== incomingVisual) {
+        timeline.to(
+          outgoingVisual,
+          {
             autoAlpha: 0,
-            duration: depthDuration,
-            ease: depthEase,
-            overwrite: "auto"
-          })
-          .to(
-            incomingVisual,
-            {
-              scale: 1,
-              autoAlpha: 1,
-              duration: depthDuration,
-              ease: depthEase,
-              overwrite: "auto"
-            },
-            "<"
-          );
-      };
+            scale,
+            yPercent: -yFrom,
+            ease: depthEase
+          },
+          0
+        );
+      }
 
-      const createBackwardTimeline = () => {
-        handoffTimeline?.kill();
-        handoffTimeline = gsap
-          .timeline()
-          .to(outgoingVisual, {
-            scale: 1,
-            autoAlpha: 1,
-            duration: depthDuration,
-            ease: depthEase,
-            overwrite: "auto"
-          })
-          .to(
-            incomingVisual,
-            {
-              scale,
-              autoAlpha: 0,
-              duration: depthDuration,
-              ease: depthEase,
-              overwrite: "auto"
-            },
-            "<"
-          );
-      };
-
-      const handoffTrigger = ScrollTrigger.create({
-        trigger: stage,
-        start: "top+=100% top",
-        end: "top+=100% top",
-        onEnter: createForwardTimeline,
-        onEnterBack: createBackwardTimeline
-      });
-
-      const pinTrigger = ScrollTrigger.create({
-        trigger: stage,
-        pin: true,
-        end: "+=200%"
-      });
+      timeline.to(
+        incomingVisual,
+        {
+          autoAlpha: 1,
+          scale: 1,
+          yPercent: 0,
+          ease: depthEase
+        },
+        0
+      );
 
       return () => {
-        handoffTimeline?.kill();
-        handoffTrigger.kill();
-        pinTrigger.kill(true);
+        timeline.scrollTrigger?.kill(true);
+        timeline.kill();
 
         if (outgoingVisual !== outgoing) {
           restoreInlineStyle(outgoingVisual, originalOutgoingVisualStyle);
@@ -434,7 +425,15 @@ export const sectionBlendHandoff = {
 
         restoreInlineStyle(outgoing, originalOutgoingStyle);
         restoreInlineStyle(element, originalIncomingStyle);
-        restoreInlineStyle(stage, originalStageStyle);
+        restoreInlineStyle(sharedTarget, originalTargetStyle);
+
+        if (
+          pinTarget !== element &&
+          pinTarget !== incomingVisual &&
+          pinTarget !== outgoingVisual
+        ) {
+          restoreInlineStyle(pinTarget, originalStageStyle);
+        }
       };
     }
 
