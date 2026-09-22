@@ -25,6 +25,7 @@ const DEFAULTS = Object.freeze({
   depthIncomingScale: 0.9,
   depthOutgoingY: -2.5,
   depthIncomingY: 4,
+  depthOutgoingOpacity: 0.28,
   depthTransformOrigin: "50% 0%"
 });
 
@@ -319,6 +320,13 @@ export const sectionBlendHandoff = {
         "motion-section-blend-handoff-incoming-y",
         0
       );
+      const outgoingOpacity = clamp(
+        readNumber(
+          element,
+          "motion-section-blend-handoff-outgoing-opacity",
+          DEFAULTS.depthOutgoingOpacity
+        )
+      );
       const transformOrigin = readString(
         element,
         "motion-section-blend-handoff-transform-origin",
@@ -375,11 +383,13 @@ export const sectionBlendHandoff = {
           outgoingVisual,
           {
             scale: 1,
-            yPercent: 0
+            yPercent: 0,
+            autoAlpha: 1
           },
           {
             scale: outgoingScale,
             yPercent: outgoingY,
+            autoAlpha: outgoingOpacity,
             ease,
             immediateRender: false
           },
