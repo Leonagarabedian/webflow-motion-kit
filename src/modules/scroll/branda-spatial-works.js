@@ -7,6 +7,7 @@ const STYLE_ID = "motion-kit-branda-spatial-works-styles";
 const SECTION_SELECTOR = "[data-branda-spatial-section]";
 const PIN_SELECTOR = "[data-branda-spatial-pin]";
 const STAGE_SELECTOR = '[data-motion~="branda-spatial-works"]';
+const CURSOR_STATE_CLASSES = ["cursor-click", "cursor-drag", "cursor-passive"];
 
 const DEFAULTS = Object.freeze({
   itemSelector: ".work-item",
@@ -130,6 +131,24 @@ function titleFromItem(item, media, titleSelector, index) {
 function linkFromItem(item) {
   if (item instanceof HTMLAnchorElement && item.href) return item.href;
   return item.querySelector("a[href]")?.href || null;
+}
+
+function cursorStateFromItem(item) {
+  if (!item) return null;
+
+  const candidates = [
+    item,
+    ...item.querySelectorAll(".cursor-click, .cursor-drag, .cursor-passive")
+  ];
+
+  for (const candidate of candidates) {
+    const state = CURSOR_STATE_CLASSES.find((className) =>
+      candidate.classList?.contains(className)
+    );
+    if (state) return state;
+  }
+
+  return null;
 }
 
 async function createTexture(media) {
@@ -277,6 +296,7 @@ export const brandaSpatialWorks = {
     let resizeObserver = null;
     let active = false;
     let dirty = true;
+    let activeCursorClass = null;
 
     const cameraZ = () => (window.innerWidth <= 767 ? mobileCameraZ : desktopCameraZ);
 
@@ -454,20 +474,44 @@ export const brandaSpatialWorks = {
       }
     };
 
-    const onPointerUp = (event) => {
-      if (!renderer || !slides.length) return;
+    const slideFromPointerEvent = (event) => {
+      if (!renderer || !slides.length) return null;
 
       const rect = renderer.domElement.getBoundingClientRect();
-      if (!rect.width || !rect.height) return;
+      if (!rect.width || !rect.height) return null;
 
       pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
       pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
       raycaster.setFromCamera(pointer, camera);
 
       const hit = raycaster.intersectObjects(slides.map((slide) => slide.mesh), false)[0];
-      if (!hit) return;
+      if (!hit) return null;
 
-      const slide = slides.find((candidate) => candidate.mesh === hit.object);
+      return slides.find((candidate) => candidate.mesh === hit.object) || null;
+    };
+
+    const setCanvasCursorState = (nextClass) => {
+      if (!renderer || nextClass === activeCursorClass) return;
+
+      CURSOR_STATE_CLASSES.forEach((className) =>
+        renderer.domElement.classList.remove(className)
+      );
+
+      if (nextClass) renderer.domElement.classList.add(nextClass);
+      activeCursorClass = nextClass;
+    };
+
+    const onPointerMove = (event) => {
+      const slide = slideFromPointerEvent(event);
+      setCanvasCursorState(slide?.href ? slide.cursorClass : null);
+    };
+
+    const onPointerLeave = () => {
+      setCanvasCursorState(null);
+    };
+
+    const onPointerUp = (event) => {
+      const slide = slideFromPointerEvent(event);
       if (slide?.href) window.location.href = slide.href;
     };
 
@@ -537,6 +581,7 @@ export const brandaSpatialWorks = {
             order,
             item,
             href: linkFromItem(item),
+            cursorClass: cursorStateFromItem(item),
             mesh,
             geometry,
             material,
@@ -553,6 +598,8 @@ export const brandaSpatialWorks = {
           item.setAttribute("data-branda-spatial-source-hidden", "")
         );
 
+        renderer.domElement.addEventListener("pointermove", onPointerMove);
+        renderer.domElement.addEventListener("pointerleave", onPointerLeave);
         renderer.domElement.addEventListener("pointerup", onPointerUp);
 
         resizeObserver = new ResizeObserver(() => resize());
@@ -628,6 +675,8 @@ export const brandaSpatialWorks = {
       scrollTrigger?.kill?.();
       resizeObserver?.disconnect?.();
       window.removeEventListener("resize", resize);
+      renderer?.domElement?.removeEventListener("pointermove", onPointerMove);
+      renderer?.domElement?.removeEventListener("pointerleave", onPointerLeave);
       renderer?.domElement?.removeEventListener("pointerup", onPointerUp);
       gsap.killTweensOf(titleItems);
 
