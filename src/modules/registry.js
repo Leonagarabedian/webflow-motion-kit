@@ -25,6 +25,7 @@ import { heroSlitTransition } from "./hero-slit-transition.js";
 import { hoverBackgroundSwap } from "./hover-background-swap.js";
 import { hoverHighlightBox } from "./hover-highlight-box.js";
 import { hoverLinkedIlluminate } from "./hover-linked-illuminate.js";
+import { hoverUnderlineSweep } from "./hover-underline-sweep.js";
 import { imageClip } from "./image-clip.js";
 import { innerLetterSpace } from "./inner-letter-space.js";
 import { lineReveal } from "./line-reveal.js";
@@ -125,6 +126,7 @@ export const modules = [
   hoverHighlightBox,
   hoverBackgroundSwap,
   hoverLinkedIlluminate,
+  hoverUnderlineSweep,
   gridVideoReveal,
   flipRelocation,
   fieldTakeover,
