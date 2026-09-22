@@ -1,4 +1,5 @@
-import { resolveScrollContract, viewportScroll } from "../../core/scroll-alignment/contract.js";
+import { resolveScrollContract } from "../../core/scroll-alignment/contract.js";
+import { computeAlignedStart } from "../../core/scroll-alignment/geometry.js";
 import { readNumber, readString } from "../../core/config.js";
 
 const DEFAULTS = Object.freeze({
@@ -69,6 +70,23 @@ function sanitizeClone(root) {
   });
 }
 
+function copyInheritedContext(source, target) {
+  const computed = window.getComputedStyle(source);
+  for (let index = 0; index < computed.length; index += 1) {
+    const name = computed[index];
+    if (name.startsWith("--")) {
+      target.style.setProperty(name, computed.getPropertyValue(name));
+    }
+  }
+  target.style.color = computed.color;
+  target.style.fontFamily = computed.fontFamily;
+  target.style.fontSize = computed.fontSize;
+  target.style.fontWeight = computed.fontWeight;
+  target.style.lineHeight = computed.lineHeight;
+  target.style.letterSpacing = computed.letterSpacing;
+  target.style.textTransform = computed.textTransform;
+}
+
 function createOverlay(root, incomingVisual, zIndex, top) {
   const overlay = document.createElement("div");
   const clone = incomingVisual.cloneNode(true);
@@ -101,6 +119,7 @@ function createOverlay(root, incomingVisual, zIndex, top) {
     margin: "0"
   });
 
+  copyInheritedContext(incomingVisual, overlay);
   overlay.appendChild(clone);
   document.body.appendChild(overlay);
 
@@ -108,7 +127,18 @@ function createOverlay(root, incomingVisual, zIndex, top) {
 }
 
 function autoScroll(root) {
-  return viewportScroll(root, 1, () => Math.max(1, window.innerHeight));
+  return {
+    start: () => computeAlignedStart({
+      trigger: root,
+      anchor: "top",
+      viewport: 1
+    }),
+    end: () => computeAlignedStart({
+      trigger: root,
+      anchor: "top",
+      viewport: 0
+    })
+  };
 }
 
 export const sectionReplacement = {
@@ -165,6 +195,7 @@ export const sectionReplacement = {
 
     const syncGeometry = () => {
       const rect = incomingVisual.getBoundingClientRect();
+      copyInheritedContext(incomingVisual, overlay);
       Object.assign(clone.style, {
         left: `${rect.left}px`,
         width: `${rect.width}px`,
