@@ -87,6 +87,7 @@ export const sectionHandoff = {
       const fromSelector = readString(element, "motion-section-handoff-from", "");
       const pinTargetSelector = readString(element, "motion-section-handoff-pin-target", "");
       const distance = readString(element, "motion-section-handoff-distance", "edge");
+      const endMode = readString(element, "motion-section-handoff-end-mode", "default");
 
       let outgoing = null;
       if (fromSelector) {
@@ -156,10 +157,19 @@ export const sectionHandoff = {
         isolation: "isolate"
       });
 
+      const useIncomingBottomEnd = endMode === "incoming-bottom";
+
       const panelTrigger = ScrollTrigger.create({
         trigger: element,
         start,
-        end: resolveEnd,
+        ...(useIncomingBottomEnd
+          ? {
+              endTrigger: element,
+              end: "bottom bottom"
+            }
+          : {
+              end: resolveEnd
+            }),
         pin: pinTarget,
         pinSpacing: false,
         pinReparent: true,
