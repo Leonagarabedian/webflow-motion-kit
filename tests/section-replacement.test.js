@@ -25,6 +25,15 @@ function mount(attributes = "") {
   root.setAttribute("data-motion-replacement-from", ".mission");
   root.setAttribute("data-motion-replacement-target", ".team-hero");
 
+  root.getBoundingClientRect = () => ({
+    left: 0,
+    top: 1000,
+    right: 1440,
+    bottom: 2000,
+    width: 1440,
+    height: 1000
+  });
+
   hero.getBoundingClientRect = () => ({
     left: 120,
     top: 1000,
@@ -86,7 +95,10 @@ describe("section replacement", () => {
     const result = mount('data-motion-alignment="auto"');
 
     expect(typeof result.config.start).toBe("function");
-    expect(result.config.end()).toBe("+=1000");
+    expect(typeof result.config.end).toBe("function");
+    expect(result.config.start()).toBe(0);
+    expect(result.config.end()).toBe(1000);
+    expect(result.config.end() - result.config.start()).toBe(1000);
     expect(result.config.pin).toBe(result.outgoing);
 
     result.cleanup();
