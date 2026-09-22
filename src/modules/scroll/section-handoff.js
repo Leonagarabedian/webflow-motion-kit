@@ -88,6 +88,8 @@ export const sectionHandoff = {
       const pinTargetSelector = readString(element, "motion-section-handoff-pin-target", "");
       const distance = readString(element, "motion-section-handoff-distance", "edge");
       const endMode = readString(element, "motion-section-handoff-end-mode", "default");
+      const releaseStack =
+        readString(element, "motion-section-handoff-release-stack", "false") === "true";
 
       let outgoing = null;
       if (fromSelector) {
@@ -112,6 +114,7 @@ export const sectionHandoff = {
       }
 
       const originalOutgoingStyle = outgoing.getAttribute("style");
+      const originalOutgoingZIndex = outgoing.style.zIndex;
       const originalPinTargetStyle =
         pinTarget !== outgoing ? pinTarget.getAttribute("style") : null;
       const panelZ = readNumber(element, "motion-section-handoff-z-index", 6);
@@ -147,9 +150,18 @@ export const sectionHandoff = {
         return authoredEnd;
       };
 
-      gsap.set(outgoing, {
-        zIndex: Math.max(0, panelZ - 1)
-      });
+      const applyOutgoingStack = () => {
+        gsap.set(outgoing, {
+          zIndex: Math.max(0, panelZ - 1)
+        });
+      };
+
+      const restoreOutgoingStack = () => {
+        if (originalOutgoingZIndex) outgoing.style.zIndex = originalOutgoingZIndex;
+        else outgoing.style.removeProperty("z-index");
+      };
+
+      applyOutgoingStack();
 
       gsap.set(element, {
         position: "relative",
@@ -174,7 +186,15 @@ export const sectionHandoff = {
         pinSpacing: false,
         pinReparent: true,
         anticipatePin: 1,
-        invalidateOnRefresh: true
+        invalidateOnRefresh: true,
+        onEnter: applyOutgoingStack,
+        onEnterBack: applyOutgoingStack,
+        onLeave: () => {
+          if (releaseStack) restoreOutgoingStack();
+        },
+        onLeaveBack: () => {
+          if (releaseStack) restoreOutgoingStack();
+        }
       });
 
       return () => {
