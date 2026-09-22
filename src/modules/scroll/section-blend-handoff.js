@@ -293,16 +293,26 @@ export const sectionBlendHandoff = {
     }
 
     if (mode === "layered-section-fade-in") {
-      const incomingPosition = window.getComputedStyle(element).position;
-      const outgoingPosition = window.getComputedStyle(outgoing).position;
+      const incomingComputed = window.getComputedStyle(element);
+      const outgoingComputed = window.getComputedStyle(outgoing);
+      const incomingPosition = incomingComputed.position;
+      const outgoingPosition = outgoingComputed.position;
+
+      const parsedOutgoingZ = Number.parseInt(outgoingComputed.zIndex, 10);
+      const parsedIncomingZ = Number.parseInt(incomingComputed.zIndex, 10);
+      const outgoingZ = Number.isFinite(parsedOutgoingZ) ? parsedOutgoingZ : 0;
+      const incomingZ = Math.max(
+        Number.isFinite(parsedIncomingZ) ? parsedIncomingZ : outgoingZ + 1,
+        outgoingZ + 1
+      );
 
       gsap.set(outgoing, {
         position: outgoingPosition === "static" ? "relative" : outgoingPosition,
-        zIndex: 1
+        zIndex: outgoingZ
       });
       gsap.set(element, {
         position: incomingPosition === "static" ? "relative" : incomingPosition,
-        zIndex: 2
+        zIndex: incomingZ
       });
 
       const tween = gsap.fromTo(
