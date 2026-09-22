@@ -391,7 +391,7 @@ export const sectionBlendHandoff = {
             yPercent: outgoingY,
             autoAlpha: outgoingOpacity,
             ease,
-            duration: 1,
+            duration: 0.48,
             immediateRender: false
           },
           0
@@ -406,10 +406,10 @@ export const sectionBlendHandoff = {
             scale: 1,
             yPercent: 0,
             ease,
-            duration: 0.42,
+            duration: 0.38,
             immediateRender: false
           },
-          0.04
+          0.02
         );
 
       return () => {
