@@ -25,7 +25,7 @@ const DEFAULTS = Object.freeze({
   depthIncomingScale: 0.9,
   depthOutgoingY: -2.5,
   depthIncomingY: 4,
-  depthTransformOrigin: "50% 50%"
+  depthTransformOrigin: "50% 0%"
 });
 
 function clamp(value, min = 0, max = 1) {
@@ -317,7 +317,7 @@ export const sectionBlendHandoff = {
       const incomingY = readNumber(
         element,
         "motion-section-blend-handoff-incoming-y",
-        DEFAULTS.depthIncomingY
+        0
       );
       const transformOrigin = readString(
         element,
@@ -329,46 +329,54 @@ export const sectionBlendHandoff = {
       const incomingComputed = window.getComputedStyle(element);
       const outgoingPosition = outgoingComputed.position;
       const incomingPosition = incomingComputed.position;
+
       const parsedOutgoingZ = Number.parseInt(outgoingComputed.zIndex, 10);
       const parsedIncomingZ = Number.parseInt(incomingComputed.zIndex, 10);
-      const outgoingZ = Number.isFinite(parsedOutgoingZ) ? parsedOutgoingZ : 0;
-      const incomingZ = Math.max(
-        Number.isFinite(parsedIncomingZ) ? parsedIncomingZ : outgoingZ + 1,
-        outgoingZ + 1
+      const baseZ = Math.max(
+        Number.isFinite(parsedOutgoingZ) ? parsedOutgoingZ : 0,
+        Number.isFinite(parsedIncomingZ) ? parsedIncomingZ : 0
       );
 
+      // Depth handoff is a stacked exchange:
+      // outgoing stays above and recedes while incoming advances underneath.
       gsap.set(outgoing, {
         position: outgoingPosition === "static" ? "relative" : outgoingPosition,
-        zIndex: outgoingZ
+        zIndex: baseZ + 2,
+        isolation: "isolate"
       });
       gsap.set(element, {
         position: incomingPosition === "static" ? "relative" : incomingPosition,
-        zIndex: incomingZ,
+        zIndex: baseZ + 1,
         isolation: "isolate"
       });
 
-      gsap.set([outgoingVisual, incomingVisual], {
+      gsap.set(outgoingVisual, {
+        transformOrigin,
+        willChange: "transform"
+      });
+      gsap.set(incomingVisual, {
         transformOrigin,
         willChange: "transform"
       });
 
+      const depthScrollTrigger = {
+        ...scrollTrigger,
+        pin: outgoing,
+        pinSpacing: false,
+        anticipatePin: 1
+      };
+
       const timeline = gsap.timeline({
-        scrollTrigger: {
-          ...scrollTrigger,
-          ...(pin
-            ? {
-                pin: outgoing,
-                pinSpacing,
-                anticipatePin: 1
-              }
-            : {})
-        }
+        scrollTrigger: depthScrollTrigger
       });
 
       timeline
         .fromTo(
           outgoingVisual,
-          { scale: 1, yPercent: 0 },
+          {
+            scale: 1,
+            yPercent: 0
+          },
           {
             scale: outgoingScale,
             yPercent: outgoingY,
@@ -393,7 +401,7 @@ export const sectionBlendHandoff = {
         );
 
       return () => {
-        timeline.scrollTrigger?.kill();
+        timeline.scrollTrigger?.kill(true);
         timeline.kill();
 
         if (outgoingVisual !== outgoing) {
