@@ -170,30 +170,30 @@ export const sectionHandoff = {
       });
 
       const useIncomingBottomEnd = endMode === "incoming-bottom";
-      const useHeightAwareEnd = endMode === "height-aware";
+      const raiseNext =
+        readString(element, "motion-section-handoff-raise-next", "false") === "true";
+      const nextSection = element.nextElementSibling;
+      const originalNextStyle = nextSection?.getAttribute("style") ?? null;
 
-      const resolveHeightAwareEnd = () => {
-        const outgoingHeight = Math.max(1, outgoing.getBoundingClientRect().height);
-        const incomingHeight = Math.max(1, element.getBoundingClientRect().height);
-        const extraCoverage = Math.max(0, outgoingHeight - incomingHeight);
-        return `+=${Math.max(1, window.innerHeight + extraCoverage)}`;
-      };
+      if (raiseNext && nextSection) {
+        const nextPosition = window.getComputedStyle(nextSection).position;
+        gsap.set(nextSection, {
+          position: nextPosition === "static" ? "relative" : nextPosition,
+          zIndex: panelZ + 1
+        });
+      }
 
       const panelTrigger = ScrollTrigger.create({
         trigger: element,
         start,
-        ...(useHeightAwareEnd
+        ...(useIncomingBottomEnd
           ? {
-              end: resolveHeightAwareEnd
+              endTrigger: element,
+              end: "bottom bottom"
             }
-          : useIncomingBottomEnd
-            ? {
-                endTrigger: element,
-                end: "bottom bottom"
-              }
-            : {
-                end: resolveEnd
-              }),
+          : {
+              end: resolveEnd
+            }),
         pin: pinTarget,
         pinSpacing: false,
         pinReparent: true,
@@ -218,6 +218,11 @@ export const sectionHandoff = {
         if (pinTarget !== outgoing) {
           if (originalPinTargetStyle == null) pinTarget.removeAttribute("style");
           else pinTarget.setAttribute("style", originalPinTargetStyle);
+        }
+
+        if (raiseNext && nextSection) {
+          if (originalNextStyle == null) nextSection.removeAttribute("style");
+          else nextSection.setAttribute("style", originalNextStyle);
         }
 
         if (originalStyle == null) element.removeAttribute("style");
