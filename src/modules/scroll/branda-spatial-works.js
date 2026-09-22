@@ -52,7 +52,6 @@ function ensureStyles(doc) {
       height: 100%;
       display: block;
       z-index: 1;
-      cursor: pointer;
     }
 
     [data-branda-spatial-source-hidden] {
