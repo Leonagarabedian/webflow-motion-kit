@@ -170,18 +170,30 @@ export const sectionHandoff = {
       });
 
       const useIncomingBottomEnd = endMode === "incoming-bottom";
+      const useHeightAwareEnd = endMode === "height-aware";
+
+      const resolveHeightAwareEnd = () => {
+        const outgoingHeight = Math.max(1, outgoing.getBoundingClientRect().height);
+        const incomingHeight = Math.max(1, element.getBoundingClientRect().height);
+        const extraCoverage = Math.max(0, outgoingHeight - incomingHeight);
+        return `+=${Math.max(1, window.innerHeight + extraCoverage)}`;
+      };
 
       const panelTrigger = ScrollTrigger.create({
         trigger: element,
         start,
-        ...(useIncomingBottomEnd
+        ...(useHeightAwareEnd
           ? {
-              endTrigger: element,
-              end: "bottom bottom"
+              end: resolveHeightAwareEnd
             }
-          : {
-              end: resolveEnd
-            }),
+          : useIncomingBottomEnd
+            ? {
+                endTrigger: element,
+                end: "bottom bottom"
+              }
+            : {
+                end: resolveEnd
+              }),
         pin: pinTarget,
         pinSpacing: false,
         pinReparent: true,
