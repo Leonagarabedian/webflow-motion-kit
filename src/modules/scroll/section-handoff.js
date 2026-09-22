@@ -87,9 +87,6 @@ export const sectionHandoff = {
       const fromSelector = readString(element, "motion-section-handoff-from", "");
       const pinTargetSelector = readString(element, "motion-section-handoff-pin-target", "");
       const distance = readString(element, "motion-section-handoff-distance", "edge");
-      const endMode = readString(element, "motion-section-handoff-end-mode", "default");
-      const releaseStack =
-        readString(element, "motion-section-handoff-release-stack", "false") === "true";
 
       let outgoing = null;
       if (fromSelector) {
@@ -114,7 +111,6 @@ export const sectionHandoff = {
       }
 
       const originalOutgoingStyle = outgoing.getAttribute("style");
-      const originalOutgoingZIndex = outgoing.style.zIndex;
       const originalPinTargetStyle =
         pinTarget !== outgoing ? pinTarget.getAttribute("style") : null;
       const panelZ = readNumber(element, "motion-section-handoff-z-index", 6);
@@ -150,18 +146,9 @@ export const sectionHandoff = {
         return authoredEnd;
       };
 
-      const applyOutgoingStack = () => {
-        gsap.set(outgoing, {
-          zIndex: Math.max(0, panelZ - 1)
-        });
-      };
-
-      const restoreOutgoingStack = () => {
-        if (originalOutgoingZIndex) outgoing.style.zIndex = originalOutgoingZIndex;
-        else outgoing.style.removeProperty("z-index");
-      };
-
-      applyOutgoingStack();
+      gsap.set(outgoing, {
+        zIndex: Math.max(0, panelZ - 1)
+      });
 
       gsap.set(element, {
         position: "relative",
@@ -169,44 +156,40 @@ export const sectionHandoff = {
         isolation: "isolate"
       });
 
-      const useIncomingBottomEnd = endMode === "incoming-bottom";
-      const raiseNext =
-        readString(element, "motion-section-handoff-raise-next", "false") === "true";
-      const nextSection = element.nextElementSibling;
-      const originalNextStyle = nextSection?.getAttribute("style") ?? null;
+      const usesAuthoredDistance = distance !== "edge" && distance !== "auto";
 
-      if (raiseNext && nextSection) {
-        const nextPosition = window.getComputedStyle(nextSection).position;
-        gsap.set(nextSection, {
-          position: nextPosition === "static" ? "relative" : nextPosition,
-          zIndex: panelZ + 1
-        });
-      }
+      const resolvePanelEnd = (self) => {
+        if (usesAuthoredDistance) return resolveEnd();
+
+        const outgoingRect = outgoing.getBoundingClientRect();
+        const incomingRect = element.getBoundingClientRect();
+
+        // Equal/taller incoming sections keep the authored slide-over timing.
+        if (incomingRect.height >= outgoingRect.height) {
+          return authoredEnd;
+        }
+
+        // For a shorter incoming section, release the outgoing pin when the
+        // incoming section's bottom reaches the outgoing section's pinned bottom.
+        // ScrollTrigger refresh temporarily restores normal document flow, so
+        // these bounds reflect the authored layout each time they are measured.
+        const scrollY = window.scrollY || window.pageYOffset || 0;
+        const outgoingBottomInDocument = outgoingRect.bottom + scrollY;
+        const outgoingPinnedBottom = outgoingBottomInDocument - self.start;
+
+        return `bottom ${outgoingPinnedBottom}px`;
+      };
 
       const panelTrigger = ScrollTrigger.create({
         trigger: element,
+        endTrigger: element,
         start,
-        ...(useIncomingBottomEnd
-          ? {
-              endTrigger: element,
-              end: "bottom bottom"
-            }
-          : {
-              end: resolveEnd
-            }),
+        end: resolvePanelEnd,
         pin: pinTarget,
         pinSpacing: false,
         pinReparent: true,
         anticipatePin: 1,
-        invalidateOnRefresh: true,
-        onEnter: applyOutgoingStack,
-        onEnterBack: applyOutgoingStack,
-        onLeave: () => {
-          if (releaseStack) restoreOutgoingStack();
-        },
-        onLeaveBack: () => {
-          if (releaseStack) restoreOutgoingStack();
-        }
+        invalidateOnRefresh: true
       });
 
       return () => {
@@ -218,11 +201,6 @@ export const sectionHandoff = {
         if (pinTarget !== outgoing) {
           if (originalPinTargetStyle == null) pinTarget.removeAttribute("style");
           else pinTarget.setAttribute("style", originalPinTargetStyle);
-        }
-
-        if (raiseNext && nextSection) {
-          if (originalNextStyle == null) nextSection.removeAttribute("style");
-          else nextSection.setAttribute("style", originalNextStyle);
         }
 
         if (originalStyle == null) element.removeAttribute("style");
