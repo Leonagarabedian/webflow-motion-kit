@@ -21,12 +21,10 @@ const DEFAULTS = Object.freeze({
   target: "body",
   opacityFrom: 0,
   opacityTo: 1,
-  depthOutgoingScale: 0.9,
-  depthIncomingScale: 0.9,
-  depthOutgoingY: -2.5,
-  depthIncomingY: 4,
-  depthOutgoingOpacity: 0.28,
-  depthTransformOrigin: "50% 0%"
+  depthScale: 0.8,
+  depthDuration: 0.5,
+  depthEase: "power1.out",
+  depthTransformOrigin: "50% 50%"
 });
 
 function clamp(value, min = 0, max = 1) {
@@ -292,40 +290,49 @@ export const sectionBlendHandoff = {
 
 
     if (mode === "depth-handoff") {
-      const outgoingScale = clamp(
+      const stageSelector = readString(
+        element,
+        "motion-section-blend-handoff-stage",
+        ""
+      );
+
+      if (!stageSelector) {
+        console.warn(
+          "[motion-kit] depth-handoff requires data-motion-section-blend-handoff-stage so the published stacked-panels pattern can pin a dedicated transition stage."
+        );
+        return;
+      }
+
+      const stage = resolveElement(document, stageSelector, null);
+      if (!stage) {
+        console.warn(
+          "[motion-kit] depth-handoff stage not found:",
+          stageSelector
+        );
+        return;
+      }
+
+      const scale = clamp(
         readNumber(
           element,
-          "motion-section-blend-handoff-outgoing-scale",
-          DEFAULTS.depthOutgoingScale
+          "motion-section-blend-handoff-scale",
+          DEFAULTS.depthScale
         ),
         0.5,
-        1.5
+        1
       );
-      const incomingScale = clamp(
+      const depthDuration = Math.max(
+        0,
         readNumber(
           element,
-          "motion-section-blend-handoff-incoming-scale",
-          DEFAULTS.depthIncomingScale
-        ),
-        0.5,
-        1.5
-      );
-      const outgoingY = readNumber(
-        element,
-        "motion-section-blend-handoff-outgoing-y",
-        DEFAULTS.depthOutgoingY
-      );
-      const incomingY = readNumber(
-        element,
-        "motion-section-blend-handoff-incoming-y",
-        0
-      );
-      const outgoingOpacity = clamp(
-        readNumber(
-          element,
-          "motion-section-blend-handoff-outgoing-opacity",
-          DEFAULTS.depthOutgoingOpacity
+          "motion-section-blend-handoff-depth-duration",
+          DEFAULTS.depthDuration
         )
+      );
+      const depthEase = readString(
+        element,
+        "motion-section-blend-handoff-depth-ease",
+        DEFAULTS.depthEase
       );
       const transformOrigin = readString(
         element,
@@ -333,88 +340,90 @@ export const sectionBlendHandoff = {
         DEFAULTS.depthTransformOrigin
       );
 
-      const outgoingComputed = window.getComputedStyle(outgoing);
-      const incomingComputed = window.getComputedStyle(element);
-      const outgoingPosition = outgoingComputed.position;
-      const incomingPosition = incomingComputed.position;
-
-      const parsedOutgoingZ = Number.parseInt(outgoingComputed.zIndex, 10);
-      const parsedIncomingZ = Number.parseInt(incomingComputed.zIndex, 10);
-      const baseZ = Math.max(
-        Number.isFinite(parsedOutgoingZ) ? parsedOutgoingZ : 0,
-        Number.isFinite(parsedIncomingZ) ? parsedIncomingZ : 0
-      );
-
-      // Depth handoff is a stacked exchange:
-      // outgoing stays above and recedes while incoming advances underneath.
-      gsap.set(outgoing, {
-        position: outgoingPosition === "static" ? "relative" : outgoingPosition,
-        zIndex: baseZ + 2,
-        isolation: "isolate"
-      });
-      gsap.set(element, {
-        position: incomingPosition === "static" ? "relative" : incomingPosition,
-        zIndex: baseZ + 1,
-        isolation: "isolate"
-      });
+      const originalStageStyle = stage.getAttribute("style");
 
       gsap.set(outgoingVisual, {
+        scale: 1,
+        autoAlpha: 1,
         transformOrigin,
-        willChange: "transform"
-      });
-      gsap.set(incomingVisual, {
-        transformOrigin,
-        willChange: "transform"
+        willChange: "transform,opacity"
       });
 
-      const depthScrollTrigger = {
-        ...scrollTrigger,
-        pin: outgoing,
-        pinSpacing: false,
-        anticipatePin: 1
+      gsap.set(incomingVisual, {
+        scale,
+        autoAlpha: 0,
+        transformOrigin,
+        willChange: "transform,opacity"
+      });
+
+      let handoffTimeline = null;
+
+      const createForwardTimeline = () => {
+        handoffTimeline?.kill();
+        handoffTimeline = gsap
+          .timeline()
+          .to(outgoingVisual, {
+            scale,
+            autoAlpha: 0,
+            duration: depthDuration,
+            ease: depthEase,
+            overwrite: "auto"
+          })
+          .to(
+            incomingVisual,
+            {
+              scale: 1,
+              autoAlpha: 1,
+              duration: depthDuration,
+              ease: depthEase,
+              overwrite: "auto"
+            },
+            "<"
+          );
       };
 
-      const timeline = gsap.timeline({
-        scrollTrigger: depthScrollTrigger
+      const createBackwardTimeline = () => {
+        handoffTimeline?.kill();
+        handoffTimeline = gsap
+          .timeline()
+          .to(outgoingVisual, {
+            scale: 1,
+            autoAlpha: 1,
+            duration: depthDuration,
+            ease: depthEase,
+            overwrite: "auto"
+          })
+          .to(
+            incomingVisual,
+            {
+              scale,
+              autoAlpha: 0,
+              duration: depthDuration,
+              ease: depthEase,
+              overwrite: "auto"
+            },
+            "<"
+          );
+      };
+
+      const handoffTrigger = ScrollTrigger.create({
+        trigger: stage,
+        start: "top+=100% top",
+        end: "top+=100% top",
+        onEnter: createForwardTimeline,
+        onEnterBack: createBackwardTimeline
       });
 
-      timeline
-        .fromTo(
-          outgoingVisual,
-          {
-            scale: 1,
-            yPercent: 0,
-            autoAlpha: 1
-          },
-          {
-            scale: outgoingScale,
-            yPercent: outgoingY,
-            autoAlpha: outgoingOpacity,
-            ease,
-            duration: 0.48,
-            immediateRender: false
-          },
-          0
-        )
-        .fromTo(
-          incomingVisual,
-          {
-            scale: incomingScale,
-            yPercent: incomingY
-          },
-          {
-            scale: 1,
-            yPercent: 0,
-            ease,
-            duration: 0.38,
-            immediateRender: false
-          },
-          0.02
-        );
+      const pinTrigger = ScrollTrigger.create({
+        trigger: stage,
+        pin: true,
+        end: "+=200%"
+      });
 
       return () => {
-        timeline.scrollTrigger?.kill(true);
-        timeline.kill();
+        handoffTimeline?.kill();
+        handoffTrigger.kill();
+        pinTrigger.kill(true);
 
         if (outgoingVisual !== outgoing) {
           restoreInlineStyle(outgoingVisual, originalOutgoingVisualStyle);
@@ -425,6 +434,7 @@ export const sectionBlendHandoff = {
 
         restoreInlineStyle(outgoing, originalOutgoingStyle);
         restoreInlineStyle(element, originalIncomingStyle);
+        restoreInlineStyle(stage, originalStageStyle);
       };
     }
 
