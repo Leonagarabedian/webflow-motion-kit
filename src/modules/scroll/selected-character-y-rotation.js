@@ -70,8 +70,7 @@ function wrapSelectedLetters(element, selectedLetters) {
 export const selectedCharacterYRotation = {
   name: "selected-character-y-rotation",
   category: "primitive",
-  // Keep the old Webflow attribute working while the project migrates to the clearer name.
-  selector: '[data-motion~="selected-character-y-rotation"], [data-motion~="brand-load"]',
+  selector: '[data-motion~="selected-character-y-rotation"]',
   mount(element, { gsap, reducedMotion }) {
     if (reducedMotion()) return;
 
