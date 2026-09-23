@@ -15,14 +15,18 @@ Run the verification suite with:
 npm run check
 ```
 
-## Webflow installation
+## Deployment and Webflow installation
 
-After Netlify deploys the repository, add these tags to Webflow’s site-wide custom code:
+The production bundle is deployed with GitHub Pages. A push to `main` runs `.github/workflows/deploy-pages.yml`, which validates the kit, builds `dist`, and publishes the generated assets.
+
+Branda loads the production bundle site-wide from:
 
 ```html
-<link rel="stylesheet" href="https://YOUR-SITE.netlify.app/motion-kit.css">
-<script defer src="https://YOUR-SITE.netlify.app/motion-kit.js"></script>
+<link rel="stylesheet" href="https://leonagarabedian.github.io/webflow-motion-kit/motion-kit.css?v=MAIN_SHA">
+<script defer src="https://leonagarabedian.github.io/webflow-motion-kit/motion-kit.js?v=MAIN_SHA"></script>
 ```
+
+Use the current short `main` commit SHA for `MAIN_SHA` when you want to force Webflow/browser caches to pick up a newly deployed build. Do not add separate page-level copies of the motion-kit CSS or JavaScript; individual pages should provide only Webflow layout and `data-motion` attributes unless a page explicitly requires another independent script.
 
 The bundle initializes automatically on Webflow ready. Its public API is also available at `window.WebflowMotionKit`:
 
