@@ -10,6 +10,7 @@ import { characterConverge } from "./character-converge.js";
 import { characterScatterTitle } from "./character-scatter-title.js";
 import { counterExpansion } from "./counter-expansion.js";
 import { cursor } from "./cursor.js";
+import { circleClipPreview } from "./circle-clip-preview.js";
 import { depthEmerge } from "./depth-emerge.js";
 import { elementBlurReveal } from "./element-blur-reveal.js";
 import { elementLayoutReturn } from "./element-layout-return.js";
@@ -50,6 +51,7 @@ import { pinnedMedia } from "./pinned-media.js";
 import { pinnedMediaReturn } from "./pinned-media-return.js";
 import { pinnedSteps } from "./pinned-steps.js";
 import { responsiveMenu } from "./responsive-menu.js";
+import { rotatedCoverPreview } from "./rotated-cover-preview.js";
 import { scrambleText } from "./scramble-text.js";
 import { scrollHighlight } from "./scroll-highlight.js";
 import { scrollSyncedGallery } from "./scroll-synced-gallery.js";
@@ -111,12 +113,14 @@ export const modules = [
   selectiveGlyphActivation,
   magnetic,
   cursor,
+  circleClipPreview,
   linkSwap,
   navFlip,
   selectedCharacterYRotation,
   brandFieldActivate,
   footerReveal,
   responsiveMenu,
+  rotatedCoverPreview,
   loaderComposition,
   pageTransition,
   pairedTagIntro,
