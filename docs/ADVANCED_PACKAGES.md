@@ -4,17 +4,19 @@ These packages reproduce the sampled interaction models with original code and p
 
 ## Installation
 
-Add the shared advanced stylesheet once in Webflow's site `<head>`:
+Add the shared advanced stylesheet once on any Webflow page that uses an advanced package:
 
 ```html
-<link rel="stylesheet" href="https://YOUR-SITE.netlify.app/advanced/motion-advanced.css">
+<link rel="stylesheet" href="https://leonagarabedian.github.io/webflow-motion-kit/advanced/motion-advanced.css?v=MAIN_SHA">
 ```
 
 Then load only the package used by that page, before `</body>`:
 
 ```html
-<script type="module" src="https://YOUR-SITE.netlify.app/advanced/fluid-canvas.js"></script>
+<script type="module" src="https://leonagarabedian.github.io/webflow-motion-kit/advanced/fluid-canvas.js?v=MAIN_SHA"></script>
 ```
+
+Use the current short `main` SHA for `MAIN_SHA` when cache busting after a deploy. Advanced packages stay page-scoped rather than joining the site-wide `motion-kit.js`.
 
 Available entry files:
 
@@ -24,6 +26,8 @@ Available entry files:
 - `infinite-product-world.js`
 - `aircraft-scroll-story.js`
 - `image-sequence.js`
+- `cinematic-cylinder-scroll.js`
+- `cinematic-3d-camera-story.js`
 
 The ES-module entries automatically fetch their hashed shared chunks. Do not copy the hashed chunk URLs into Webflow.
 
@@ -136,6 +140,74 @@ Or use a numbered URL pattern:
 ```
 
 Frames preload asynchronously and the nearest available frame renders while loading continues. Canvas drawing uses a centered cover crop and capped DPR. Scroll progress selects frames; stage overlays activate in equal timeline segments. Use optimized WebP/AVIF sequences, keep total transfer size deliberate, and host frames with CORS enabled.
+
+
+## Cinematic cylinder scroll
+
+This package adapts the Codrops cinematic cylinder idea to the existing MotionKit Three.js layer, without React, OGL, or a second ScrollSmoother.
+
+```html
+<section data-advanced="cinematic-cylinder-scroll" style="min-height: 500svh">
+  <div data-advanced-target="viewport">
+    <div data-advanced-target="chapter">...</div>
+    <div data-advanced-target="chapter">...</div>
+  </div>
+
+  <img data-advanced-cylinder-image src="YOUR-WEBFLOW-CDN-IMAGE" alt="">
+  <img data-advanced-cylinder-image src="YOUR-WEBFLOW-CDN-IMAGE" alt="">
+
+  <div data-advanced-cylinder-shot
+       data-advanced-camera-x="0"
+       data-advanced-camera-y="0"
+       data-advanced-camera-z="8"
+       data-advanced-duration="1"
+       data-advanced-ease="mkCinematicSilk"></div>
+
+  <div data-advanced-cylinder-shot
+       data-advanced-camera-x="0.5"
+       data-advanced-camera-y="0"
+       data-advanced-camera-z="0.8"
+       data-advanced-duration="3.5"
+       data-advanced-ease="power1.inOut"></div>
+</section>
+```
+
+The package builds one image atlas from the supplied Webflow images, maps it around an open Three.js cylinder, rotates that cylinder across the scroll range, and drives the camera through authored shot nodes. Chapter targets fade in and out across equal scroll segments unless they define `data-advanced-chapter-start` and `data-advanced-chapter-end`. Reactive line particles increase opacity from rotational velocity and settle as rotation slows.
+
+Useful root controls include `data-advanced-cylinder-radius`, `data-advanced-cylinder-height`, `data-advanced-rotations`, `data-advanced-darkness`, `data-advanced-particle-count`, `data-advanced-particle-radius`, `data-advanced-particle-color`, `data-advanced-fov`, `data-advanced-dpr`, `data-advanced-scrub`, `data-advanced-start`, and `data-advanced-end`. If no images are supplied, the package renders an original generated placeholder atlas so the motion can still be tested.
+
+## Cinematic 3D camera story
+
+This package turns a Webflow-authored list of camera shots into a scroll-directed Three.js scene.
+
+```html
+<section data-advanced="cinematic-3d-camera-story" style="min-height: 900svh"
+         data-advanced-model-src="YOUR-MODEL.glb">
+  <div data-advanced-target="viewport">
+    <div data-advanced-target="chapter">
+      <h2 data-advanced-target="chapter-title">DISCOVER</h2>
+      <p data-advanced-target="chapter-subtitle">The future of architecture</p>
+    </div>
+
+    <div data-advanced-target="progress-bar"></div>
+    <span data-advanced-target="progress-text">000%</span>
+  </div>
+
+  <div data-advanced-scene-shot
+       data-advanced-start-progress="0"
+       data-advanced-end-progress="12"
+       data-advanced-camera-x="0"
+       data-advanced-camera-y="2"
+       data-advanced-camera-z="10"
+       data-advanced-target-x="0"
+       data-advanced-target-y="5"
+       data-advanced-target-z="0"></div>
+</section>
+```
+
+Each `data-advanced-scene-shot` defines one percentage range, camera position, and look-at target. Matching chapter targets use SplitText character entrances/exits over the same ranges. Progress targets are optional. When `data-advanced-model-src` points to a GLB/GLTF asset, the package loads it with Three.js; without a model it renders an original geometric architecture placeholder for testing. Root controls include model transform, fog, scene/background colors, light intensities, camera clipping planes, DPR, scroll scrub, and text scrub/stagger.
+
+Unlike the original Codrops demo, neither cinematic package creates its own ScrollSmoother. It intentionally uses the page's existing scroll environment and only owns its local ScrollTriggers.
 
 ## Voyeur Vérité-style pinned narrative
 
