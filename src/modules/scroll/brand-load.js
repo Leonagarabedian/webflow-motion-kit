@@ -87,13 +87,15 @@ export const brandLoad = {
     );
 
     const triggerOnView = readBoolean(element, "motion-on-view", false);
+    const once = readBoolean(element, "motion-once", true);
     const timeline = gsap.timeline(
       triggerOnView
         ? {
             scrollTrigger: resolveScrollContract(element, {
               trigger: resolveTrigger(element),
               start: readString(element, "motion-start", "top 88%"),
-              once: readBoolean(element, "motion-once", true)
+              once,
+              ...(!once && { toggleActions: "play none none reverse" })
             }, () => (viewportScroll(resolveTrigger(element), 0.88, () => Math.max(window.innerHeight * 0.3, layoutSize(element).height))))
           }
         : { delay: readNumber(element, "motion-delay", 0.15) }
