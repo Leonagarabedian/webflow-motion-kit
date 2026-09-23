@@ -56,6 +56,8 @@ For page-transition tools, destroy the outgoing container before removal, initia
 | Looping labels | `data-motion="looping-labels"` | Marquee wrapper |
 | Stacked cards | `data-motion="stacked-cards"` | Repeated card-list wrapper |
 | Stacked-image hover | `data-motion="stacked-image-hover"` | Media stack wrapper |
+| Strip/Flip preview | `data-motion="strip-flip-preview"` | Preview system root |
+| Title roll + media zoom hover | `data-motion="title-roll-media-zoom-hover"` | Preview trigger/card |
 | Flip relocation | `data-motion="flip-relocation"` | Section containing items and destinations |
 | Pinned media | `data-motion="pinned-media"` | Tall media section |
 | Pinned steps | `data-motion="pinned-steps"` | Tall story section |

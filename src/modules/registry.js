@@ -66,6 +66,8 @@ import { spatialLoop } from "./spatial-loop.js";
 import { stackedCards } from "./stacked-cards.js";
 import { stackedDivsSectionReveal } from "./stacked-divs-section-reveal.js";
 import { stackedImageHover } from "./stacked-image-hover.js";
+import { stripFlipPreview } from "./strip-flip-preview.js";
+import { titleRollMediaZoomHover } from "./title-roll-media-zoom-hover.js";
 import { strokeFill } from "./stroke-fill.js";
 import { svgReveal } from "./svg-reveal.js";
 import { syncedFade } from "./synced-fade.js";
@@ -123,6 +125,8 @@ export const modules = [
   stackedCards,
   stackedDivsSectionReveal,
   stackedImageHover,
+  stripFlipPreview,
+  titleRollMediaZoomHover,
   hoverHighlightBox,
   hoverBackgroundSwap,
   hoverLinkedIlluminate,
