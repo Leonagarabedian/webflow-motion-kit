@@ -71,6 +71,7 @@ const NON_SCROLL = new Set([
   "accordion-media",
   "works-services-transition",
   "grid-video-reveal",
+  "selected-character-y-rotation",
   "brand-load",
   "paired-tag-intro",
   "nav-flip",
@@ -91,7 +92,7 @@ function classify(name, element) {
   if (name === "scramble-text" && (element.getAttribute("data-motion-event") || "hover") !== "scroll") {
     return { status: "non-scroll", strategy: "non-scroll" };
   }
-  if (MANUAL_SCROLL.has(name) || (name === "brand-load" && ["true", "1", ""].includes(element.getAttribute("data-motion-on-view")))) {
+  if (MANUAL_SCROLL.has(name) || (["selected-character-y-rotation", "brand-load"].includes(name) && ["true", "1", ""].includes(element.getAttribute("data-motion-on-view")))) {
     return { status: "custom-ready", strategy: "measured-reveal-span" };
   }
   if (SAFE_AUTO.has(name)) return { status: "safe-auto", strategy: "auto" };
@@ -113,7 +114,8 @@ export function auditScrollAlignment(root = document) {
       const { status, strategy } = classify(name, element);
       const selectedMode = element.getAttribute("data-motion-alignment") || element.getAttribute("data-motion-align") || (stationaryTypographyNames.includes(name) ? stationaryTypographyPolicy.defaultAlignment : "legacy");
       const alignment = selectedMode === "manual" ? "legacy" : selectedMode;
-      const contract = scrollContracts.find(entry => entry.name === name);
+      const contractName = name === "brand-load" ? "selected-character-y-rotation" : name;
+      const contract = scrollContracts.find(entry => entry.name === contractName);
       const syncAttribute = {
         "element-blur-reveal": "data-motion-element-blur-sync-trigger-id",
         "synced-fade": "data-motion-fade-sync-trigger-id",

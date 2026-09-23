@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { footerReveal, morphNarrative, servicesCenterShift, themeSwitch, flipRelocation, scrollTravel, liquidFill, brandLoad } from "../src/modules/scroll/index.js";
+import { footerReveal, morphNarrative, servicesCenterShift, themeSwitch, flipRelocation, scrollTravel, liquidFill, selectedCharacterYRotation } from "../src/modules/scroll/index.js";
 
 beforeEach(() => {
   document.body.innerHTML = "";
@@ -16,7 +16,7 @@ const scenes = [
   [flipRelocation, '<div><div data-flip-item></div></div><div data-flip-target></div>', "top top", "bottom bottom"],
   [scrollTravel, 'BRANDA', "top top", "+=600"],
   [liquidFill, 'BRANDA', "top top", "+=600"],
-  [brandLoad, 'BRANDA', "top 88%", undefined]
+  [selectedCharacterYRotation, 'BRANDA', "top 88%", undefined]
 ];
 
 function mount(module, scene, mode, attributes = "") {

@@ -5,7 +5,7 @@ export const scrollContracts = Object.freeze([
     "role": "owner"
   },
   {
-    "name": "brand-load",
+    "name": "selected-character-y-rotation",
     "role": "optional-scroll"
   },
   {

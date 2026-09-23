@@ -65,7 +65,7 @@ it("distinguishes manual scroll, native sticky layout, and optional viewport loa
   document.body.innerHTML = `
     <div data-motion="theme-switch services-center-shift footer-reveal"></div>
     <div data-motion="media-room tags-glitch flip-relocation stacked-cards"></div>
-    <div data-motion="looping-labels stacked-image-hover brand-load"></div>
+    <div data-motion="looping-labels stacked-image-hover selected-character-y-rotation"></div>
     <div data-motion="brand-load" data-motion-on-view="true"></div>
     <div data-motion="brand-load" data-motion-on-view="1"></div>
     <div data-motion="brand-load" data-motion-on-view></div>
@@ -74,5 +74,6 @@ it("distinguishes manual scroll, native sticky layout, and optional viewport loa
   expect(report.unclassified).toEqual([]);
   expect(report.manualScroll).toHaveLength(0);
   expect(report.entries.find(entry => entry.name === "stacked-cards").strategy).toBe("native-sticky-layout");
-  expect(report.entries.filter(entry => entry.name === "brand-load").map(entry => entry.status)).toEqual(["non-scroll", "custom-ready", "custom-ready", "custom-ready"]);
+  expect(report.entries.find(entry => entry.name === "selected-character-y-rotation")?.status).toBe("non-scroll");
+  expect(report.entries.filter(entry => entry.name === "brand-load").map(entry => entry.status)).toEqual(["custom-ready", "custom-ready", "custom-ready"]);
 });

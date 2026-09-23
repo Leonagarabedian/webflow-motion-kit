@@ -1,5 +1,5 @@
 export { brandFieldActivate } from "./brand-field-activate.js";
-export { brandLoad } from "./brand-load.js";
+export { selectedCharacterYRotation, selectedCharacterYRotation as brandLoad } from "./selected-character-y-rotation.js";
 export { brandaSpatialWorks } from "./branda-spatial-works.js";
 export { characterScatterTitle } from "./character-scatter-title.js";
 export { depthEmerge } from "./depth-emerge.js";

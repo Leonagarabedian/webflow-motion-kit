@@ -1,28 +1,28 @@
 import { resolveScrollContract, viewportScroll, layoutSize } from "../../core/scroll-alignment/contract.js";
 import { readBoolean, readNumber, readString, resolveTrigger } from "../../core/config.js";
 
-const STYLE_ID = "motion-kit-brand-load-styles";
+const STYLE_ID = "motion-kit-selected-character-y-rotation-styles";
 
 function ensureStyles(doc) {
   if (doc.getElementById(STYLE_ID)) return;
   const style = doc.createElement("style");
   style.id = STYLE_ID;
   style.textContent = `
-    [data-mk-brand-root] { perspective: var(--mk-brand-perspective, 400px); }
-    [data-mk-brand-letter] {
+    [data-mk-selected-character-y-rotation-root] { perspective: var(--mk-selected-character-y-rotation-perspective, 400px); }
+    [data-mk-selected-character-y-rotation-letter] {
       display: inline-grid;
       transform-origin: 50% 50%;
       transform-style: preserve-3d;
       will-change: transform;
     }
-    [data-mk-brand-face] {
+    [data-mk-selected-character-y-rotation-face] {
       grid-area: 1 / 1;
       display: block;
       backface-visibility: hidden;
       -webkit-backface-visibility: hidden;
     }
-    [data-mk-brand-face="front"] { transform: rotateY(0deg) translateZ(0.01em); }
-    [data-mk-brand-face="back"] { transform: rotateY(180deg) translateZ(0.01em); }
+    [data-mk-selected-character-y-rotation-face="front"] { transform: rotateY(0deg) translateZ(0.01em); }
+    [data-mk-selected-character-y-rotation-face="back"] { transform: rotateY(180deg) translateZ(0.01em); }
   `;
   doc.head.appendChild(style);
 }
@@ -31,9 +31,9 @@ function makeLetter(doc, character) {
   const wrapper = doc.createElement("span");
   const front = doc.createElement("span");
   const back = doc.createElement("span");
-  wrapper.setAttribute("data-mk-brand-letter", character);
-  front.setAttribute("data-mk-brand-face", "front");
-  back.setAttribute("data-mk-brand-face", "back");
+  wrapper.setAttribute("data-mk-selected-character-y-rotation-letter", character);
+  front.setAttribute("data-mk-selected-character-y-rotation-face", "front");
+  back.setAttribute("data-mk-selected-character-y-rotation-face", "back");
   back.setAttribute("aria-hidden", "true");
   front.textContent = character;
   back.textContent = character;
@@ -67,10 +67,11 @@ function wrapSelectedLetters(element, selectedLetters) {
   return wrapped;
 }
 
-export const brandLoad = {
-  name: "brand-load",
+export const selectedCharacterYRotation = {
+  name: "selected-character-y-rotation",
   category: "primitive",
-  selector: '[data-motion~="brand-load"]',
+  // Keep the old Webflow attribute working while the project migrates to the clearer name.
+  selector: '[data-motion~="selected-character-y-rotation"], [data-motion~="brand-load"]',
   mount(element, { gsap, reducedMotion }) {
     if (reducedMotion()) return;
 
@@ -80,9 +81,9 @@ export const brandLoad = {
     if (!wrapped.length) return;
 
     ensureStyles(element.ownerDocument);
-    element.setAttribute("data-mk-brand-root", "");
+    element.setAttribute("data-mk-selected-character-y-rotation-root", "");
     element.style.setProperty(
-      "--mk-brand-perspective",
+      "--mk-selected-character-y-rotation-perspective",
       `${readNumber(element, "motion-perspective", 400)}px`
     );
 
@@ -114,8 +115,8 @@ export const brandLoad = {
     return () => {
       timeline.kill();
       element.innerHTML = originalHTML;
-      element.removeAttribute("data-mk-brand-root");
-      element.style.removeProperty("--mk-brand-perspective");
+      element.removeAttribute("data-mk-selected-character-y-rotation-root");
+      element.style.removeProperty("--mk-selected-character-y-rotation-perspective");
     };
   }
 };
