@@ -25,12 +25,7 @@ describe("scroll ownership contracts", () => {
     for (const contract of scrollContracts) {
       const module = available.find(module => module.name === contract.name);
       expect(module, contract.name).toBeDefined();
-      if (contract.name === "selected-character-y-rotation") {
-        expect(module.selector).toContain('[data-motion~="selected-character-y-rotation"]');
-        expect(module.selector).toContain('[data-motion~="brand-load"]');
-      } else {
-        expect(module.selector).toBe('[data-motion~="' + contract.name + '"]');
-      }
+      expect(module.selector).toBe('[data-motion~="' + contract.name + '"]');
       if (contract.name !== "statement-compression") {
         expect(modules.find(entry => entry.name === contract.name)).toBe(module);
       }
