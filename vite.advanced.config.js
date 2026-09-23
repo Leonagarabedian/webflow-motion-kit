@@ -2,6 +2,8 @@ import { resolve } from "node:path";
 import { defineConfig } from "vite";
 
 const entries = {
+  "cinematic-3d-camera-story": resolve("src/advanced/cinematic-3d-camera-story.js"),
+  "cinematic-cylinder-scroll": resolve("src/advanced/cinematic-cylinder-scroll.js"),
   "aircraft-scroll-story": resolve("src/advanced/aircraft-scroll-story.js"),
   "fluid-canvas": resolve("src/advanced/fluid-canvas.js"),
   "image-sequence": resolve("src/advanced/image-sequence.js"),

@@ -1,7 +1,9 @@
 [data-advanced="fluid-canvas"],
 [data-advanced="webgl-work-browser"],
 [data-advanced="infinite-product-world"],
-[data-advanced="image-sequence"] {
+[data-advanced="image-sequence"],
+[data-advanced="cinematic-cylinder-scroll"],
+[data-advanced="cinematic-3d-camera-story"] {
   overflow: clip;
   position: relative;
 }
@@ -80,4 +82,28 @@
     height: auto;
     position: relative;
   }
+}
+
+
+[data-advanced="cinematic-cylinder-scroll"] [data-advanced-target="viewport"],
+[data-advanced="cinematic-3d-camera-story"] [data-advanced-target="viewport"] {
+  height: 100svh;
+  overflow: clip;
+  position: sticky;
+  top: 0;
+}
+
+[data-advanced="cinematic-cylinder-scroll"] [data-advanced-target="viewport"] canvas,
+[data-advanced="cinematic-3d-camera-story"] [data-advanced-target="viewport"] canvas {
+  display: block;
+  height: 100%;
+  inset: 0;
+  position: absolute;
+  width: 100%;
+}
+
+[data-advanced-cylinder-image],
+[data-advanced-cylinder-shot],
+[data-advanced-scene-shot] {
+  display: none !important;
 }
