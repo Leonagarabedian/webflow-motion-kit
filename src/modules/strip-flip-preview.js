@@ -339,6 +339,11 @@ export const stripFlipPreview = {
           activeFlip?.kill();
           const state = Flip.getState(item.media);
           item.previewMedia.appendChild(item.media);
+          gsap.set(item.media, {
+            width: "100%",
+            height: "100%",
+            aspectRatio: "auto"
+          });
           activeFlip = Flip.from(state, {
             absolute: true,
             duration,
