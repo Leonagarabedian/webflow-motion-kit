@@ -14,11 +14,13 @@ Example: `data-motion-duration="slow" data-motion-ease="enter" data-motion-stagg
 
 ## Installation
 
-1. Connect this repository to Netlify.
-2. Use build command `npm run build` and publish directory `dist`.
-3. Add the generated CSS in Webflow’s site-wide `<head>` custom code.
-4. Add the generated JavaScript before `</body>` with `defer`.
-5. Publish to the Webflow staging domain and verify there; Designer preview and the published site are different environments.
+1. Merge or push the desired MotionKit changes to `main`.
+2. GitHub Actions runs `.github/workflows/deploy-pages.yml`, validates the alignment suite, builds `dist`, and deploys it to GitHub Pages.
+3. Load the production stylesheet site-wide in Webflow from `https://leonagarabedian.github.io/webflow-motion-kit/motion-kit.css`.
+4. Load the production script site-wide before `</body>` from `https://leonagarabedian.github.io/webflow-motion-kit/motion-kit.js` with `defer`.
+5. Append `?v=<short-main-sha>` to both asset URLs after a new deploy when a cache-busting version is needed.
+6. Do not add page-level copies of the MotionKit bundle. Pages should supply their authored Webflow structure and `data-motion` attributes while the single site-wide GitHub Pages bundle owns the animation logic.
+7. Publish to the Webflow staging domain and verify there; Designer preview and the published site are different environments.
 
 ## Attribute rules
 
