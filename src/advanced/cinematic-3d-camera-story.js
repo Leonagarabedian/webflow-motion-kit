@@ -40,17 +40,17 @@ function disposeObject(object) {
 
 function createPlaceholderArchitecture(color) {
   const group = new THREE.Group();
-  const material = new THREE.MeshStandardMaterial({
-    color,
-    metalness: 0.15,
-    roughness: 0.72
-  });
   const heights = [8, 14, 10, 18, 24, 15, 11, 20, 13];
   heights.forEach((height, index) => {
     const column = index % 3;
     const row = Math.floor(index / 3);
     const geometry = new THREE.BoxGeometry(2.4, height, 2.4);
-    const mesh = new THREE.Mesh(geometry, material.clone());
+    const material = new THREE.MeshStandardMaterial({
+      color,
+      metalness: 0.15,
+      roughness: 0.72
+    });
+    const mesh = new THREE.Mesh(geometry, material);
     mesh.position.set((column - 1) * 4, height / 2, (row - 1) * 4);
     group.add(mesh);
   });
@@ -202,7 +202,7 @@ function mount(element) {
       const titleSplit = new SplitText(title, { type: "chars" });
       const subtitleSplit = new SplitText(subtitle, { type: "chars" });
       splitInstances.push(titleSplit, subtitleSplit);
-      const chars = [subtitleSplit.chars, titleSplit.chars];
+      const chars = [...subtitleSplit.chars, ...titleSplit.chars];
       const textTimeline = gsap.timeline({
         scrollTrigger: {
           trigger: element,
@@ -319,9 +319,6 @@ function mount(element) {
       disposeObject(activeObject);
     }
     if (loadedModel && loadedModel !== activeObject) disposeObject(loadedModel);
-    key.dispose?.();
-    fill.dispose?.();
-    accent.dispose?.();
     renderer.dispose();
     canvas.remove();
   };
