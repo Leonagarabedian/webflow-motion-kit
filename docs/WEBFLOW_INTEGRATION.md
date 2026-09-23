@@ -206,6 +206,76 @@ Create Webflow styles for `.is-grid` and `.is-slider` on the component root; the
 The module duplicates the group once, removes duplicate IDs and interactive tab stops, then loops the track continuously. Use `data-motion-direction="right"` to reverse direction. It pauses while off-screen and restores a single original group on cleanup.
 
 
+
+## Circle clip preview
+
+Use `circle-clip-preview` for the Codrops circular reveal. Trigger and preview keys pair exactly like the Strip module.
+
+```html
+<section data-motion="circle-clip-preview">
+  <article data-motion="title-roll-media-zoom-hover"
+           data-motion-preview-trigger="project-1">
+    <span data-motion-target="title-inner">PROJECT</span>
+    <button data-motion-target="media">
+      <span data-motion-target="media-image"></span>
+    </button>
+  </article>
+
+  <div data-motion-target="preview-overlay"></div>
+
+  <div data-motion-target="preview-layer" aria-hidden="true">
+    <section data-motion-preview="project-1">
+      <div data-motion-target="preview-image"></div>
+      <h2 data-motion-target="preview-title">PROJECT</h2>
+      <div data-motion-target="preview-box">...</div>
+      <div data-motion-target="preview-box">...</div>
+    </section>
+  </div>
+
+  <button data-motion-target="preview-back">Back</button>
+</section>
+```
+
+Author the circular overlay as the Codrops geometry: fixed, centered, circular, and approximately `150vmax × 150vmax`. The module animates its scale, expands the active preview's `clip-path` from `0vmax` to `60vmax`, scales the selected trigger media to `1.2`, resolves the preview image from `.8` to `1`, resolves the title from `1.6` to `1`, and brings preview boxes in from opposite horizontal offsets.
+
+Optional controls: `data-motion-duration`, `data-motion-ease`, `data-motion-preview-delay`, `data-motion-clip-duration`, `data-motion-clip-ease`, `data-motion-close-clip-duration`, and `data-motion-circle-radius`.
+
+## Rotated cover preview
+
+Use `rotated-cover-preview` for the diagonal sweeping cover from the Codrops Rotated demo.
+
+```html
+<section data-motion="rotated-cover-preview">
+  <article data-motion="title-roll-media-zoom-hover"
+           data-motion-preview-trigger="project-1">
+    <span data-motion-target="title-inner">PROJECT</span>
+    <button data-motion-target="media">
+      <span data-motion-target="media-image"></span>
+    </button>
+  </article>
+
+  <div class="authored-rotated-overlay">
+    <div data-motion-target="preview-overlay-inner"></div>
+  </div>
+
+  <div data-motion-target="preview-layer" aria-hidden="true">
+    <section data-motion-preview="project-1">
+      <div data-motion-target="preview-media-wrap">
+        <div data-motion-target="preview-image"></div>
+      </div>
+      <span data-motion-target="slide-text">PROJECT</span>
+      <p data-motion-target="description">...</p>
+    </section>
+  </div>
+
+  <button data-motion-target="preview-back">Back</button>
+</section>
+```
+
+Author the outer cover in Webflow as the Codrops geometry: fixed, centered, approximately `150vmax × 150vmax`, rotated `45deg`, and clipping its inner field. The module moves only `preview-overlay-inner` from `-100%` to `0`, then unreveals the preview media with opposing horizontal transforms. The outer rotation remains purely authored layout.
+
+Optional controls: `data-motion-duration`, `data-motion-ease`, `data-motion-preview-delay`, `data-motion-stagger`, and `data-motion-close-duration`.
+
 ## Strip / Flip preview
 
 Use `strip-flip-preview` for the Codrops-style preview handoff where the selected card media physically relocates into a fullscreen preview with GSAP Flip.

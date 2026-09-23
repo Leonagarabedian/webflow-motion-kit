@@ -61,6 +61,8 @@ For page-transition tools, destroy the outgoing container before removal, initia
 | Stacked cards | `data-motion="stacked-cards"` | Repeated card-list wrapper |
 | Stacked-image hover | `data-motion="stacked-image-hover"` | Media stack wrapper |
 | Strip/Flip preview | `data-motion="strip-flip-preview"` | Preview system root |
+| Circle clip preview | `data-motion="circle-clip-preview"` | Preview system root |
+| Rotated cover preview | `data-motion="rotated-cover-preview"` | Preview system root |
 | Title roll + media zoom hover | `data-motion="title-roll-media-zoom-hover"` | Preview trigger/card |
 | Flip relocation | `data-motion="flip-relocation"` | Section containing items and destinations |
 | Pinned media | `data-motion="pinned-media"` | Tall media section |
