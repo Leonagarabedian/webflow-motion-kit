@@ -203,6 +203,103 @@ Create Webflow styles for `.is-grid` and `.is-slider` on the component root; the
 
 The module duplicates the group once, removes duplicate IDs and interactive tab stops, then loops the track continuously. Use `data-motion-direction="right"` to reverse direction. It pauses while off-screen and restores a single original group on cleanup.
 
+
+## Strip / Flip preview
+
+Use `strip-flip-preview` for the Codrops-style preview handoff where the selected card media physically relocates into a fullscreen preview with GSAP Flip.
+
+### Required Webflow hierarchy
+
+```html
+<div data-motion="strip-flip-preview">
+  <article data-motion="title-roll-media-zoom-hover"
+           data-motion-preview-trigger="project-1">
+    <div class="overflow-hidden">
+      <span data-motion-target="title-inner">PROJECT 1</span>
+    </div>
+
+    <button data-motion-target="media">
+      <span data-motion-target="media-image"></span>
+    </button>
+
+    <div data-motion-target="caption">01 / CATEGORY</div>
+  </article>
+
+  <article data-motion="title-roll-media-zoom-hover"
+           data-motion-preview-trigger="project-2">
+    ...
+  </article>
+
+  <div data-motion-target="preview-overlay"></div>
+
+  <div data-motion-target="preview-layer" aria-hidden="true">
+    <section data-motion-preview="project-1">
+      <div data-motion-target="preview-media"></div>
+
+      <div class="overflow-hidden">
+        <span data-motion-target="slide-text">PROJECT 1</span>
+      </div>
+
+      <p data-motion-target="description">...</p>
+    </section>
+
+    <section data-motion-preview="project-2">
+      ...
+    </section>
+  </div>
+
+  <button data-motion-target="preview-back">Back</button>
+</div>
+```
+
+The trigger key and preview key must match exactly:
+
+```text
+data-motion-preview-trigger="project-1"
+data-motion-preview="project-1"
+```
+
+The module never pairs previews by DOM position. This is deliberate so CMS items can use stable slug-like keys.
+
+Required roles on every trigger are `title-inner`, `media`, and `caption`. The preview with the matching key must contain `preview-media`. `slide-text` and `description` are optional and may appear more than once.
+
+The tested default choreography matches the Codrops Strip demo:
+
+- base duration `0.8`
+- base ease `power4.inOut`
+- strip expansion handoff at `0.6s`
+- preview text duration `1.1`
+- preview text ease `expo`
+- text reveal delay `0.3s`
+- alternating strip origin based on trigger index
+- media reparenting through GSAP Flip
+- Escape and Back both close the preview
+- focus returns to the original media trigger
+
+Optional controls on the root: `data-motion-duration`, `data-motion-ease`, `data-motion-content-delay`, `data-motion-text-duration`, `data-motion-text-ease`, `data-motion-text-delay`, and `data-motion-description-offset`.
+
+Author the visual layout in Webflow. The module owns animation state, media relocation, pointer/focus state, and cleanup. The `preview-media` element must have the final size/aspect ratio you want the selected media to occupy.
+
+## Title roll + media zoom hover
+
+This module is intentionally separate from the preview transition so the hover can be reused without the fullscreen preview.
+
+```html
+<article data-motion="title-roll-media-zoom-hover">
+  <div class="overflow-hidden">
+    <span data-motion-target="title-inner">PROJECT</span>
+  </div>
+
+  <button data-motion-target="media">
+    <span data-motion-target="media-image"></span>
+  </button>
+</article>
+```
+
+Defaults preserve the Codrops interaction: title rolls out at `-100%` with `-4deg` rotation and `6px` blur, re-enters from `100%` with `4deg` rotation and blur, the media wrapper scales to `.95`, and the inner image scales to `1.2`.
+
+Optional controls: `data-motion-duration`, `data-motion-ease`, `data-motion-title-exit-duration`, `data-motion-title-exit-ease`, `data-motion-title-rotation`, `data-motion-title-blur`, `data-motion-media-scale`, and `data-motion-image-scale`.
+
 ## Stacked-image hover
 
 ```html
