@@ -81,7 +81,7 @@ The 14-module typography family is documented in [docs/stationary-text-library.m
 
 ## Optional advanced packages
 
-Six heavier systems build as separate ES-module entries under `dist/advanced/`: fluid canvas, velocity effects, WebGL work browser, infinite product world, aircraft scroll story, and canvas image sequence. They are not included in `motion-kit.js`; Webflow pages load only the package they use. Installation and markup contracts are documented in `docs/ADVANCED_PACKAGES.md`.
+Eight heavier systems build as separate ES-module entries under `dist/advanced/`: fluid canvas, velocity effects, WebGL work browser, infinite product world, aircraft scroll story, canvas image sequence, cinematic cylinder scroll, and cinematic 3D camera story. They are not included in `motion-kit.js`; Webflow pages load only the package they use. Installation and markup contracts are documented in `docs/ADVANCED_PACKAGES.md`.
 
 ## Repository boundary
 
