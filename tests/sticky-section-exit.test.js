@@ -46,7 +46,7 @@ function mount(attributes = "") {
     reducedMotion: () => false
   });
 
-  return { root, panels, configs, timelines, cleanup };
+  return { root, panels, configs, timelines, cleanup, gsap };
 }
 
 describe("sticky-section-exit refinements", () => {
@@ -82,6 +82,23 @@ describe("sticky-section-exit refinements", () => {
 
     expect(mounted.root).toBeTruthy();
     expect(firstInner).toBeTruthy();
+
+    expect(mounted.gsap.set).toHaveBeenCalledWith(
+      firstPanel,
+      expect.objectContaining({
+        height: "100svh",
+        minHeight: "100svh",
+        boxSizing: "border-box"
+      })
+    );
+    expect(mounted.gsap.set).toHaveBeenCalledWith(
+      firstInner,
+      expect.objectContaining({
+        height: "100%",
+        minHeight: 0,
+        boxSizing: "border-box"
+      })
+    );
 
     expect(mounted.cleanup).toBeTypeOf("function");
   });
