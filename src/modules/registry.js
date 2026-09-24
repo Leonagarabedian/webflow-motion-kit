@@ -57,6 +57,7 @@ import { pinnedMediaReturn } from "./pinned-media-return.js";
 import { pinnedSteps } from "./pinned-steps.js";
 import { responsiveMenu } from "./responsive-menu.js";
 import { rotatedCoverPreview } from "./rotated-cover-preview.js";
+import { rotating3dScrollGallery } from "./rotating-3d-scroll-gallery.js";
 import { scrambleText } from "./scramble-text.js";
 import { scrollHighlight } from "./scroll-highlight.js";
 import { scrollSyncedGallery } from "./scroll-synced-gallery.js";
@@ -131,6 +132,7 @@ export const modules = [
   footerReveal,
   responsiveMenu,
   rotatedCoverPreview,
+  rotating3dScrollGallery,
   loaderComposition,
   pageTransition,
   pairedTagIntro,
