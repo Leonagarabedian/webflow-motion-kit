@@ -174,6 +174,60 @@ Place the loader once near the top of the page. It plays after window load, then
 
 Place one instance on every participating page, preferably in a Webflow component. It animates the panel away on entry and over the page before eligible same-origin navigation. External links, downloads, new-tab links, modifier clicks, and same-page anchors are ignored. Add `data-motion-no-transition` to any link that should bypass it. This adapter lets Webflow perform navigation; it is not an SPA router.
 
+## Pinned image depth zoom
+
+Use `pinned-image-depth-zoom` for the GreenSock-style pinned 3D zoom where a foreground media layer advances toward the viewer while an optional background layer scales more gently.
+
+```html
+<section data-motion="pinned-image-depth-zoom"
+         data-motion-alignment="auto"
+         data-motion-perspective="500"
+         data-motion-media-scale="2"
+         data-motion-z="350"
+         data-motion-background-scale="1.1"
+         data-motion-scroll-vh="150">
+  <div data-motion-target="background">...</div>
+
+  <div data-motion-target="depth-frame">
+    <img data-motion-target="depth-media" src="..." alt="">
+  </div>
+</section>
+```
+
+Required contract:
+
+- root: `data-motion="pinned-image-depth-zoom"`
+- depth frame: `data-motion-target="depth-frame"`
+- media: `data-motion-target="depth-media"`
+- background: optional `data-motion-target="background"`
+
+Author the layout in Webflow. For a source-faithful composition, make the root and both visual layers one viewport tall, position the depth frame over the background, and clip overflow on the depth frame. The module supplies the 3D perspective and animation state, but does not force those layout rules.
+
+Source-faithful defaults:
+
+- perspective: `500px`
+- media scale: `1 → 2`
+- media Z: `0 → 350px`
+- background scale: `1 → 1.1`
+- scroll span: `150vh`
+- easing: `power1.inOut`
+- pinned: true
+- scrub: true
+
+Controls:
+
+- `data-motion-perspective`
+- `data-motion-media-scale`
+- `data-motion-z`
+- `data-motion-background-scale`
+- `data-motion-scroll-vh`
+- `data-motion-ease`
+- `data-motion-pin="true|false"`
+- `data-motion-min-width`
+- `data-motion-alignment="auto"`
+
+Legacy mode keeps the source-style `start: "top top"` and `end: "+=150%"` contract, while the existing standard scroll attributes can override start/end/scrub. Auto mode uses the same top-to-top start with a measured viewport-based range from `data-motion-scroll-vh`. Reduced-motion visitors keep the authored static composition.
+
 ## Grid/slider view switch
 
 ```html
