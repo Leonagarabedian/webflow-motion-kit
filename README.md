@@ -46,7 +46,7 @@ For page-transition tools, destroy the outgoing container before removal, initia
 | Word/character reveal | `data-motion="text-reveal"` | Text element |
 | Blur reveal | `data-motion="blur-reveal"` | Text element |
 | Scramble text | `data-motion="scramble-text"` | Text or link element |\n| Scroll text position Flip | `data-motion="scroll-text-position-flip"` | Text element moving between two authored layout states |\n| Rotating 3D scroll gallery | `data-motion="rotating-3d-scroll-gallery"` | Five source-faithful Codrops 3D scroll variants with optional fixed marquee |
-| Scroll highlight | `data-motion="scroll-highlight"` | Text element |
+| Scroll highlight | `data-motion="scroll-highlight"` | Text element |\n| Scroll marquee | `data-motion="scroll-marquee"` | Standalone fixed-center text traveling horizontally with scroll |
 | SVG reveal/hover | `data-motion="svg-reveal"` | SVG wrapper |
 | Image clip | `data-motion="image-clip"` | Clipping wrapper |
 | Parallax | `data-motion="parallax"` | Media wrapper or inner media |
