@@ -130,67 +130,123 @@ The position Flip and scramble modules remain independent: the Flip module owns 
 
 ## Rotating 3D scroll gallery
 
-This composition adapts Variation 2 of Codrops' MIT-licensed [Rotating On-Scroll Animations](https://github.com/codrops/RotatingOnScrollAnimations). Each authored media item rotates through 3D as it crosses the viewport, recedes on the Z axis near the middle of its scroll range, and returns toward the camera as it exits. The item wrappers are offset horizontally along a sine path. An optional fixed marquee can travel across the viewport over the gallery's full scroll range.
+This composition adapts all five variations from Codrops' MIT-licensed [Rotating On-Scroll Animations](https://github.com/codrops/RotatingOnScrollAnimations). The five demos are **different animation systems**, not just different random rotation amounts, so Motion Kit preserves them explicitly through `data-motion-variant="1" ... "5"`.
 
 ```html
 <section data-motion="rotating-3d-scroll-gallery"
-         data-motion-amplitude="0.2"
-         data-motion-angle-step="0.45"
-         data-motion-perspective="900"
-         data-motion-depth="-300">
-  <div data-motion-target="rotate-wrap">
-    <img data-motion-target="rotate-item" src="..." alt="">
-  </div>
-
-  <div data-motion-target="rotate-wrap">
-    <img data-motion-target="rotate-item" src="..." alt="">
-  </div>
-
+         data-motion-variant="2">
   <div data-motion-target="gallery-marquee">
     <div data-motion-target="gallery-marquee-track">
       Project One / Project Two / Project Three
     </div>
   </div>
+
+  <div data-motion-target="rotate-wrap">
+    <img data-motion-target="rotate-item" src="..." alt="">
+  </div>
+
+  <div data-motion-target="rotate-wrap">
+    <img data-motion-target="rotate-item" src="..." alt="">
+  </div>
 </section>
 ```
 
-`rotate-wrap` and its nested `rotate-item` are the reusable pair. The wrapper owns the horizontal sine offset and perspective; the media item owns `rotationX`, `rotationY`, `rotationZ`, and `z`. Keep those transforms on separate Webflow layers so layout and 3D motion do not fight.
+The reusable structural contract is the same across all five variants: each `rotate-wrap` owns perspective and any horizontal path offset, while its nested `rotate-item` owns the 3D transform/filter animation. The marquee targets are optional.
 
-The source-faithful defaults are:
+### Variation 1 — shallow landscape tumble
 
-- horizontal amplitude: `20vw` via `data-motion-amplitude="0.2"`
-- angle step: `0.45`
-- perspective: `900px`
-- X rotation: random `240deg → 290deg`, animated to its negative
-- Y rotation: random `-20deg → 20deg`, animated to its negative
-- Z rotation: random `-50deg → 50deg`, animated to its negative
-- depth peak: `-300px`
-- depth curve: `sin(progress × π)^4`
-- item range: `top bottom+=20%` → `bottom top-=20%`
-- marquee range: `top bottom` → `bottom top`
+Source behavior:
+- sine layout amplitude: `20vw`
+- sine angle step: `0.45`
+- X rotation: random `70deg → 120deg`, then to its negative
+- Y rotation: random `-20deg → 20deg`
+- Z rotation: random `-20deg → 20deg`
+- Z depth: `sin(progress × π) × -50px`
+- source layout: `600px` max width, `14 / 9` media ratio, `-5rem` item overlap
 
-Optional root attributes:
+### Variation 2 — multi-turn portrait tumble
 
+Source behavior:
+- sine layout amplitude: `20vw`
+- sine angle step: `0.45`
+- X rotation: random `240deg → 290deg`
+- Y rotation: random `-20deg → 20deg`
+- Z rotation: random `-50deg → 50deg`
+- Z depth: `sin(progress × π)^4 × -300px`
+- source layout: `300px` max width, `4 / 5` ratio, `-5rem` overlap
+
+### Variation 3 — dark depth flip
+
+This variation does **not** use the horizontal sine path.
+
+At each item's scroll progress:
+- `rotationX = sign(cos(pπ)) × |cos(pπ)|^0.6 × 90deg`
+- `z = sin(pπ)^8 × -800px`
+- `yPercent = 1 - cos(pπ)^2 × 40`
+- saturation and brightness both resolve from `0 → 1 → 0` with `sin(pπ)^3`
+- source layout: `300px`, `4 / 5`, `7px` radius, `-7rem` overlap
+
+### Variation 4 — Y-axis spin + velocity blur
+
+Source behavior:
+- sine layout amplitude: `20vw`
+- sine angle step: `1` radian per item
+- X rotation: random `-10deg → 10deg`
+- Y rotation: random `200deg → 290deg`
+- Z rotation: random `-10deg → 10deg`
+- Z depth: `sin(progress × π) × -150px`
+- scrolling velocity globally adds up to `15px` blur and desaturates the media
+- source layout: `300px`, `4 / 5`, `7px` radius, **`+5rem` spacing**
+
+The Codrops source derives this from Lenis velocity. Motion Kit does not install a second smooth-scroll system. It derives an equivalent velocity signal from ScrollTrigger and applies the same blur/saturation response. `data-motion-velocity-scale`, `data-motion-velocity-blur`, and `data-motion-velocity-ease` can be tuned when matching a different sitewide smoother.
+
+### Variation 5 — compressed hold / resolve
+
+Source behavior:
+- sine layout amplitude: `5vw`
+- sine angle step: `0.9`
+- X rotation: random `130deg → 220deg`
+- Z rotation moves `+50deg → -50deg`
+- Z depth: `-750px`
+- scroll progress pauses at the exact middle for `25%` of the item's range
+- at the edges: `scaleX 1.6`, `scaleY 0.5`, blur `12px`, brightness `0`
+- at the held middle: `scaleX 1`, `scaleY 1`, blur `0`, brightness `1`
+- source layout: `300px`, `4 / 5`, `-10rem` overlap
+
+### Shared timing and marquee
+
+All five source demos use the same item ScrollTrigger range:
+
+```text
+top bottom+=20% → bottom top-=20%
+```
+
+and the same marquee travel:
+
+```text
+gallery top bottom → gallery bottom top
+100vw              → -100%
+```
+
+The Codrops marquee is **fixed at the vertical center of the viewport**, not sticky. In Motion Kit it is scoped to the active gallery so a reusable component does not leave a fixed marquee visible elsewhere on a longer Webflow page.
+
+Use `data-motion-alignment="auto"` for equivalent measured viewport geometry. Manual/legacy mode preserves the Codrops trigger strings exactly.
+
+Shared optional attributes:
+- `data-motion-variant="1|2|3|4|5"`
+- `data-motion-perspective`
 - `data-motion-amplitude`
 - `data-motion-angle-step`
-- `data-motion-perspective`
-- `data-motion-rotation-x-min`
-- `data-motion-rotation-x-max`
-- `data-motion-rotation-y-min`
-- `data-motion-rotation-y-max`
-- `data-motion-rotation-z-min`
-- `data-motion-rotation-z-max`
-- `data-motion-depth`
-- `data-motion-depth-power`
 - `data-motion-start`
 - `data-motion-end`
 - `data-motion-marquee-start`
 - `data-motion-marquee-end`
+- `data-motion-depth`
 - `data-motion-min-width`
 
-Use `data-motion-alignment="auto"` for measured viewport geometry. Legacy/manual mode preserves the Codrops ScrollTrigger strings exactly. The marquee targets are optional; omit them when only the rotating gallery is wanted.
+Variant-specific rotation/depth/filter attributes are supported where those properties exist in the corresponding source variation.
 
-Do not add the Codrops Lenis initialization to Webflow. Motion Kit uses the site's existing scroll environment, so this module only owns the visual transforms and ScrollTriggers.
+Do not add the Codrops Lenis initialization to Webflow. Branda keeps its existing sitewide smoother.
 
 ## Scroll-progress highlight
 
