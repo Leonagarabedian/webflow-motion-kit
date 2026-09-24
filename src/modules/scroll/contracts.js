@@ -101,6 +101,10 @@ export const scrollContracts = Object.freeze([
     "role": "native-sticky"
   },
   {
+    "name": "sticky-section-exit",
+    "role": "owner"
+  },
+  {
     "name": "statement-compression",
     "role": "owner"
   },
