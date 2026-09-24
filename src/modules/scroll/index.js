@@ -19,6 +19,7 @@ export { pinOverlapNext } from "./pin-overlap-next.js";
 export { scrambleText } from "./scramble-text.js";
 export { scrollSyncedGallery } from "./scroll-synced-gallery.js";
 export { scrollTravel } from "./scroll-travel.js";
+export { scrollTextPositionFlip } from "./scroll-text-position-flip.js";
 export { sectionHandoff } from "./section-handoff.js";
 export { sectionReplacement } from "./section-replacement.js";
 export { sectionField } from "./section-field.js";
