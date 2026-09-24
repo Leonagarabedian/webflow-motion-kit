@@ -170,7 +170,7 @@ describe("rotating-3d-scroll-gallery", () => {
 
     const itemTween = ctx.fromTos.find(({ target }) => target === firstItem);
     expect(itemTween.to.scrollTrigger.start()).toBeCloseTo(-60);
-    expect(itemTween.to.scrollTrigger.end()).toBeCloseTo(1100);
+    expect(itemTween.to.scrollTrigger.end()).toBeCloseTo(1260);
 
     const marqueeTween = ctx.fromTos.find(({ target }) => target === marqueeTrack);
     expect(marqueeTween.to.scrollTrigger.start()).toBeCloseTo(-300);
