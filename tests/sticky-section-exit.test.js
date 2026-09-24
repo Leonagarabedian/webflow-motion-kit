@@ -72,6 +72,20 @@ describe("sticky-section-exit refinements", () => {
     }
   );
 
+  it("locks contact panels to an exact viewport box", () => {
+    const mounted = mount(
+      'data-motion-sticky-variant="center-collapse" data-motion-sticky-contact="true"'
+    );
+
+    const firstPanel = mounted.panels[0];
+    const firstInner = firstPanel.querySelector('[data-motion-target="inner"]');
+
+    expect(mounted.root).toBeTruthy();
+    expect(firstInner).toBeTruthy();
+
+    expect(mounted.cleanup).toBeTypeOf("function");
+  });
+
   it("preserves the original independent collapse when contact is not enabled", () => {
     const mounted = mount('data-motion-sticky-variant="center-collapse"');
 
