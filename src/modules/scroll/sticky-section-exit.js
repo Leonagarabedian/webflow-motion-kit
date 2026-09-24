@@ -115,7 +115,7 @@ function panelRange(root, panel, variant, isLast, isPreLast, multiplier = 1) {
   );
 }
 
-function contactRange(root, incomingPanel) {
+function contactRange(root, panel, incomingPanel) {
   const scrub = root.hasAttribute("data-motion-sticky-contact-scrub")
     ? readNumber(root, "motion-sticky-contact-scrub", DEFAULTS.scrub)
     : true;
@@ -123,8 +123,9 @@ function contactRange(root, incomingPanel) {
   return resolveScrollContract(
     root,
     {
-      trigger: incomingPanel,
-      start: "top bottom",
+      trigger: panel,
+      endTrigger: incomingPanel,
+      start: "top top",
       end: "top top",
       scrub,
       invalidateOnRefresh: true
@@ -132,9 +133,9 @@ function contactRange(root, incomingPanel) {
     () => ({
       start: () =>
         computeAlignedStart({
-          trigger: incomingPanel,
+          trigger: panel,
           anchor: "top",
-          viewport: 1
+          viewport: 0
         }),
       end: () =>
         computeAlignedStart({
@@ -245,7 +246,7 @@ export const stickySectionExit = {
         gsap.timeline({
           scrollTrigger:
             contact && incomingPanel
-              ? contactRange(root, incomingPanel)
+              ? contactRange(root, panel, incomingPanel)
               : panelRange(root, panel, variant, isLast, isPreLast, 1)
         });
 
