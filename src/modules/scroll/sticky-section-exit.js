@@ -116,7 +116,9 @@ function panelRange(root, panel, variant, isLast, isPreLast, multiplier = 1) {
 }
 
 function contactRange(root, incomingPanel) {
-  const scrub = readNumber(root, "motion-sticky-scrub", DEFAULTS.scrub);
+  const scrub = root.hasAttribute("data-motion-sticky-contact-scrub")
+    ? readNumber(root, "motion-sticky-contact-scrub", DEFAULTS.scrub)
+    : true;
 
   return resolveScrollContract(
     root,
