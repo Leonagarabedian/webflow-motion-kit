@@ -160,7 +160,9 @@ export const draggableGridDetail = {
       details.map((detail) => [detail, detail.getAttribute("style")])
     );
     const mediaStyles = new Map();
-    const itemAria = new Map();
+    const itemAria = new Map(
+      items.map((item) => [item, item.getAttribute("aria-expanded")])
+    );
     const detailAria = new Map(
       details.map((detail) => [detail, detail.getAttribute("aria-hidden")])
     );
@@ -286,7 +288,6 @@ export const draggableGridDetail = {
       if (!homeParent) return;
 
       mediaStyles.set(media, media.getAttribute("style"));
-      itemAria.set(item, item.getAttribute("aria-expanded"));
 
       transitioning = true;
       open = true;
