@@ -174,6 +174,76 @@ Place the loader once near the top of the page. It plays after window load, then
 
 Place one instance on every participating page, preferably in a Webflow component. It animates the panel away on entry and over the page before eligible same-origin navigation. External links, downloads, new-tab links, modifier clicks, and same-page anchors are ignored. Add `data-motion-no-transition` to any link that should bypass it. This adapter lets Webflow perform navigation; it is not an SPA router.
 
+## Draggable grid
+
+Use `draggable-grid` for an oversized two-dimensional gallery that can be dragged in X/Y and navigated with wheel input. This module adapts the navigation layer from Joffrey Spitzer / Codrops' MIT-licensed Smooth, Draggable Product Grid demo. Product selection/details are intentionally **not** part of this module; that is a separate interaction layer.
+
+```html
+<section data-motion="draggable-grid"
+         data-motion-wheel="true"
+         data-motion-wheel-strength="7"
+         data-motion-inertia="true">
+  <div data-motion-target="drag-grid">
+
+    <div data-motion-target="drag-column">
+      <div data-motion-target="drag-item"><img src="..." alt=""></div>
+      <div data-motion-target="drag-item"><img src="..." alt=""></div>
+    </div>
+
+    <div data-motion-target="drag-column">
+      <div data-motion-target="drag-item"><img src="..." alt=""></div>
+      <div data-motion-target="drag-item"><img src="..." alt=""></div>
+    </div>
+
+  </div>
+</section>
+```
+
+Required contract:
+
+- root: `data-motion="draggable-grid"`
+- grid: `data-motion-target="drag-grid"`
+- items: one or more `data-motion-target="drag-item"`
+- columns are layout-only; `data-motion-target="drag-column"` is recommended for a readable Webflow Navigator but is not required by the runtime
+
+Author the oversized grid layout in Webflow. The root should have an explicit viewport-like height and clip overflow. The grid itself should size to its content (`width: max-content; height: max-content` works well) and can use any column count/gaps/item sizes you want.
+
+Behavior:
+
+- centers the oversized grid initially
+- GSAP Draggable owns X/Y pointer dragging
+- source-style inertia and edge resistance
+- wheel input moves the same X/Y transform
+- movement is clamped to measured grid/root bounds
+- wheel events are prevented only when the grid can actually move in the requested direction; at a boundary, native page scrolling is released
+- bounds recalculate on resize
+- optional randomized intro: grid starts at `.5`, items start at `.5` + opacity `0`, then resolve to full scale/opacity
+- optional IntersectionObserver fades/scales items as they leave or re-enter the grid viewport
+
+Controls:
+
+- `data-motion-wheel="true|false"`
+- `data-motion-wheel-strength="7"`
+- `data-motion-wheel-duration="0.3"`
+- `data-motion-wheel-ease="power3.out"`
+- `data-motion-inertia="true|false"`
+- `data-motion-edge-resistance="0.9"`
+- `data-motion-overscan-x="200"`
+- `data-motion-overscan-y="100"`
+- `data-motion-intro="true|false"`
+- `data-motion-intro-grid-scale="0.5"`
+- `data-motion-intro-item-scale="0.5"`
+- `data-motion-intro-item-duration="0.6"`
+- `data-motion-intro-stagger-amount="1.2"`
+- `data-motion-intro-grid-duration="1.2"`
+- `data-motion-observe-items="true|false"`
+- `data-motion-item-hidden-scale="0.5"`
+- `data-motion-item-hidden-opacity="0"`
+- `data-motion-item-visible-duration="0.5"`
+- `data-motion-min-width`
+
+Reduced-motion visitors skip the randomized intro and viewport fade/scale effects, while the direct navigation interaction remains available.
+
 ## Pinned image depth zoom
 
 Use `pinned-image-depth-zoom` for the GreenSock-style pinned 3D zoom where a foreground media layer advances toward the viewer while an optional background layer scales more gently.
