@@ -156,6 +156,7 @@ export const draggableGridDetail = {
     const panelStyle = panel.getAttribute("style");
     const thumbStyle = thumb.getAttribute("style");
     const shellStyle = shell.getAttribute("style");
+    const shellPointerEvents = shell.style.pointerEvents;
     const detailStyles = new Map(
       details.map((detail) => [detail, detail.getAttribute("style")])
     );
@@ -183,7 +184,8 @@ export const draggableGridDetail = {
 
     gsap.set(panel, {
       xPercent: 100,
-      pointerEvents: "none"
+      pointerEvents: "none",
+      visibility: "visible"
     });
     panel.setAttribute("aria-hidden", "true");
 
@@ -356,7 +358,7 @@ export const draggableGridDetail = {
       detail.setAttribute("aria-hidden", "true");
       panel.setAttribute("aria-hidden", "true");
       gsap.set(panel, { pointerEvents: "none" });
-      gsap.set(shell, { pointerEvents: "" });
+      shell.style.pointerEvents = shellPointerEvents;
       root.classList.remove("is-detail-open");
       transitioning = false;
       open = false;
@@ -369,7 +371,13 @@ export const draggableGridDetail = {
       transitioning = true;
 
       const { item, detail, media, homeParent, homeNextSibling } = active;
-      hideDetailText(detail);
+      if (!reducedMotion()) {
+        hideDetailText(detail);
+      } else {
+        const split = splitMap.get(detail);
+        if (split?.titleChars?.length) gsap.set(split.titleChars, { yPercent: 100 });
+        if (split?.textLines?.length) gsap.set(split.textLines, { yPercent: 100 });
+      }
 
       const state = Flip.getState(media);
 
