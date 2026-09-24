@@ -142,6 +142,24 @@ describe("pinned-image-depth-zoom", () => {
     cleanup();
   });
 
+  it("falls back to media inside the authored depth frame", () => {
+    const root = document.querySelector('[data-motion="pinned-image-depth-zoom"]');
+    const media = root.querySelector('[data-motion-target="depth-media"]');
+    media.removeAttribute("data-motion-target");
+    const fake = createGsap();
+
+    const cleanup = pinnedImageDepthZoom.mount(root, {
+      gsap: fake.gsap,
+      reducedMotion: () => false,
+      logger: console
+    });
+
+    expect(fake.toCalls[0].target).toBe(media);
+    expect(fake.toCalls[0].vars.z).toBe(350);
+
+    cleanup();
+  });
+
   it("works without a background target", () => {
     const root = document.querySelector('[data-motion="pinned-image-depth-zoom"]');
     root.querySelector('[data-motion-target="background"]').remove();
