@@ -60,6 +60,7 @@ describe("sticky-section-exit refinements", () => {
       expect(mounted.configs[0].trigger).toBe(mounted.panels[1]);
       expect(mounted.configs[0].start).toBe("top bottom");
       expect(mounted.configs[0].end).toBe("top top");
+      expect(mounted.configs[0].scrub).toBe(true);
 
       expect(mounted.configs[1].trigger).toBe(mounted.panels[2]);
       expect(mounted.configs[1].start).toBe("top bottom");
