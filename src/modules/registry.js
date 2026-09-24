@@ -50,6 +50,7 @@ import { pairedTagIntro } from "./paired-tag-intro.js";
 import { parallax } from "./parallax.js";
 import { pinOverlapNext } from "./pin-overlap-next.js";
 import { pinnedMedia } from "./pinned-media.js";
+import { pinnedImageDepthZoom } from "./pinned-image-depth-zoom.js";
 import { pinnedMediaReturn } from "./pinned-media-return.js";
 import { pinnedSteps } from "./pinned-steps.js";
 import { responsiveMenu } from "./responsive-menu.js";
@@ -155,6 +156,7 @@ export const modules = [
   heroFrameTransition,
   heroHeartTransition,
   pinnedMedia,
+  pinnedImageDepthZoom,
   pinnedMediaReturn,
   pinnedSteps,
   accordionMedia,
