@@ -245,6 +245,49 @@ Controls:
 
 Reduced-motion visitors keep the authored static text.
 
+## Infinite media column
+
+Use `infinite-media-column` for the independent center media rail from the same Jorge Toloza demo. It continuously recycles authored media items vertically and reacts lightly to wheel/touch input without creating a second page scroller.
+
+```html
+<div data-motion="infinite-media-column"
+     data-motion-direction="down"
+     data-motion-auto-speed="0.2"
+     data-motion-wheel-strength="0.054">
+  <div data-motion-target="media-track">
+    <img data-motion-target="media-item" src="..." alt="">
+    <img data-motion-target="media-item" src="..." alt="">
+    <img data-motion-target="media-item" src="..." alt="">
+  </div>
+</div>
+```
+
+Required contract:
+
+- root: `data-motion="infinite-media-column"`
+- track: `data-motion-target="media-track"`
+- items: direct children of the track; use `data-motion-target="media-item"` when other direct children are present
+
+The root should have an authored height and `overflow` can remain unset; the module applies `overflow: hidden` at runtime. Each media item keeps its authored width/aspect ratio. The module clones enough items to maintain an infinite loop and removes those clones on cleanup.
+
+The source demo's media rail moves continuously at a gentler rate than the text columns. Defaults preserve that relationship:
+
+- `data-motion-auto-speed="0.2"`
+- `data-motion-wheel-strength="0.054"`
+- `data-motion-ease-factor="0.05"`
+- `data-motion-speed-ease="0.05"`
+
+Additional controls:
+
+- `data-motion-direction="up|down"`
+- `data-motion-touch-strength="0.35"`
+- `data-motion-min-cycles="2"`
+- `data-motion-min-width`
+
+For the Branda Motion Kit reference, the media rail uses the same tighter response tuning as the approved text test (`ease-factor="0.12"`, `speed-ease="0.12"`) while keeping the original slower media auto-speed and lighter wheel influence.
+
+Like `infinite-text-distortion`, this module never calls `preventDefault()`, creates Lenis, or creates another ScrollSmoother.
+
 ## Looping labels
 
 ```html
