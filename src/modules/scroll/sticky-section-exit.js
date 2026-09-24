@@ -28,6 +28,24 @@ const DEFAULTS = Object.freeze({
   perspective: 1000
 });
 
+const FAITHFUL_COLLAPSES = new Set([
+  "center-collapse",
+  "corner-collapse",
+  "hinge-collapse",
+  "vertical-squash"
+]);
+
+const DETACHED_COLLAPSES = new Map([
+  ["center-collapse-detached", "center-collapse"],
+  ["corner-collapse-detached", "corner-collapse"],
+  ["hinge-collapse-detached", "hinge-collapse"],
+  ["vertical-squash-detached", "vertical-squash"]
+]);
+
+function collapseBaseVariant(variant) {
+  return DETACHED_COLLAPSES.get(variant) || variant;
+}
+
 function normalizeVariant(value) {
   const raw = String(value || "").trim().toLowerCase();
   if (!raw) return DEFAULTS.variant;
@@ -57,23 +75,23 @@ function target(panel, role, fallbackSelector = "") {
   );
 }
 
-function panelRange(root, panel, variant, isLast, isPreLast, multiplier = 1) {
+function panelRange(root, panel, motionVariant, isLast, isPreLast, multiplier = 1) {
   let legacyStart = "top top";
   let legacyEnd = `+=${100 * multiplier}%`;
 
-  if (variant === "fade-shrink" || variant === "blur-shrink") {
+  if (motionVariant === "fade-shrink" || motionVariant === "blur-shrink") {
     legacyStart = "center center";
   }
 
-  if (variant === "media-rise") {
+  if (motionVariant === "media-rise") {
     legacyStart = isLast ? "top top" : isPreLast ? "bottom top" : "bottom+=100% top";
   }
 
-  if (variant === "slide-up") {
+  if (motionVariant === "slide-up") {
     legacyStart = isLast ? "top top" : "bottom top";
   }
 
-  if (variant === "blur-shrink") {
+  if (motionVariant === "blur-shrink") {
     legacyEnd = "max";
   }
 
@@ -88,15 +106,15 @@ function panelRange(root, panel, variant, isLast, isPreLast, multiplier = 1) {
     },
     () => {
       let start;
-      if (variant === "fade-shrink" || variant === "blur-shrink") {
+      if (motionVariant === "fade-shrink" || motionVariant === "blur-shrink") {
         start = () => computeAlignedStart({ trigger: panel, anchor: "center", viewport: 0.5 });
-      } else if (variant === "media-rise") {
+      } else if (motionVariant === "media-rise") {
         start = isLast
           ? () => computeAlignedStart({ trigger: panel, anchor: "top", viewport: 0 })
           : isPreLast
             ? () => computeAlignedStart({ trigger: panel, anchor: "bottom", viewport: 0 })
             : () => computeAlignedStart({ trigger: panel, anchor: "bottom", viewport: 0 }) + window.innerHeight;
-      } else if (variant === "slide-up") {
+      } else if (motionVariant === "slide-up") {
         start = isLast
           ? () => computeAlignedStart({ trigger: panel, anchor: "top", viewport: 0 })
           : () => computeAlignedStart({ trigger: panel, anchor: "bottom", viewport: 0 });
@@ -107,7 +125,7 @@ function panelRange(root, panel, variant, isLast, isPreLast, multiplier = 1) {
       return {
         start,
         end:
-          variant === "blur-shrink"
+          motionVariant === "blur-shrink"
             ? "max"
             : () => `+=${Math.max(1, window.innerHeight * multiplier)}`
       };
@@ -115,18 +133,25 @@ function panelRange(root, panel, variant, isLast, isPreLast, multiplier = 1) {
   );
 }
 
-function contactRange(root, panel, incomingPanel) {
-  const scrub = root.hasAttribute("data-motion-sticky-contact-scrub")
-    ? readNumber(root, "motion-sticky-contact-scrub", DEFAULTS.scrub)
+function faithfulCollapseRange(root, panel) {
+  const scrub = root.hasAttribute("data-motion-sticky-scrub")
+    ? readNumber(root, "motion-sticky-scrub", DEFAULTS.scrub)
     : true;
+
+  const distance = () =>
+    Math.max(
+      1,
+      panel.offsetHeight ||
+        panel.getBoundingClientRect?.().height ||
+        window.innerHeight
+    );
 
   return resolveScrollContract(
     root,
     {
       trigger: panel,
-      endTrigger: incomingPanel,
       start: "top top",
-      end: "top top",
+      end: () => `+=${distance()}`,
       scrub,
       invalidateOnRefresh: true
     },
@@ -137,17 +162,12 @@ function contactRange(root, panel, incomingPanel) {
           anchor: "top",
           viewport: 0
         }),
-      end: () =>
-        computeAlignedStart({
-          trigger: incomingPanel,
-          anchor: "top",
-          viewport: 0
-        })
+      end: () => `+=${distance()}`
     })
   );
 }
 
-function mediaRange(root, panel, variant) {
+function mediaRange(root, panel, motionVariant) {
   const legacy = {
     trigger: panel,
     start: readString(root, "motion-sticky-media-start", "top bottom"),
@@ -181,6 +201,12 @@ export const stickySectionExit = {
     const variant = normalizeVariant(
       readString(root, "motion-sticky-variant", DEFAULTS.variant)
     );
+    const motionVariant = collapseBaseVariant(variant);
+    const detachedCollapse = DETACHED_COLLAPSES.has(variant);
+    const legacyContact = readBoolean(root, "motion-sticky-contact", false);
+    const faithfulCollapse =
+      FAITHFUL_COLLAPSES.has(motionVariant) &&
+      (!detachedCollapse || legacyContact);
     const top = readString(root, "motion-sticky-top", DEFAULTS.top);
     const minHeight = readString(
       root,
@@ -192,11 +218,14 @@ export const stickySectionExit = {
       "motion-sticky-perspective",
       DEFAULTS.perspective
     );
-    const contact = readBoolean(root, "motion-sticky-contact", false);
-    const contactHeight = readString(
+    const faithfulHeight = readString(
       root,
-      "motion-sticky-contact-height",
-      "100svh"
+      "motion-sticky-panel-height",
+      readString(
+        root,
+        "motion-sticky-contact-height",
+        `calc(100vh - ${top})`
+      )
     );
 
     const rootStyle = root.getAttribute("style");
@@ -225,13 +254,13 @@ export const stickySectionExit = {
       gsap.set(panel, {
         position: "sticky",
         top,
-        minHeight: contact ? contactHeight : minHeight,
-        height: contact ? contactHeight : undefined,
-        boxSizing: contact ? "border-box" : undefined,
+        minHeight: faithfulCollapse ? faithfulHeight : minHeight,
+        height: faithfulCollapse ? faithfulHeight : undefined,
+        boxSizing: faithfulCollapse ? "border-box" : undefined,
         overflow: "hidden"
       });
 
-      if (contact && explicitInner) {
+      if (faithfulCollapse && explicitInner) {
         gsap.set(explicitInner, {
           height: "100%",
           minHeight: 0,
@@ -239,7 +268,7 @@ export const stickySectionExit = {
         });
       }
 
-      if (variant === "perspective-fold") {
+      if (motionVariant === "perspective-fold") {
         gsap.set(panel, { perspective });
       }
     });
@@ -250,7 +279,6 @@ export const stickySectionExit = {
     panels.forEach((panel, position) => {
       const isLast = position === panels.length - 1;
       const isPreLast = position === panels.length - 2;
-      const incomingPanel = panels[position + 1] || null;
       const media = mediaTargets(panel);
       const firstMedia = media[0] || null;
       const title = target(panel, "title", "h1,h2,h3");
@@ -258,17 +286,32 @@ export const stickySectionExit = {
       const inner = target(panel, "inner") || panel.firstElementChild || panel;
 
       const main = (multiplier = 1) =>
-        gsap.timeline({ scrollTrigger: panelRange(root, panel, variant, isLast, isPreLast, multiplier) });
+        gsap.timeline({
+          scrollTrigger: panelRange(
+            root,
+            panel,
+            motionVariant,
+            isLast,
+            isPreLast,
+            multiplier
+          )
+        });
 
       const collapseMain = () =>
         gsap.timeline({
-          scrollTrigger:
-            contact && incomingPanel
-              ? contactRange(root, panel, incomingPanel)
-              : panelRange(root, panel, variant, isLast, isPreLast, 1)
+          scrollTrigger: faithfulCollapse
+            ? faithfulCollapseRange(root, panel)
+            : panelRange(
+                root,
+                panel,
+                motionVariant,
+                isLast,
+                isPreLast,
+                1
+              )
         });
 
-      if (variant === "image-drift") {
+      if (motionVariant === "image-drift") {
         const tl = main(1);
         tl.fromTo(
           panel,
@@ -295,7 +338,7 @@ export const stickySectionExit = {
         return;
       }
 
-      if (variant === "rounded-dim") {
+      if (motionVariant === "rounded-dim") {
         const tl = main(1);
         tl.fromTo(
           panel,
@@ -312,7 +355,7 @@ export const stickySectionExit = {
         return;
       }
 
-      if (variant === "center-collapse") {
+      if (motionVariant === "center-collapse") {
         gsap.set(panel, { transformOrigin: `50% ${isLast ? 100 : 0}%` });
         const tl = collapseMain().to(panel, {
           scale: readNumber(root, "motion-sticky-scale", 0),
@@ -322,7 +365,7 @@ export const stickySectionExit = {
         return;
       }
 
-      if (variant === "corner-collapse") {
+      if (motionVariant === "corner-collapse") {
         gsap.set(panel, {
           transformOrigin: `${position % 2 === 0 ? 0 : 100}% ${isLast ? 100 : 0}%`
         });
@@ -335,7 +378,7 @@ export const stickySectionExit = {
         return;
       }
 
-      if (variant === "hinge-collapse") {
+      if (motionVariant === "hinge-collapse") {
         gsap.set(panel, {
           transformOrigin: `${position % 2 === 0 ? 2 : 98}% ${isLast ? 0 : 2}%`
         });
@@ -351,7 +394,7 @@ export const stickySectionExit = {
         return;
       }
 
-      if (variant === "perspective-fold") {
+      if (motionVariant === "perspective-fold") {
         remember(inner);
         gsap.set(inner, {
           transformOrigin: "50% 0%",
@@ -375,7 +418,7 @@ export const stickySectionExit = {
         return;
       }
 
-      if (variant === "fade-shrink") {
+      if (motionVariant === "fade-shrink") {
         const tl = main(1).to(panel, {
           scale: readNumber(root, "motion-sticky-scale", 0.6),
           opacity: readNumber(root, "motion-sticky-opacity", 0),
@@ -386,7 +429,7 @@ export const stickySectionExit = {
         return;
       }
 
-      if (variant === "blur-shrink") {
+      if (motionVariant === "blur-shrink") {
         const tl = main(1).to(panel, {
           scale: readNumber(root, "motion-sticky-scale", 0.4),
           yPercent: readNumber(root, "motion-sticky-y", -50),
@@ -411,7 +454,7 @@ export const stickySectionExit = {
         return;
       }
 
-      if (variant === "media-rise") {
+      if (motionVariant === "media-rise") {
         const tl = main(1).to(panel, { yPercent: -100, ease: "none" });
         timelines.push(tl);
         if (firstMedia) {
@@ -429,7 +472,7 @@ export const stickySectionExit = {
               scale: 1,
               filter: "contrast(100%)",
               ease: "none",
-              scrollTrigger: mediaRange(root, panel, variant)
+              scrollTrigger: mediaRange(root, panel, motionVariant)
             }
           );
           tweens.push(mediaTween);
@@ -437,13 +480,13 @@ export const stickySectionExit = {
         return;
       }
 
-      if (variant === "slide-up") {
+      if (motionVariant === "slide-up") {
         const tl = main(1).to(panel, { yPercent: -100, ease: "none" });
         timelines.push(tl);
         return;
       }
 
-      if (variant === "tilt-fade") {
+      if (motionVariant === "tilt-fade") {
         gsap.set(panel, { transformOrigin: "100% 0%" });
         const tl = main(1).to(panel, {
           opacity: readNumber(root, "motion-sticky-opacity", 0),
@@ -457,7 +500,7 @@ export const stickySectionExit = {
         return;
       }
 
-      if (variant === "contrast-drift") {
+      if (motionVariant === "contrast-drift") {
         gsap.set(panel, {
           transformOrigin: `${position % 2 === 0 ? 100 : 0}% 0%`
         });
@@ -493,7 +536,7 @@ export const stickySectionExit = {
         return;
       }
 
-      if (variant === "side-throw") {
+      if (motionVariant === "side-throw") {
         gsap.set(panel, {
           transformOrigin: `${position % 2 === 0 ? 100 : 0}% ${isLast ? 0 : 100}%`
         });
@@ -558,7 +601,7 @@ export const stickySectionExit = {
         return;
       }
 
-      if (variant === "vertical-squash") {
+      if (motionVariant === "vertical-squash") {
         gsap.set(panel, { transformOrigin: `50% ${isLast ? 100 : 0}%` });
         const tl = collapseMain().to(
           panel,
@@ -584,7 +627,7 @@ export const stickySectionExit = {
         return;
       }
 
-      if (variant === "media-sweep") {
+      if (motionVariant === "media-sweep") {
         if (!firstMedia) return;
         const tween = gsap.fromTo(
           firstMedia,
@@ -596,7 +639,7 @@ export const stickySectionExit = {
             yPercent: readNumber(root, "motion-sticky-media-y", -60),
             rotation: readNumber(root, "motion-sticky-media-rotation", -20),
             ease: "power1",
-            scrollTrigger: mediaRange(root, panel, variant)
+            scrollTrigger: mediaRange(root, panel, motionVariant)
           }
         );
         tweens.push(tween);
