@@ -170,9 +170,9 @@ describe("rotating-3d-scroll-gallery source variants", () => {
     expect(ctx.transforms.get(items[0])).toMatchObject({
       rotationX: 95,
       rotationY: 0,
-      rotationZ: 0,
-      z: 0
+      rotationZ: 0
     });
+    expect(ctx.transforms.get(items[0]).z).toBeCloseTo(0);
 
     trigger.config.onUpdate({ progress: 0.5 });
     expect(ctx.transforms.get(items[0])).toMatchObject({
@@ -227,9 +227,9 @@ describe("rotating-3d-scroll-gallery source variants", () => {
     trigger.config.onUpdate({ progress: 0 });
     expect(ctx.transforms.get(items[0])).toMatchObject({
       rotationX: 90,
-      z: 0,
       yPercent: -39
     });
+    expect(ctx.transforms.get(items[0]).z).toBeCloseTo(0);
     expect(ctx.filters.get(items[0])).toBe("saturate(0) brightness(0)");
 
     trigger.config.onUpdate({ progress: 0.5 });
@@ -259,9 +259,9 @@ describe("rotating-3d-scroll-gallery source variants", () => {
     expect(ctx.transforms.get(items[0])).toMatchObject({
       rotationX: 0,
       rotationY: 245,
-      rotationZ: 0,
-      z: 0
+      rotationZ: 0
     });
+    expect(ctx.transforms.get(items[0]).z).toBeCloseTo(0);
 
     trigger.config.onUpdate({ progress: 0.5 });
     expect(ctx.transforms.get(items[0])).toMatchObject({
@@ -302,9 +302,9 @@ describe("rotating-3d-scroll-gallery source variants", () => {
       scaleX: 1.6,
       scaleY: 0.5,
       rotationX: -175,
-      rotationZ: 50,
-      z: 0
+      rotationZ: 50
     });
+    expect(ctx.transforms.get(items[0]).z).toBeCloseTo(0);
     expect(ctx.filters.get(items[0])).toBe("blur(12px) brightness(0)");
 
     trigger.config.onUpdate({ progress: 0.45 });
