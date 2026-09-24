@@ -13,6 +13,7 @@ import { cursor } from "./cursor.js";
 import { circleClipPreview } from "./circle-clip-preview.js";
 import { depthEmerge } from "./depth-emerge.js";
 import { draggableGrid } from "./draggable-grid.js";
+import { draggableGridDetail } from "./draggable-grid-detail.js";
 import { elementBlurReveal } from "./element-blur-reveal.js";
 import { elementLayoutReturn } from "./element-layout-return.js";
 import { emphasisTransfer } from "./emphasis-transfer.js";
@@ -149,6 +150,7 @@ export const modules = [
   worksServicesTransition,
   depthEmerge,
   draggableGrid,
+  draggableGridDetail,
   elementLayoutReturn,
   syncedFade,
   sectionHandoff,

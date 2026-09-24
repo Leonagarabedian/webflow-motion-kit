@@ -244,6 +244,84 @@ Controls:
 
 Reduced-motion visitors skip the randomized intro and viewport fade/scale effects, while the direct navigation interaction remains available.
 
+## Draggable grid detail
+
+Use `draggable-grid-detail` together with `draggable-grid` when a selected grid item should Flip into a detail panel. The navigation grid and the detail transition stay as separate modules so their transforms never compete.
+
+```html
+<section data-motion="draggable-grid draggable-grid-detail">
+
+  <div data-motion-target="detail-grid-shell">
+    <div data-motion-target="drag-grid">
+
+      <div data-grid-item="project-1"
+           data-motion-target="drag-item">
+        <img data-motion-target="detail-media" src="..." alt="">
+      </div>
+
+    </div>
+  </div>
+
+  <aside data-motion-target="detail-panel" aria-hidden="true">
+    <button data-motion-target="detail-close">Close</button>
+
+    <div data-motion-target="detail-thumb"></div>
+
+    <article data-grid-detail="project-1">
+      <h2 data-motion-target="detail-title">Project One</h2>
+      <p data-motion-target="detail-text">...</p>
+    </article>
+  </aside>
+
+</section>
+```
+
+Required contract:
+
+- root: `data-motion="draggable-grid draggable-grid-detail"`
+- independent grid-shift layer: `data-motion-target="detail-grid-shell"`
+- grid items: `data-grid-item="<key>"`
+- movable image/media inside each item: `data-motion-target="detail-media"` is recommended; otherwise the first `img`, `picture`, or `video` inside the keyed item is used
+- panel: `data-motion-target="detail-panel"`
+- Flip destination: `data-motion-target="detail-thumb"`
+- matching detail content: `data-grid-detail="<same key>"`
+- optional close controls: `data-motion-target="detail-close"`
+
+The selected media element is moved, not the outer drag item. That leaves the grid item's authored footprint in place while the exact media object Flips into the detail thumbnail. Keys are matched by value, never by DOM position, so repeated grid items can point to the same detail record.
+
+The detail module animates `detail-grid-shell`, not `drag-grid`. This is deliberate: `draggable-grid` keeps sole ownership of the drag grid's X/Y transform while the detail module shifts the independent shell left as the panel enters.
+
+Default choreography follows the source demo:
+
+- detail duration: `1.2s`
+- ease: `power3.inOut`
+- grid shell shift: `-50%`
+- panel: `xPercent 100 → 0`
+- selected media: GSAP Flip into `detail-thumb`
+- title: SplitText character reveal
+- body: SplitText line reveal
+- text delay: `0.4s`
+- close delay: `0.3s`
+- close reverses the Flip and restores the exact media element to its original parent and DOM position
+- Escape closes the panel
+- underlying drag/wheel interaction is blocked while detail mode is open
+
+Controls:
+
+- `data-motion-detail-duration="1.2"`
+- `data-motion-detail-ease="power3.inOut"`
+- `data-motion-detail-close-delay="0.3"`
+- `data-motion-detail-shift-percent="-50"`
+- `data-motion-detail-text-delay="0.4"`
+- `data-motion-detail-title-duration="1.1"`
+- `data-motion-detail-title-stagger="0.025"`
+- `data-motion-detail-text-duration="1.1"`
+- `data-motion-detail-text-stagger="0.05"`
+- `data-motion-detail-close-text-duration="0.6"`
+- `data-motion-detail-close-on-backdrop="true|false"`
+
+Reduced-motion visitors keep the same selection/detail behavior but skip the travel/reveal durations.
+
 ## Pinned image depth zoom
 
 Use `pinned-image-depth-zoom` for the GreenSock-style pinned 3D zoom where a foreground media layer advances toward the viewer while an optional background layer scales more gently.
