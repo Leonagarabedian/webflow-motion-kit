@@ -18,9 +18,9 @@ beforeEach(() => {
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe("scroll ownership contracts", () => {
-  it("keeps 40 uniquely named modules and the same registered module objects", () => {
-    expect(scrollContracts).toHaveLength(40);
-    expect(new Set(scrollContracts.map(entry => entry.name)).size).toBe(40);
+  it("keeps 41 uniquely named modules and the same registered module objects", () => {
+    expect(scrollContracts).toHaveLength(41);
+    expect(new Set(scrollContracts.map(entry => entry.name)).size).toBe(41);
     const available = Object.values(organized);
     for (const contract of scrollContracts) {
       const module = available.find(module => module.name === contract.name);

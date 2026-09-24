@@ -81,6 +81,10 @@ export const scrollContracts = Object.freeze([
     "role": "owner"
   },
   {
+    "name": "scroll-text-position-flip",
+    "role": "owner"
+  },
+  {
     "name": "section-handoff",
     "role": "owner-or-follower"
   },

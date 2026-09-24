@@ -23,7 +23,8 @@ export const scrambleText = {
     const tween = gsap.to(element, vars);
 
     if (event === "scroll") {
-      const once = readBoolean(element, "motion-once", true);
+      const onEnterBack = readBoolean(element, "motion-on-enter-back", false);
+      const once = onEnterBack ? false : readBoolean(element, "motion-once", true);
       const triggerElement = resolveTrigger(element);
       const mode = scrollMode(element);
       const triggerConfig = mode === "auto"
@@ -46,11 +47,13 @@ export const scrambleText = {
             }).scrollTrigger,
             scrub: false,
             once,
-            onEnter: () => tween.restart()
+            onEnter: () => tween.restart(),
+            ...(onEnterBack ? { onEnterBack: () => tween.restart() } : {})
           }
         : {
             once,
             onEnter: () => tween.restart(),
+            ...(onEnterBack ? { onEnterBack: () => tween.restart() } : {}),
             start: readString(element, "motion-start", "top 85%"),
             trigger: triggerElement
           };
