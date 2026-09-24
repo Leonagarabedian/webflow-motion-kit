@@ -18,8 +18,8 @@ beforeEach(() => {
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe("scroll ownership contracts", () => {
-  it("keeps 39 uniquely named modules and the same registered module objects", () => {
-    expect(scrollContracts).toHaveLength(39);
+  it("keeps 40 uniquely named modules and the same registered module objects", () => {
+    expect(scrollContracts).toHaveLength(40);
     expect(new Set(scrollContracts.map(entry => entry.name)).size).toBe(39);
     const available = Object.values(organized);
     for (const contract of scrollContracts) {
