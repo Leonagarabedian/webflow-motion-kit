@@ -454,6 +454,10 @@ Numeric aliases `1` through `15` are also accepted. The root owns the sticky geo
 
 General controls: `data-motion-sticky-top`, `data-motion-sticky-min-height`, `data-motion-sticky-scrub`, `data-motion-min-width`, `data-motion-alignment="auto"`, and the shared manual `data-motion-start`, `data-motion-end`, `data-motion-scroll-distance`, `data-motion-scroll-vh`, and `data-motion-scrub` overrides.
 
+For `center-collapse`, `corner-collapse`, `hinge-collapse`, and `vertical-squash`, add `data-motion-sticky-contact="true"` when the outgoing transformation should stay synchronized to the incoming panel edge. The default remains the independent/floating version, so both behaviors are available from the same variant.
+
+`side-throw` now finishes with a short dedicated fade phase; tune the final alpha with `data-motion-sticky-exit-opacity`.
+
 Variant motion amounts can be tuned with attributes such as `data-motion-sticky-scale`, `data-motion-sticky-y`, `data-motion-sticky-x`, `data-motion-sticky-rotation`, `data-motion-sticky-radius`, `data-motion-sticky-brightness`, `data-motion-sticky-contrast`, `data-motion-sticky-opacity`, `data-motion-sticky-blur`, and the corresponding `media/title/text` controls used by the more complex variants.
 
 The module intentionally does not create Lenis or another smooth-scroll instance. It uses the site's existing scroll environment and the Motion Kit ScrollTrigger/alignment system.
