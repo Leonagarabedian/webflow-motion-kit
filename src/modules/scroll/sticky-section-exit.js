@@ -46,10 +46,6 @@ function collapseBaseVariant(variant) {
   return DETACHED_COLLAPSES.get(variant) || variant;
 }
 
-function isFaithfulCollapse(variant) {
-  return FAITHFUL_COLLAPSES.has(variant) && !DETACHED_COLLAPSES.has(variant);
-}
-
 function normalizeVariant(value) {
   const raw = String(value || "").trim().toLowerCase();
   if (!raw) return DEFAULTS.variant;
@@ -83,7 +79,7 @@ function panelRange(root, panel, motionVariant, isLast, isPreLast, multiplier = 
   let legacyStart = "top top";
   let legacyEnd = `+=${100 * multiplier}%`;
 
-  if (motionVariant === "fade-shrink" || variant === "blur-shrink") {
+  if (motionVariant === "fade-shrink" || motionVariant === "blur-shrink") {
     legacyStart = "center center";
   }
 
@@ -110,7 +106,7 @@ function panelRange(root, panel, motionVariant, isLast, isPreLast, multiplier = 
     },
     () => {
       let start;
-      if (motionVariant === "fade-shrink" || variant === "blur-shrink") {
+      if (motionVariant === "fade-shrink" || motionVariant === "blur-shrink") {
         start = () => computeAlignedStart({ trigger: panel, anchor: "center", viewport: 0.5 });
       } else if (motionVariant === "media-rise") {
         start = isLast
@@ -129,7 +125,7 @@ function panelRange(root, panel, motionVariant, isLast, isPreLast, multiplier = 
       return {
         start,
         end:
-          variant === "blur-shrink"
+          motionVariant === "blur-shrink"
             ? "max"
             : () => `+=${Math.max(1, window.innerHeight * multiplier)}`
       };
