@@ -61,6 +61,7 @@ import { scrambleText } from "./scramble-text.js";
 import { scrollHighlight } from "./scroll-highlight.js";
 import { scrollSyncedGallery } from "./scroll-synced-gallery.js";
 import { scrollTravel } from "./scroll-travel.js";
+import { scrollTextPositionFlip } from "./scroll-text-position-flip.js";
 import { sectionHandoff } from "./section-handoff.js";
 import { sectionReplacement } from "./section-replacement.js";
 import { sectionBlendHandoff } from "./section-blend-handoff.js";
@@ -98,6 +99,7 @@ export const modules = [
   imageClip,
   parallax,
   scrollTravel,
+  scrollTextPositionFlip,
   scrollSyncedGallery,
   characterConverge,
   liquidFill,
