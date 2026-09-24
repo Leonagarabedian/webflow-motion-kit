@@ -401,6 +401,63 @@ Layers are paired in DOM order. Give the wrapper an explicit height or aspect ra
 
 Each card stays in normal document flow, becomes sticky at its configured top, and layers beneath the cards that follow it. `data-motion-stack-overlap="10"` starts the next card after roughly 90% of the previous card's measured height has passed. `data-motion-stack-offset` is a pixel increment that leaves a small visible edge between stacked cards; use `0` for exact overlap. The module recalculates overlap when card dimensions change, then restores the authored layout below the minimum width and for reduced-motion visitors. Keep overflow visible on ancestors of the stack.
 
+## Sticky section exit
+
+Use one root for the entire stack. Every animated panel is a normal Webflow element marked with `data-motion-sticky-section`. The module supplies the sticky positioning and exit choreography at runtime.
+
+```html
+<div data-motion="sticky-section-exit"
+     data-motion-sticky-variant="image-drift"
+     data-motion-alignment="auto">
+  <section data-motion-sticky-section>
+    <img data-motion-target="media" alt="">
+    <h2 data-motion-target="title">Panel one</h2>
+    <p data-motion-target="text">...</p>
+  </section>
+
+  <section data-motion-sticky-section>
+    <img data-motion-target="media" alt="">
+    <h2 data-motion-target="title">Panel two</h2>
+    <p data-motion-target="text">...</p>
+  </section>
+</div>
+```
+
+Required contract:
+
+- root: `data-motion="sticky-section-exit"`
+- repeated panels: `data-motion-sticky-section`
+
+Optional targets are `data-motion-target="media"`, `title`, `text`, and `inner`. When target attributes are omitted, the module falls back to common `img/video/picture`, heading, and paragraph elements. `perspective-fold` works best with an explicit `inner` wrapper so the sticky panel itself does not own the 3D fold transform.
+
+The 15 Codrops-inspired variants are exposed through one stable contract:
+
+| Original demo | Variant |
+|---|---|
+| 1 | `image-drift` |
+| 2 | `rounded-dim` |
+| 3 | `center-collapse` |
+| 4 | `corner-collapse` |
+| 5 | `hinge-collapse` |
+| 6 | `perspective-fold` |
+| 7 | `fade-shrink` |
+| 8 | `blur-shrink` |
+| 9 | `media-rise` |
+| 10 | `slide-up` |
+| 11 | `tilt-fade` |
+| 12 | `contrast-drift` |
+| 13 | `side-throw` |
+| 14 | `vertical-squash` |
+| 15 | `media-sweep` |
+
+Numeric aliases `1` through `15` are also accepted. The root owns the sticky geometry; each panel remains in normal document flow and is set to `position: sticky` with a default `top: 0` and `min-height: 100svh`.
+
+General controls: `data-motion-sticky-top`, `data-motion-sticky-min-height`, `data-motion-sticky-scrub`, `data-motion-min-width`, `data-motion-alignment="auto"`, and the shared manual `data-motion-start`, `data-motion-end`, `data-motion-scroll-distance`, `data-motion-scroll-vh`, and `data-motion-scrub` overrides.
+
+Variant motion amounts can be tuned with attributes such as `data-motion-sticky-scale`, `data-motion-sticky-y`, `data-motion-sticky-x`, `data-motion-sticky-rotation`, `data-motion-sticky-radius`, `data-motion-sticky-brightness`, `data-motion-sticky-contrast`, `data-motion-sticky-opacity`, `data-motion-sticky-blur`, and the corresponding `media/title/text` controls used by the more complex variants.
+
+The module intentionally does not create Lenis or another smooth-scroll instance. It uses the site's existing scroll environment and the Motion Kit ScrollTrigger/alignment system.
+
 ## Custom cursor area
 
 ```html

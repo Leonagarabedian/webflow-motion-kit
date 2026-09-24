@@ -25,6 +25,7 @@ export { sectionField } from "./section-field.js";
 export { servicesCenterShift } from "./services-center-shift.js";
 export { spatialLoop } from "./spatial-loop.js";
 export { stackedCards } from "./stacked-cards.js";
+export { stickySectionExit } from "./sticky-section-exit.js";
 export { statementCompression } from "./statement-compression.js";
 export { svgReveal } from "./svg-reveal.js";
 export { syncedFade } from "./synced-fade.js";

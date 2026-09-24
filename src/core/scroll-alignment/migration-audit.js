@@ -46,6 +46,7 @@ const CUSTOM_READY = new Map([
   ["tags-glitch", "custom-sticky-runway"],
   ["flip-relocation", "custom-flip-span"],
   ["stacked-cards", "native-sticky-layout"],
+  ["sticky-section-exit", "native-sticky-exit"],
   ["services-center-shift", "measured-center-span"],
   ["footer-reveal", "measured-reveal-span"],
   ["theme-switch", "measured-theme-window"],
