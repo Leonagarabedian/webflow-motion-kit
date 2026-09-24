@@ -12,6 +12,7 @@ import { counterExpansion } from "./counter-expansion.js";
 import { cursor } from "./cursor.js";
 import { circleClipPreview } from "./circle-clip-preview.js";
 import { depthEmerge } from "./depth-emerge.js";
+import { draggableGrid } from "./draggable-grid.js";
 import { elementBlurReveal } from "./element-blur-reveal.js";
 import { elementLayoutReturn } from "./element-layout-return.js";
 import { emphasisTransfer } from "./emphasis-transfer.js";
@@ -147,6 +148,7 @@ export const modules = [
   fieldTakeover,
   worksServicesTransition,
   depthEmerge,
+  draggableGrid,
   elementLayoutReturn,
   syncedFade,
   sectionHandoff,
