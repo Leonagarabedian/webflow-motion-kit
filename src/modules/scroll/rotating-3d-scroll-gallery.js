@@ -101,7 +101,7 @@ function autoItemRange(item) {
   };
 }
 
-function autoGalleryRange(root) {
+function autoGalleryRange(gallery) {
   return {
     start: () =>
       computeAlignedStart({
@@ -168,6 +168,8 @@ export const rotating3dScrollGallery = {
       return;
     }
 
+    const gallery =
+      root.querySelector('[data-motion-target="rotate-gallery"]') || root;
     const marquee = root.querySelector('[data-motion-target="gallery-marquee"]');
     const marqueeTrack =
       marquee?.querySelector('[data-motion-target="gallery-marquee-track"]') || null;
@@ -441,7 +443,7 @@ export const rotating3dScrollGallery = {
 
           const velocityRange =
             mode === "auto"
-              ? autoGalleryRange(root)
+              ? autoGalleryRange(gallery)
               : {
                   start: readString(root, "motion-marquee-start", BASE.marqueeStart),
                   end: readString(root, "motion-marquee-end", BASE.marqueeEnd)
@@ -452,7 +454,7 @@ export const rotating3dScrollGallery = {
           let blurAmount = 0;
 
           velocityTrigger = ScrollTrigger.create({
-            trigger: root,
+            trigger: gallery,
             ...velocityRange,
             onUpdate(self) {
               latestVelocity = Math.abs(self.getVelocity?.() || 0);
@@ -535,7 +537,7 @@ export const rotating3dScrollGallery = {
         if (marqueeTrack) {
           const range =
             mode === "auto"
-              ? autoGalleryRange(root)
+              ? autoGalleryRange(gallery)
               : {
                   start: readString(
                     root,
@@ -553,7 +555,7 @@ export const rotating3dScrollGallery = {
           gsap.set(marquee, { autoAlpha: 0 });
 
           marqueeVisibilityTrigger = ScrollTrigger.create({
-            trigger: root,
+            trigger: gallery,
             ...range,
             onEnter: () => gsap.set(marquee, { autoAlpha: 1 }),
             onEnterBack: () => gsap.set(marquee, { autoAlpha: 1 }),
@@ -570,7 +572,7 @@ export const rotating3dScrollGallery = {
               x: () => -marqueeTrack.offsetWidth,
               ease: "none",
               scrollTrigger: {
-                trigger: root,
+                trigger: gallery,
                 ...range,
                 scrub: true
               }
