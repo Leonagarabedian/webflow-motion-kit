@@ -66,7 +66,7 @@ For page-transition tools, destroy the outgoing container before removal, initia
 | Rotated cover preview | `data-motion="rotated-cover-preview"` | Preview system root |
 | Title roll + media zoom hover | `data-motion="title-roll-media-zoom-hover"` | Preview trigger/card |
 | Flip relocation | `data-motion="flip-relocation"` | Section containing items and destinations |
-| Pinned media | `data-motion="pinned-media"` | Tall media section |
+| Pinned media | `data-motion="pinned-media"` | Tall media section |\n| Pinned image depth zoom | `data-motion="pinned-image-depth-zoom"` | Pinned 3D foreground/background composition |
 | Pinned steps | `data-motion="pinned-steps"` | Tall story section |
 | Accordion/media | `data-motion="accordion-media"` | Component root |
 | Theme switch | `data-motion="theme-switch"` | Section that activates a theme |
