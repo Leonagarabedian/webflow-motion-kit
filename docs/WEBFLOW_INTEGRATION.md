@@ -68,7 +68,65 @@ For `text-reveal`, `data-motion-split` accepts `lines`, `words`, or `chars`; the
 </a>
 ```
 
-Use `data-motion-event="scroll"` for an entrance instead. Optional attributes are `data-motion-duration`, `data-motion-speed`, `data-motion-chars`, `data-motion-restore`, `data-motion-start`, and `data-motion-once`.
+Use `data-motion-event="scroll"` for an entrance instead. Add `data-motion-on-enter-back="true"` when the text should scramble again as it re-enters while scrolling upward; that automatically disables one-shot behavior for that instance. Optional attributes are `data-motion-duration`, `data-motion-speed`, `data-motion-chars`, `data-motion-restore`, `data-motion-start`, `data-motion-once`, and `data-motion-on-enter-back`.
+
+## Scroll text position Flip
+
+This module adapts the core typography motion from Codrops' MIT-licensed [ScrollTextMotion](https://github.com/codrops/ScrollTextMotion) demo. It does **not** hardcode the original `pos-1` through `pos-10` classes. Instead, Webflow authors any two classes and the module measures the real layouts with GSAP Flip.
+
+```html
+<div class="motion-copy state-a"
+     data-motion="scroll-text-position-flip scramble-text"
+     data-motion-source-class="state-a"
+     data-motion-alt-class="state-b"
+     data-motion-event="scroll"
+     data-motion-on-enter-back="true">
+  Neural glow
+</div>
+```
+
+The source class is optional. When `data-motion-source-class` is present, the module temporarily removes it and applies the alternate class while capturing the end state, then restores the authored source state before the page paints. When source classes are omitted, the alternate class behaves like a modifier layered onto the existing authored classes.
+
+Because the end state is a real CSS/Webflow class, **any combination is possible**: horizontal relocation, vertical relocation, diagonals, opacity changes, blur/filter changes, width changes, or combinations of those properties. The original Codrops 19 position pairings are therefore reproducible without becoming 19 separate modules.
+
+The source-faithful legacy timing is two reversible scrubbed Flip phases:
+
+```text
+bottom at 90% viewport → center at 50% viewport
+source state           → alternate state
+
+center at 50% viewport → top at 0% viewport
+alternate state        → source state
+```
+
+Default attributes:
+
+- `data-motion-flip-ease="expo.inOut"`
+- `data-motion-flip-props="opacity,filter,width"`
+- `data-motion-enter-start="clamp(bottom bottom-=10%)"`
+- `data-motion-enter-end="clamp(center center)"`
+- `data-motion-return-start="clamp(center center)"`
+- `data-motion-return-end="clamp(top top)"`
+- `data-motion-scrub="true"`
+- `data-motion-min-width="0"`
+
+Use `data-motion-alignment="auto"` to replace the string ranges with measured viewport geometry while preserving the same two-phase visual contract. Legacy mode remains source-faithful and the four phase range attributes can be overridden independently.
+
+For the Codrops-style scramble layer, combine the same element with `scramble-text`:
+
+```html
+<div class="motion-copy state-a"
+     data-motion="scroll-text-position-flip scramble-text"
+     data-motion-source-class="state-a"
+     data-motion-alt-class="state-b"
+     data-motion-event="scroll"
+     data-motion-duration="1"
+     data-motion-on-enter-back="true">
+  Signal
+</div>
+```
+
+The position Flip and scramble modules remain independent: the Flip module owns layout/transform/opacity/filter state while `scramble-text` owns text content.
 
 ## Scroll-progress highlight
 
