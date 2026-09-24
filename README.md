@@ -56,7 +56,7 @@ For page-transition tools, destroy the outgoing container before removal, initia
 | Responsive menu | `data-motion="responsive-menu"` | Custom navigation component |
 | Loader composition | `data-motion="loader-composition"` | Fixed loader wrapper |
 | Page transition | `data-motion="page-transition"` | Site-wide transition wrapper |
-| Grid/slider switch | `data-motion="view-switch"` | Collection/list wrapper |
+| Grid/slider switch | `data-motion="view-switch"` | Collection/list wrapper |\n| Draggable grid | `data-motion="draggable-grid"` | Oversized 2D drag/wheel gallery |
 | Looping labels | `data-motion="looping-labels"` | Marquee wrapper |\n| Infinite text distortion | `data-motion="infinite-text-distortion"` | Infinite vertical text column |\n| Infinite media column | `data-motion="infinite-media-column"` | Infinite vertical media rail |
 | Stacked cards | `data-motion="stacked-cards"` | Repeated card-list wrapper |
 | Sticky section exit | `data-motion="sticky-section-exit"` | Sticky section stack root |
