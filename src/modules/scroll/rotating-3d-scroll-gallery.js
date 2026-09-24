@@ -1,4 +1,4 @@
-// Adapted from Codrops "Rotating On-Scroll Animations" — Variation 2.
+// Adapted from Codrops "Rotating On-Scroll Animations" — Variations 1–5.
 // Original source: https://github.com/codrops/RotatingOnScrollAnimations
 // MIT License.
 
@@ -6,22 +6,69 @@ import { readNumber, readString } from "../../core/config.js";
 import { scrollMode } from "../../core/scroll-alignment/contract.js";
 import { computeAlignedStart } from "../../core/scroll-alignment/geometry.js";
 
-const DEFAULTS = Object.freeze({
-  amplitude: 0.2,
-  angleStep: 0.45,
+const BASE = Object.freeze({
   perspective: 900,
-  rotationXMin: 240,
-  rotationXMax: 290,
-  rotationYMin: -20,
-  rotationYMax: 20,
-  rotationZMin: -50,
-  rotationZMax: 50,
-  depth: -300,
-  depthPower: 4,
-  start: "top bottom+=20%",
-  end: "bottom top-=20%",
+  itemStart: "top bottom+=20%",
+  itemEnd: "bottom top-=20%",
   marqueeStart: "top bottom",
   marqueeEnd: "bottom top"
+});
+
+const VARIANTS = Object.freeze({
+  "1": Object.freeze({
+    amplitude: 0.2,
+    angleStep: 0.45,
+    rotationXMin: 70,
+    rotationXMax: 120,
+    rotationYMin: -20,
+    rotationYMax: 20,
+    rotationZMin: -20,
+    rotationZMax: 20,
+    depth: -50,
+    depthPower: 1
+  }),
+  "2": Object.freeze({
+    amplitude: 0.2,
+    angleStep: 0.45,
+    rotationXMin: 240,
+    rotationXMax: 290,
+    rotationYMin: -20,
+    rotationYMax: 20,
+    rotationZMin: -50,
+    rotationZMax: 50,
+    depth: -300,
+    depthPower: 4
+  }),
+  "3": Object.freeze({
+    amplitude: 0,
+    angleStep: 0,
+    depth: -800,
+    depthPower: 8
+  }),
+  "4": Object.freeze({
+    amplitude: 0.2,
+    angleStep: 1,
+    rotationXMin: -10,
+    rotationXMax: 10,
+    rotationYMin: 200,
+    rotationYMax: 290,
+    rotationZMin: -10,
+    rotationZMax: 10,
+    depth: -150,
+    velocityScale: 2400,
+    velocityBlur: 15,
+    velocityEase: 0.45
+  }),
+  "5": Object.freeze({
+    amplitude: 0.05,
+    angleStep: 0.9,
+    rotationXMin: 130,
+    rotationXMax: 220,
+    rotationZ: -50,
+    depth: -750,
+    hold: 0.25,
+    blur: 12
+  })
 });
 
 function restoreStyle(element, value) {
@@ -30,8 +77,10 @@ function restoreStyle(element, value) {
   else element.setAttribute("style", value);
 }
 
-function randomBetween(gsap, min, max) {
-  return gsap.utils.random(min, max);
+function normalizeVariant(value) {
+  const raw = String(value || "").trim().toLowerCase();
+  const number = raw.replace(/^variation[-_ ]?/, "").replace(/^v/, "");
+  return VARIANTS[number] ? number : "2";
 }
 
 function autoItemRange(item) {
@@ -52,22 +101,43 @@ function autoItemRange(item) {
   };
 }
 
-function autoMarqueeRange(gallery) {
+function autoGalleryRange(root) {
   return {
     start: () =>
       computeAlignedStart({
-        trigger: gallery,
+        trigger: root,
         anchor: "top",
         viewport: 1
       }),
     end: () =>
       computeAlignedStart({
-        trigger: gallery,
+        trigger: root,
         anchor: "bottom",
         viewport: 0
       }),
     invalidateOnRefresh: true
   };
+}
+
+function holdAtMiddle(progress, hold) {
+  const half = hold * 0.5;
+
+  if (progress < 0.5 - half) {
+    const span = Math.max(0.0001, 0.5 - half);
+    return (progress / span) * 0.5;
+  }
+
+  if (progress > 0.5 + half) {
+    const start = 0.5 + half;
+    const span = Math.max(0.0001, 1 - start);
+    return 0.5 + ((progress - start) / span) * 0.5;
+  }
+
+  return 0.5;
+}
+
+function randomBetween(gsap, min, max) {
+  return gsap.utils.random(Math.min(min, max), Math.max(min, max));
 }
 
 export const rotating3dScrollGallery = {
@@ -84,13 +154,6 @@ export const rotating3dScrollGallery = {
     }
 
     const wraps = [...root.querySelectorAll('[data-motion-target="rotate-wrap"]')];
-    if (!wraps.length) {
-      logger?.warn?.(
-        "[MotionKit] rotating-3d-scroll-gallery requires rotate-wrap targets."
-      );
-      return;
-    }
-
     const pairs = wraps
       .map((wrap) => ({
         wrap,
@@ -100,78 +163,38 @@ export const rotating3dScrollGallery = {
 
     if (!pairs.length) {
       logger?.warn?.(
-        "[MotionKit] rotating-3d-scroll-gallery requires rotate-item targets inside rotate-wrap targets."
+        "[MotionKit] rotating-3d-scroll-gallery requires rotate-wrap targets containing rotate-item targets."
       );
       return;
     }
 
     const marquee = root.querySelector('[data-motion-target="gallery-marquee"]');
-    const marqueeTrack = marquee?.querySelector(
-      '[data-motion-target="gallery-marquee-track"]'
-    ) || null;
+    const marqueeTrack =
+      marquee?.querySelector('[data-motion-target="gallery-marquee-track"]') || null;
 
-    const minWidth = Math.max(
-      0,
-      readNumber(root, "motion-min-width", 0)
+    const variant = normalizeVariant(readString(root, "motion-variant", "2"));
+    const source = VARIANTS[variant];
+    const minWidth = Math.max(0, readNumber(root, "motion-min-width", 0));
+    const perspective = Math.max(
+      1,
+      readNumber(root, "motion-perspective", BASE.perspective)
     );
-
     const amplitude = Math.max(
       0,
-      readNumber(root, "motion-amplitude", DEFAULTS.amplitude)
+      readNumber(root, "motion-amplitude", source.amplitude)
     );
     const angleStep = readNumber(
       root,
       "motion-angle-step",
-      DEFAULTS.angleStep
-    );
-    const perspective = Math.max(
-      1,
-      readNumber(root, "motion-perspective", DEFAULTS.perspective)
+      source.angleStep
     );
 
-    const rotationXMin = readNumber(
-      root,
-      "motion-rotation-x-min",
-      DEFAULTS.rotationXMin
-    );
-    const rotationXMax = readNumber(
-      root,
-      "motion-rotation-x-max",
-      DEFAULTS.rotationXMax
-    );
-    const rotationYMin = readNumber(
-      root,
-      "motion-rotation-y-min",
-      DEFAULTS.rotationYMin
-    );
-    const rotationYMax = readNumber(
-      root,
-      "motion-rotation-y-max",
-      DEFAULTS.rotationYMax
-    );
-    const rotationZMin = readNumber(
-      root,
-      "motion-rotation-z-min",
-      DEFAULTS.rotationZMin
-    );
-    const rotationZMax = readNumber(
-      root,
-      "motion-rotation-z-max",
-      DEFAULTS.rotationZMax
-    );
-
-    const depth = readNumber(root, "motion-depth", DEFAULTS.depth);
-    const depthPower = Math.max(
-      0.1,
-      readNumber(root, "motion-depth-power", DEFAULTS.depthPower)
-    );
-
-    const rootStyle = root.getAttribute("style");
-    const trackedStyles = new Map();
+    const tracked = new Map();
     const remember = (element) => {
-      if (element && !trackedStyles.has(element)) {
-        trackedStyles.set(element, element.getAttribute("style"));
+      if (element && !tracked.has(element)) {
+        tracked.set(element, element.getAttribute("style"));
       }
+      return element;
     };
 
     pairs.forEach(({ wrap, item }) => {
@@ -191,16 +214,20 @@ export const rotating3dScrollGallery = {
       ({ conditions }) => {
         if (!conditions.width) return;
 
-        const reduced = conditions.reduceMotion || reducedMotion();
-        const tweens = [];
+        const reduce = conditions.reduceMotion || reducedMotion();
+        const triggers = [];
+        const setters = [];
         let marqueeTween = null;
+        let marqueeVisibilityTrigger = null;
         let resizeRaf = null;
+        let velocityTrigger = null;
+        let velocityTicker = null;
 
         const positionWraps = () => {
-          const px = window.innerWidth * amplitude;
+          const amount = window.innerWidth * amplitude;
           pairs.forEach(({ wrap }, index) => {
             gsap.set(wrap, {
-              x: Math.sin(index * angleStep) * px,
+              x: amplitude ? Math.sin(index * angleStep) * amount : 0,
               perspective
             });
           });
@@ -208,105 +235,331 @@ export const rotating3dScrollGallery = {
 
         positionWraps();
 
-        if (reduced) {
+        pairs.forEach(({ item }) => {
+          gsap.set(item, {
+            transformStyle: "preserve-3d"
+          });
+        });
+
+        if (reduce) {
           pairs.forEach(({ item }) => {
             gsap.set(item, {
-              rotationX: 0,
-              rotationY: 0,
-              rotationZ: 0,
-              z: 0
+              clearProps: "transform,filter"
             });
           });
           return () => {
-            trackedStyles.forEach((style, element) => restoreStyle(element, style));
+            tracked.forEach((style, element) => restoreStyle(element, style));
           };
         }
 
         const mode = scrollMode(root);
-
-        pairs.forEach(({ item }) => {
-          const rotationX = randomBetween(
-            gsap,
-            Math.min(rotationXMin, rotationXMax),
-            Math.max(rotationXMin, rotationXMax)
-          );
-          const rotationY = randomBetween(
-            gsap,
-            Math.min(rotationYMin, rotationYMax),
-            Math.max(rotationYMin, rotationYMax)
-          );
-          const rotationZ = randomBetween(
-            gsap,
-            Math.min(rotationZMin, rotationZMax),
-            Math.max(rotationZMin, rotationZMax)
-          );
-
-          const setZ = gsap.quickSetter(item, "z", "px");
-
-          const scrollTrigger =
+        const itemTrigger = (item, onUpdate) => {
+          const range =
             mode === "auto"
-              ? {
-                  trigger: item,
-                  ...autoItemRange(item),
-                  scrub: true
-                }
+              ? autoItemRange(item)
               : {
-                  trigger: item,
-                  start: readString(root, "motion-start", DEFAULTS.start),
-                  end: readString(root, "motion-end", DEFAULTS.end),
-                  scrub: true,
+                  start: readString(root, "motion-start", BASE.itemStart),
+                  end: readString(root, "motion-end", BASE.itemEnd),
                   invalidateOnRefresh: true
                 };
 
-          const tween = gsap.fromTo(
-            item,
-            {
-              rotationX,
-              rotationY,
-              rotationZ,
-              transformStyle: "preserve-3d"
-            },
-            {
-              rotationX: -rotationX,
-              rotationY: -rotationY,
-              rotationZ: -rotationZ,
-              ease: "none",
-              scrollTrigger: {
-                ...scrollTrigger,
-                onUpdate(self) {
-                  const depthProgress = Math.sin(self.progress * Math.PI);
-                  setZ(Math.pow(Math.max(0, depthProgress), depthPower) * depth);
-                }
-              }
-            }
+          const trigger = ScrollTrigger.create({
+            trigger: item,
+            ...range,
+            scrub: true,
+            onUpdate
+          });
+          triggers.push(trigger);
+          return trigger;
+        };
+
+        if (variant === "1" || variant === "2") {
+          const rotationXMin = readNumber(
+            root,
+            "motion-rotation-x-min",
+            source.rotationXMin
+          );
+          const rotationXMax = readNumber(
+            root,
+            "motion-rotation-x-max",
+            source.rotationXMax
+          );
+          const rotationYMin = readNumber(
+            root,
+            "motion-rotation-y-min",
+            source.rotationYMin
+          );
+          const rotationYMax = readNumber(
+            root,
+            "motion-rotation-y-max",
+            source.rotationYMax
+          );
+          const rotationZMin = readNumber(
+            root,
+            "motion-rotation-z-min",
+            source.rotationZMin
+          );
+          const rotationZMax = readNumber(
+            root,
+            "motion-rotation-z-max",
+            source.rotationZMax
+          );
+          const depth = readNumber(root, "motion-depth", source.depth);
+          const depthPower = Math.max(
+            0.1,
+            readNumber(root, "motion-depth-power", source.depthPower)
           );
 
-          tweens.push(tween);
-        });
+          pairs.forEach(({ item }) => {
+            const rotationX = randomBetween(gsap, rotationXMin, rotationXMax);
+            const rotationY = randomBetween(gsap, rotationYMin, rotationYMax);
+            const rotationZ = randomBetween(gsap, rotationZMin, rotationZMax);
+            const setTransform = gsap.quickSetter(item, "css");
+            setters.push(setTransform);
+
+            itemTrigger(item, (self) => {
+              const p = self.progress;
+              const arc = Math.max(0, Math.sin(p * Math.PI));
+              setTransform({
+                rotationX: gsap.utils.interpolate(rotationX, -rotationX, p),
+                rotationY: gsap.utils.interpolate(rotationY, -rotationY, p),
+                rotationZ: gsap.utils.interpolate(rotationZ, -rotationZ, p),
+                z: Math.pow(arc, depthPower) * depth
+              });
+            });
+          });
+        }
+
+        if (variant === "3") {
+          const depth = readNumber(root, "motion-depth", source.depth);
+          const depthPower = Math.max(
+            0.1,
+            readNumber(root, "motion-depth-power", source.depthPower)
+          );
+
+          pairs.forEach(({ item }) => {
+            const setTransform = gsap.quickSetter(item, "css");
+            const setFilter = gsap.quickSetter(item, "filter");
+            setters.push(setTransform, setFilter);
+
+            itemTrigger(item, (self) => {
+              const p = self.progress;
+              const cos = Math.cos(p * Math.PI);
+              const sin = Math.max(0, Math.sin(p * Math.PI));
+              const rotationX =
+                Math.sign(cos) *
+                Math.pow(Math.abs(cos), 0.6) *
+                90;
+              const z = Math.pow(sin, depthPower) * depth;
+              const yPercent = 1 + Math.pow(cos, 2) * -40;
+              const saturate = Math.pow(sin, 3);
+              const brightness = Math.pow(sin, 3);
+
+              setTransform({
+                rotationX,
+                z,
+                yPercent
+              });
+              setFilter(
+                `saturate(${saturate}) brightness(${brightness})`
+              );
+            });
+          });
+        }
+
+        if (variant === "4") {
+          const rotationXMin = readNumber(
+            root,
+            "motion-rotation-x-min",
+            source.rotationXMin
+          );
+          const rotationXMax = readNumber(
+            root,
+            "motion-rotation-x-max",
+            source.rotationXMax
+          );
+          const rotationYMin = readNumber(
+            root,
+            "motion-rotation-y-min",
+            source.rotationYMin
+          );
+          const rotationYMax = readNumber(
+            root,
+            "motion-rotation-y-max",
+            source.rotationYMax
+          );
+          const rotationZMin = readNumber(
+            root,
+            "motion-rotation-z-min",
+            source.rotationZMin
+          );
+          const rotationZMax = readNumber(
+            root,
+            "motion-rotation-z-max",
+            source.rotationZMax
+          );
+          const depth = readNumber(root, "motion-depth", source.depth);
+          const velocityScale = Math.max(
+            1,
+            readNumber(root, "motion-velocity-scale", source.velocityScale)
+          );
+          const maxBlur = Math.max(
+            0,
+            readNumber(root, "motion-velocity-blur", source.velocityBlur)
+          );
+          const velocityEase = Math.min(
+            1,
+            Math.max(
+              0,
+              readNumber(root, "motion-velocity-ease", source.velocityEase)
+            )
+          );
+
+          const filterSetters = pairs.map(({ item }) => {
+            const setter = gsap.quickSetter(item, "filter");
+            setters.push(setter);
+            return setter;
+          });
+
+          pairs.forEach(({ item }) => {
+            const rotationX = randomBetween(gsap, rotationXMin, rotationXMax);
+            const rotationY = randomBetween(gsap, rotationYMin, rotationYMax);
+            const rotationZ = randomBetween(gsap, rotationZMin, rotationZMax);
+            const setTransform = gsap.quickSetter(item, "css");
+            setters.push(setTransform);
+
+            itemTrigger(item, (self) => {
+              const p = self.progress;
+              setTransform({
+                rotationX: gsap.utils.interpolate(rotationX, -rotationX, p),
+                rotationY: gsap.utils.interpolate(rotationY, -rotationY, p),
+                rotationZ: gsap.utils.interpolate(rotationZ, -rotationZ, p),
+                z: Math.sin(p * Math.PI) * depth
+              });
+            });
+          });
+
+          const velocityRange =
+            mode === "auto"
+              ? autoGalleryRange(root)
+              : {
+                  start: readString(root, "motion-marquee-start", BASE.marqueeStart),
+                  end: readString(root, "motion-marquee-end", BASE.marqueeEnd)
+                };
+
+          let latestVelocity = 0;
+          let latestVelocityAt = 0;
+          let blurAmount = 0;
+
+          velocityTrigger = ScrollTrigger.create({
+            trigger: root,
+            ...velocityRange,
+            onUpdate(self) {
+              latestVelocity = Math.abs(self.getVelocity?.() || 0);
+              latestVelocityAt = performance.now();
+            }
+          });
+
+          velocityTicker = () => {
+            const age = performance.now() - latestVelocityAt;
+            const activeVelocity = age > 120 ? 0 : latestVelocity;
+            const velocityNorm = Math.min(activeVelocity / velocityScale, 1);
+            const targetBlur = velocityNorm * maxBlur;
+            blurAmount = gsap.utils.interpolate(
+              blurAmount,
+              targetBlur,
+              velocityEase
+            );
+            const saturation = 1 - velocityNorm;
+            const filter = `blur(${blurAmount}px) saturate(${saturation})`;
+            filterSetters.forEach((setFilter) => setFilter(filter));
+          };
+
+          gsap.ticker.add(velocityTicker);
+        }
+
+        if (variant === "5") {
+          const rotationXMin = readNumber(
+            root,
+            "motion-rotation-x-min",
+            source.rotationXMin
+          );
+          const rotationXMax = readNumber(
+            root,
+            "motion-rotation-x-max",
+            source.rotationXMax
+          );
+          const rotationZ = readNumber(
+            root,
+            "motion-rotation-z",
+            source.rotationZ
+          );
+          const depth = readNumber(root, "motion-depth", source.depth);
+          const hold = Math.min(
+            0.98,
+            Math.max(0, readNumber(root, "motion-hold", source.hold))
+          );
+          const blurMax = Math.max(
+            0,
+            readNumber(root, "motion-blur", source.blur)
+          );
+
+          pairs.forEach(({ item }) => {
+            const rotationX = randomBetween(gsap, rotationXMin, rotationXMax);
+            const setTransform = gsap.quickSetter(item, "css");
+            const setFilter = gsap.quickSetter(item, "filter");
+            setters.push(setTransform, setFilter);
+
+            itemTrigger(item, (self) => {
+              const t = holdAtMiddle(self.progress, hold);
+              const cos = Math.cos(t * Math.PI);
+              const sin = Math.max(0, Math.sin(t * Math.PI));
+
+              setTransform({
+                scaleX: 1 + Math.pow(cos, 2) * 0.6,
+                scaleY: 0.5 + Math.pow(sin, 2) * 0.5,
+                rotationX: gsap.utils.interpolate(-rotationX, rotationX, t),
+                rotationZ: gsap.utils.interpolate(-rotationZ, rotationZ, t),
+                z: sin * depth
+              });
+              setFilter(
+                `blur(${Math.pow(cos, 2) * blurMax}px) brightness(${Math.pow(
+                  sin,
+                  6
+                )})`
+              );
+            });
+          });
+        }
 
         if (marqueeTrack) {
-          const marqueeTrigger =
+          const range =
             mode === "auto"
-              ? {
-                  trigger: root,
-                  ...autoMarqueeRange(root),
-                  scrub: true
-                }
+              ? autoGalleryRange(root)
               : {
-                  trigger: root,
                   start: readString(
                     root,
                     "motion-marquee-start",
-                    DEFAULTS.marqueeStart
+                    BASE.marqueeStart
                   ),
                   end: readString(
                     root,
                     "motion-marquee-end",
-                    DEFAULTS.marqueeEnd
+                    BASE.marqueeEnd
                   ),
-                  scrub: true,
                   invalidateOnRefresh: true
                 };
+
+          gsap.set(marquee, { autoAlpha: 0 });
+
+          marqueeVisibilityTrigger = ScrollTrigger.create({
+            trigger: root,
+            ...range,
+            onEnter: () => gsap.set(marquee, { autoAlpha: 1 }),
+            onEnterBack: () => gsap.set(marquee, { autoAlpha: 1 }),
+            onLeave: () => gsap.set(marquee, { autoAlpha: 0 }),
+            onLeaveBack: () => gsap.set(marquee, { autoAlpha: 0 })
+          });
 
           marqueeTween = gsap.fromTo(
             marqueeTrack,
@@ -316,7 +569,11 @@ export const rotating3dScrollGallery = {
             {
               x: () => -marqueeTrack.offsetWidth,
               ease: "none",
-              scrollTrigger: marqueeTrigger
+              scrollTrigger: {
+                trigger: root,
+                ...range,
+                scrub: true
+              }
             }
           );
         }
@@ -335,21 +592,20 @@ export const rotating3dScrollGallery = {
         return () => {
           window.removeEventListener("resize", onResize);
           if (resizeRaf != null) cancelAnimationFrame(resizeRaf);
+          if (velocityTicker) gsap.ticker.remove(velocityTicker);
+          velocityTrigger?.kill?.();
+          marqueeVisibilityTrigger?.kill?.();
           marqueeTween?.scrollTrigger?.kill?.();
           marqueeTween?.kill?.();
-          tweens.forEach((tween) => {
-            tween.scrollTrigger?.kill?.();
-            tween.kill?.();
-          });
-          trackedStyles.forEach((style, element) => restoreStyle(element, style));
+          triggers.forEach((trigger) => trigger.kill?.());
+          tracked.forEach((style, element) => restoreStyle(element, style));
         };
       }
     );
 
     return () => {
       mm.revert();
-      restoreStyle(root, rootStyle);
-      trackedStyles.forEach((style, element) => restoreStyle(element, style));
+      tracked.forEach((style, element) => restoreStyle(element, style));
     };
   }
 };
