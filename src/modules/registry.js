@@ -60,6 +60,7 @@ import { rotatedCoverPreview } from "./rotated-cover-preview.js";
 import { rotating3dScrollGallery } from "./rotating-3d-scroll-gallery.js";
 import { scrambleText } from "./scramble-text.js";
 import { scrollHighlight } from "./scroll-highlight.js";
+import { scrollMarquee } from "./scroll-marquee.js";
 import { scrollSyncedGallery } from "./scroll-synced-gallery.js";
 import { scrollTravel } from "./scroll-travel.js";
 import { scrollTextPositionFlip } from "./scroll-text-position-flip.js";
@@ -96,6 +97,7 @@ export const modules = [
   elementBlurReveal,
   scrambleText,
   scrollHighlight,
+  scrollMarquee,
   svgReveal,
   imageClip,
   parallax,

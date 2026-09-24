@@ -248,6 +248,46 @@ Variant-specific rotation/depth/filter attributes are supported where those prop
 
 Do not add the Codrops Lenis initialization to Webflow. Branda keeps its existing sitewide smoother.
 
+## Standalone scroll marquee
+
+Use `scroll-marquee` when you want the fixed-center marquee from the rotating-gallery demos **without any gallery animation**.
+
+```html
+<section data-motion="scroll-marquee">
+  <div data-motion-target="scroll-marquee-fixed">
+    <div data-motion-target="scroll-marquee-track">
+      PROJECT ONE / PROJECT TWO / PROJECT THREE
+    </div>
+  </div>
+</section>
+```
+
+Webflow owns the layout. The root must remain in normal document flow so it can define the scroll range. Author `scroll-marquee-fixed` as the viewport overlay—for the Codrops look, use `position: fixed`, `top: 50%`, `left: 0`, `width: 100vw`, and translate it vertically by `-50%`. Keep `scroll-marquee-track` at `width: max-content` with no wrapping.
+
+The source-faithful default motion is:
+
+```text
+root top bottom → root bottom top
+track 100vw     → -100%
+```
+
+The fixed layer hides outside the root's active scroll range by default so the module can safely be reused on long pages.
+
+Optional attributes:
+
+- `data-motion-from-x="100vw"`
+- `data-motion-to-x="-100%"`
+- `data-motion-start="top bottom"`
+- `data-motion-end="bottom top"`
+- `data-motion-scrub="true"` or a numeric scrub value
+- `data-motion-hide-outside="true|false"`
+- `data-motion-min-width`
+- `data-motion-alignment="auto"`
+
+Set `data-motion-from-x="-100%"` and `data-motion-to-x="100vw"` to reverse the direction. Reduced-motion visitors see a static centered track only while the section is active.
+
+This module is independent of `rotating-3d-scroll-gallery`. The rotating-gallery module keeps its existing optional marquee behavior unchanged.
+
 ## Scroll-progress highlight
 
 ```html

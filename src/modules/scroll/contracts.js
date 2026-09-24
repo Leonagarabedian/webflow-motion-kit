@@ -153,6 +153,10 @@ export const scrollContracts = Object.freeze([
     "role": "owner"
   },
   {
+    "name": "scroll-marquee",
+    "role": "owner"
+  },
+  {
     "name": "pinned-media",
     "role": "owner"
   },

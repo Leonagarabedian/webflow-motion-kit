@@ -38,6 +38,7 @@ export { lineReveal } from "./line-reveal.js";
 export { textReveal } from "./text-reveal.js";
 export { parallax } from "./parallax.js";
 export { scrollHighlight } from "./scroll-highlight.js";
+export { scrollMarquee } from "./scroll-marquee.js";
 export { pinnedMedia } from "./pinned-media.js";
 export { pinnedSteps } from "./pinned-steps.js";
 export { characterConverge } from "./character-converge.js";
