@@ -20,6 +20,7 @@ export { scrambleText } from "./scramble-text.js";
 export { scrollSyncedGallery } from "./scroll-synced-gallery.js";
 export { scrollTravel } from "./scroll-travel.js";
 export { scrollTextPositionFlip } from "./scroll-text-position-flip.js";
+export { rotating3dScrollGallery } from "./rotating-3d-scroll-gallery.js";
 export { sectionHandoff } from "./section-handoff.js";
 export { sectionReplacement } from "./section-replacement.js";
 export { sectionField } from "./section-field.js";

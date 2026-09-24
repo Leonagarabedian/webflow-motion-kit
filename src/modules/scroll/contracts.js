@@ -85,6 +85,10 @@ export const scrollContracts = Object.freeze([
     "role": "owner"
   },
   {
+    "name": "rotating-3d-scroll-gallery",
+    "role": "owner"
+  },
+  {
     "name": "section-handoff",
     "role": "owner-or-follower"
   },
