@@ -169,7 +169,9 @@ export const rotating3dScrollGallery = {
     }
 
     const gallery =
-      root.querySelector('[data-motion-target="rotate-gallery"]') || root;
+      root.querySelector('[data-motion-target="rotate-gallery"]') ||
+      pairs[0]?.wrap?.parentElement ||
+      root;
     const marquee = root.querySelector('[data-motion-target="gallery-marquee"]');
     const marqueeTrack =
       marquee?.querySelector('[data-motion-target="gallery-marquee-track"]') || null;
