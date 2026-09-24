@@ -46,7 +46,7 @@ function mount(attributes = "") {
     reducedMotion: () => false
   });
 
-  return { root, panels, configs, timelines, cleanup };
+  return { root, panels, configs, timelines, cleanup, gsap };
 }
 
 describe("sticky-section-exit refinements", () => {
@@ -71,6 +71,37 @@ describe("sticky-section-exit refinements", () => {
       mounted.cleanup?.();
     }
   );
+
+  it("locks contact panels to an exact viewport box", () => {
+    const mounted = mount(
+      'data-motion-sticky-variant="center-collapse" data-motion-sticky-contact="true"'
+    );
+
+    const firstPanel = mounted.panels[0];
+    const firstInner = firstPanel.querySelector('[data-motion-target="inner"]');
+
+    expect(mounted.root).toBeTruthy();
+    expect(firstInner).toBeTruthy();
+
+    expect(mounted.gsap.set).toHaveBeenCalledWith(
+      firstPanel,
+      expect.objectContaining({
+        height: "100svh",
+        minHeight: "100svh",
+        boxSizing: "border-box"
+      })
+    );
+    expect(mounted.gsap.set).toHaveBeenCalledWith(
+      firstInner,
+      expect.objectContaining({
+        height: "100%",
+        minHeight: 0,
+        boxSizing: "border-box"
+      })
+    );
+
+    expect(mounted.cleanup).toBeTypeOf("function");
+  });
 
   it("preserves the original independent collapse when contact is not enabled", () => {
     const mounted = mount('data-motion-sticky-variant="center-collapse"');

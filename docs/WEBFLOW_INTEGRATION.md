@@ -454,7 +454,7 @@ Numeric aliases `1` through `15` are also accepted. The root owns the sticky geo
 
 General controls: `data-motion-sticky-top`, `data-motion-sticky-min-height`, `data-motion-sticky-scrub`, `data-motion-min-width`, `data-motion-alignment="auto"`, and the shared manual `data-motion-start`, `data-motion-end`, `data-motion-scroll-distance`, `data-motion-scroll-vh`, and `data-motion-scrub` overrides.
 
-For `center-collapse`, `corner-collapse`, `hinge-collapse`, and `vertical-squash`, add `data-motion-sticky-contact="true"` when the outgoing transformation should stay synchronized to the incoming panel edge. The default remains the independent/floating version, so both behaviors are available from the same variant.
+For `center-collapse`, `corner-collapse`, `hinge-collapse`, and `vertical-squash`, add `data-motion-sticky-contact="true"` when the outgoing transformation should stay synchronized to the incoming panel edge. Contact mode uses an exact viewport-height panel box (`100svh` by default) and fits an explicit `data-motion-target="inner"` to that box so the transformed edge and the next panel share the same geometry. Override the contact panel height with `data-motion-sticky-contact-height` when needed. The default remains the independent/floating version, so both behaviors are available from the same variant.
 
 `side-throw` now finishes with a short dedicated fade phase; tune the final alpha with `data-motion-sticky-exit-opacity`.
 

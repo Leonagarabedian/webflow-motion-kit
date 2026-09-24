@@ -193,6 +193,11 @@ export const stickySectionExit = {
       DEFAULTS.perspective
     );
     const contact = readBoolean(root, "motion-sticky-contact", false);
+    const contactHeight = readString(
+      root,
+      "motion-sticky-contact-height",
+      "100svh"
+    );
 
     const rootStyle = root.getAttribute("style");
     const tracked = new Map();
@@ -215,12 +220,25 @@ export const stickySectionExit = {
     });
 
     panels.forEach((panel) => {
+      const explicitInner = target(panel, "inner");
+
       gsap.set(panel, {
         position: "sticky",
         top,
-        minHeight,
+        minHeight: contact ? contactHeight : minHeight,
+        height: contact ? contactHeight : undefined,
+        boxSizing: contact ? "border-box" : undefined,
         overflow: "hidden"
       });
+
+      if (contact && explicitInner) {
+        gsap.set(explicitInner, {
+          height: "100%",
+          minHeight: 0,
+          boxSizing: "border-box"
+        });
+      }
+
       if (variant === "perspective-fold") {
         gsap.set(panel, { perspective });
       }
