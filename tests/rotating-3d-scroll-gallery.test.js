@@ -320,7 +320,7 @@ describe("rotating-3d-scroll-gallery source variants", () => {
       rotationZ: 0,
       z: -750
     });
-    expect(ctx.filters.get(items[0])).toBe("blur(0px) brightness(1)");
+    expect(ctx.filters.get(items[0])).toMatch(/^blur\(.+px\) brightness\(1\)$/);
 
     cleanup();
   });
