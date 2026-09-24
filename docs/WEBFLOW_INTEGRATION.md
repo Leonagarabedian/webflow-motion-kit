@@ -450,11 +450,31 @@ The 15 Codrops-inspired variants are exposed through one stable contract:
 | 14 | `vertical-squash` |
 | 15 | `media-sweep` |
 
-Numeric aliases `1` through `15` are also accepted. The root owns the sticky geometry; each panel remains in normal document flow and is set to `position: sticky` with a default `top: 0` and `min-height: 100svh`.
+Numeric aliases `1` through `15` are also accepted.
 
-General controls: `data-motion-sticky-top`, `data-motion-sticky-min-height`, `data-motion-sticky-scrub`, `data-motion-min-width`, `data-motion-alignment="auto"`, and the shared manual `data-motion-start`, `data-motion-end`, `data-motion-scroll-distance`, `data-motion-scroll-vh`, and `data-motion-scrub` overrides.
+The Codrops-faithful collapse variants are now the default behavior for demos 3, 4, 5 and 14:
 
-For `center-collapse`, `corner-collapse`, `hinge-collapse`, and `vertical-squash`, add `data-motion-sticky-contact="true"` when the outgoing transformation should stay synchronized to the incoming panel edge. Contact mode uses an exact viewport-height panel box (`100svh` by default) and fits an explicit `data-motion-target="inner"` to that box so the transformed edge and the next panel share the same geometry. Override the contact panel height with `data-motion-sticky-contact-height` when needed. The default remains the independent/floating version, so both behaviors are available from the same variant.
+- `center-collapse`
+- `corner-collapse`
+- `hinge-collapse`
+- `vertical-squash`
+
+For those four variants, the module reproduces the source geometry directly: every panel stays in normal document flow, becomes `position: sticky`, uses an exact sticky-panel height, starts at `top top`, scrubs directly, and runs for exactly one measured panel height. The panel transform therefore resolves over the same distance that the following sibling travels into the viewport. With the source transform origins, that is what keeps the outgoing and incoming panel edges visually connected.
+
+The previous Motion Kit interpretation is still available explicitly as:
+
+- `center-collapse-detached`
+- `corner-collapse-detached`
+- `hinge-collapse-detached`
+- `vertical-squash-detached`
+
+The detached variants keep the earlier independent/floating runway and do not force the exact panel box.
+
+For faithful collapse variants, the default panel height is `calc(100vh - top)`. Override it with `data-motion-sticky-panel-height` when required. If an explicit `data-motion-target="inner"` exists, it is fit to `height: 100%` / `min-height: 0` so authored inner content does not make the sticky box taller than the animation geometry.
+
+`data-motion-sticky-contact="true"` remains accepted as a backward-compatible override for older references, but it is no longer required for the primary collapse variants.
+
+General controls: `data-motion-sticky-top`, `data-motion-sticky-min-height`, `data-motion-sticky-panel-height`, `data-motion-sticky-scrub`, `data-motion-min-width`, `data-motion-alignment="auto"`, and the shared manual `data-motion-start`, `data-motion-end`, `data-motion-scroll-distance`, `data-motion-scroll-vh`, and `data-motion-scrub` overrides.
 
 `side-throw` now finishes with a short dedicated fade phase; tune the final alpha with `data-motion-sticky-exit-opacity`.
 
