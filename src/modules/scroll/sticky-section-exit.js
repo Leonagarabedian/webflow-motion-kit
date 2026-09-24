@@ -1,6 +1,6 @@
 import { computeAlignedStart } from "../../core/scroll-alignment/geometry.js";
 import { resolveScrollContract } from "../../core/scroll-alignment/contract.js";
-import { readNumber, readString } from "../../core/config.js";
+import { readBoolean, readNumber, readString } from "../../core/config.js";
 
 const VARIANTS = Object.freeze({
   "1": "image-drift",
@@ -115,6 +115,35 @@ function panelRange(root, panel, variant, isLast, isPreLast, multiplier = 1) {
   );
 }
 
+function contactRange(root, incomingPanel) {
+  const scrub = readNumber(root, "motion-sticky-scrub", DEFAULTS.scrub);
+
+  return resolveScrollContract(
+    root,
+    {
+      trigger: incomingPanel,
+      start: "top bottom",
+      end: "top top",
+      scrub,
+      invalidateOnRefresh: true
+    },
+    () => ({
+      start: () =>
+        computeAlignedStart({
+          trigger: incomingPanel,
+          anchor: "top",
+          viewport: 1
+        }),
+      end: () =>
+        computeAlignedStart({
+          trigger: incomingPanel,
+          anchor: "top",
+          viewport: 0
+        })
+    })
+  );
+}
+
 function mediaRange(root, panel, variant) {
   const legacy = {
     trigger: panel,
@@ -160,6 +189,7 @@ export const stickySectionExit = {
       "motion-sticky-perspective",
       DEFAULTS.perspective
     );
+    const contact = readBoolean(root, "motion-sticky-contact", false);
 
     const rootStyle = root.getAttribute("style");
     const tracked = new Map();
@@ -199,6 +229,7 @@ export const stickySectionExit = {
     panels.forEach((panel, position) => {
       const isLast = position === panels.length - 1;
       const isPreLast = position === panels.length - 2;
+      const incomingPanel = panels[position + 1] || null;
       const media = mediaTargets(panel);
       const firstMedia = media[0] || null;
       const title = target(panel, "title", "h1,h2,h3");
@@ -207,6 +238,14 @@ export const stickySectionExit = {
 
       const main = (multiplier = 1) =>
         gsap.timeline({ scrollTrigger: panelRange(root, panel, variant, isLast, isPreLast, multiplier) });
+
+      const collapseMain = () =>
+        gsap.timeline({
+          scrollTrigger:
+            contact && incomingPanel
+              ? contactRange(root, incomingPanel)
+              : panelRange(root, panel, variant, isLast, isPreLast, 1)
+        });
 
       if (variant === "image-drift") {
         const tl = main(1);
@@ -254,7 +293,7 @@ export const stickySectionExit = {
 
       if (variant === "center-collapse") {
         gsap.set(panel, { transformOrigin: `50% ${isLast ? 100 : 0}%` });
-        const tl = main(1).to(panel, {
+        const tl = collapseMain().to(panel, {
           scale: readNumber(root, "motion-sticky-scale", 0),
           ease: "none"
         });
@@ -266,7 +305,7 @@ export const stickySectionExit = {
         gsap.set(panel, {
           transformOrigin: `${position % 2 === 0 ? 0 : 100}% ${isLast ? 100 : 0}%`
         });
-        const tl = main(1).to(panel, {
+        const tl = collapseMain().to(panel, {
           scale: readNumber(root, "motion-sticky-scale", 0),
           borderRadius: readNumber(root, "motion-sticky-radius", 200),
           ease: "none"
@@ -279,7 +318,7 @@ export const stickySectionExit = {
         gsap.set(panel, {
           transformOrigin: `${position % 2 === 0 ? 2 : 98}% ${isLast ? 0 : 2}%`
         });
-        const tl = main(1).to(panel, {
+        const tl = collapseMain().to(panel, {
           scale: readNumber(root, "motion-sticky-scale", 0),
           yPercent: isLast ? 100 : 0,
           rotation:
@@ -441,13 +480,14 @@ export const stickySectionExit = {
         const tl = main(isLast ? 1 : 2);
         tl.fromTo(
           panel,
-          { filter: "brightness(100%)" },
+          { filter: "brightness(100%)", opacity: 1 },
           {
             xPercent: direction * Math.abs(readNumber(root, "motion-sticky-x", 150)),
             yPercent: isLast ? 100 : 0,
             rotation: direction * Math.abs(readNumber(root, "motion-sticky-rotation", 20)),
             scale: readNumber(root, "motion-sticky-scale", 0.8),
             filter: `brightness(${readNumber(root, "motion-sticky-brightness", 0)}%)`,
+            duration: 0.82,
             ease: "none"
           },
           0
@@ -478,18 +518,28 @@ export const stickySectionExit = {
             firstMedia,
             {
               scale: readNumber(root, "motion-sticky-media-scale", 0.2),
+              duration: 0.82,
               ease: "none"
             },
             0
           );
         }
+        tl.to(
+          panel,
+          {
+            opacity: readNumber(root, "motion-sticky-exit-opacity", 0),
+            duration: 0.18,
+            ease: "none"
+          },
+          0.82
+        );
         timelines.push(tl);
         return;
       }
 
       if (variant === "vertical-squash") {
         gsap.set(panel, { transformOrigin: `50% ${isLast ? 100 : 0}%` });
-        const tl = main(1).to(
+        const tl = collapseMain().to(
           panel,
           {
             scaleY: readNumber(root, "motion-sticky-scale-y", 0),
