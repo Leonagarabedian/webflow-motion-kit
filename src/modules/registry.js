@@ -30,6 +30,7 @@ import { hoverUnderlineSweep } from "./hover-underline-sweep.js";
 import { imageClip } from "./image-clip.js";
 import { innerLetterSpace } from "./inner-letter-space.js";
 import { infiniteTextDistortion } from "./infinite-text-distortion.js";
+import { infiniteMediaColumn } from "./infinite-media-column.js";
 import { lineReveal } from "./line-reveal.js";
 import { linkSwap } from "./link-swap.js";
 import { liquidFill } from "./liquid-fill.js";
@@ -98,6 +99,7 @@ export const modules = [
   characterConverge,
   liquidFill,
   infiniteTextDistortion,
+  infiniteMediaColumn,
   innerLetterSpace,
   typographyGapSpace,
   sectionSpace,
