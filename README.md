@@ -45,7 +45,7 @@ For page-transition tools, destroy the outgoing container before removal, initia
 | Line reveal | `data-motion="line-reveal"` | Text element |
 | Word/character reveal | `data-motion="text-reveal"` | Text element |
 | Blur reveal | `data-motion="blur-reveal"` | Text element |
-| Scramble text | `data-motion="scramble-text"` | Text or link element |
+| Scramble text | `data-motion="scramble-text"` | Text or link element |\n| Scroll text position Flip | `data-motion="scroll-text-position-flip"` | Text element moving between two authored layout states |
 | Scroll highlight | `data-motion="scroll-highlight"` | Text element |
 | SVG reveal/hover | `data-motion="svg-reveal"` | SVG wrapper |
 | Image clip | `data-motion="image-clip"` | Clipping wrapper |
