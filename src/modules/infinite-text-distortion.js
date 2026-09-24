@@ -1,3 +1,7 @@
+// Adapted from Jorge Toloza's "Infinite Scrolling Text Organic Distortion" demo.
+// Original source: https://github.com/JorgeCapillo/infinite-scrolling-text-distortion
+// Copyright (c) 2024 Jorge Toloza. MIT License.
+
 import {
   readNumber,
   readString,
