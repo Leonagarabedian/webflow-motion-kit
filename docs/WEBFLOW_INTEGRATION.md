@@ -189,6 +189,62 @@ Place one instance on every participating page, preferably in a Webflow componen
 
 Create Webflow styles for `.is-grid` and `.is-slider` on the component root; the module toggles those classes and uses Flip to animate the items between the two layouts. Buttons receive `aria-pressed`. Keep item DOM order identical in both views.
 
+## Infinite text distortion
+
+Use `infinite-text-distortion` for a continuously recycling vertical text column whose individual rendered lines drift horizontally in a sine/cosine field. The module is adapted from Jorge Toloza's MIT-licensed Infinite Scrolling Text Organic Distortion demo, but it does **not** create a second smooth-scroll engine or prevent normal Webflow/page scrolling.
+
+```html
+<div data-motion="infinite-text-distortion"
+     data-motion-direction="up"
+     data-motion-wave="sin"
+     data-motion-auto-speed="0.5"
+     data-motion-distortion="15"
+     data-motion-velocity-distortion="5">
+  <div data-motion-target="distortion-track">
+    <p data-motion-target="distortion-item">First authored paragraph...</p>
+    <p data-motion-target="distortion-item">Second authored paragraph...</p>
+  </div>
+</div>
+```
+
+Required contract:
+
+- root: `data-motion="infinite-text-distortion"`
+- track: `data-motion-target="distortion-track"`
+- items: direct children of the track; mark them with `data-motion-target="distortion-item"` when the track contains other children
+
+Author the root with an explicit height and the width/layout you want in Webflow. The module supplies `overflow: hidden` at runtime, clones enough authored items to keep the loop filled, splits each item into responsive visual lines with GSAP SplitText, and restores the authored DOM on cleanup/rebuild.
+
+For the source-style opposing pair, use two independent roots:
+
+```html
+<div data-motion="infinite-text-distortion"
+     data-motion-direction="up"
+     data-motion-wave="sin">...</div>
+
+<div data-motion="infinite-text-distortion"
+     data-motion-direction="down"
+     data-motion-wave="cos">...</div>
+```
+
+The loop has a small continuous auto-drift and also reacts to passive wheel/touch input while visible. It never calls `preventDefault()`, creates Lenis, creates ScrollSmoother, or owns page scroll.
+
+Controls:
+
+- `data-motion-direction="up|down"`
+- `data-motion-wave="sin|cos"`
+- `data-motion-auto-speed="0.5"`
+- `data-motion-ease-factor="0.05"`
+- `data-motion-speed-ease="0.05"`
+- `data-motion-wheel-strength="0.254"`
+- `data-motion-touch-strength="1"`
+- `data-motion-distortion="15"`
+- `data-motion-velocity-distortion="5"`
+- `data-motion-phase-speed="0.0007"`
+- `data-motion-min-cycles="2"`
+
+Reduced-motion visitors keep the authored static text.
+
 ## Looping labels
 
 ```html
