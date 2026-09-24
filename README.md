@@ -57,7 +57,7 @@ For page-transition tools, destroy the outgoing container before removal, initia
 | Loader composition | `data-motion="loader-composition"` | Fixed loader wrapper |
 | Page transition | `data-motion="page-transition"` | Site-wide transition wrapper |
 | Grid/slider switch | `data-motion="view-switch"` | Collection/list wrapper |
-| Looping labels | `data-motion="looping-labels"` | Marquee wrapper |
+| Looping labels | `data-motion="looping-labels"` | Marquee wrapper |\n| Infinite text distortion | `data-motion="infinite-text-distortion"` | Infinite vertical text column |
 | Stacked cards | `data-motion="stacked-cards"` | Repeated card-list wrapper |
 | Sticky section exit | `data-motion="sticky-section-exit"` | Sticky section stack root |
 | Stacked-image hover | `data-motion="stacked-image-hover"` | Media stack wrapper |
