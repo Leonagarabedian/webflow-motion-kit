@@ -34,28 +34,28 @@ export const pinnedImageDepthZoom = {
   mount(element, { gsap, reducedMotion, logger }) {
     if (reducedMotion()) return;
 
-    const media = selectTarget(
-      element,
-      "depth-media",
-      element.querySelector("img, picture, video")
-    );
-
-    if (!media) {
-      logger?.warn?.(
-        "[MotionKit] pinned-image-depth-zoom requires a depth-media target."
-      );
-      return;
-    }
-
     const depthFrame = selectTarget(
       element,
       "depth-frame",
-      media.parentElement
+      null
     );
 
     if (!depthFrame) {
       logger?.warn?.(
         "[MotionKit] pinned-image-depth-zoom requires a depth-frame target."
+      );
+      return;
+    }
+
+    const media = selectTarget(
+      element,
+      "depth-media",
+      depthFrame.querySelector("img, picture, video")
+    );
+
+    if (!media) {
+      logger?.warn?.(
+        "[MotionKit] pinned-image-depth-zoom requires a depth-media target."
       );
       return;
     }
