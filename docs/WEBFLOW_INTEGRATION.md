@@ -281,7 +281,7 @@ Required contract:
 - root: `data-motion="draggable-grid draggable-grid-detail"`
 - independent grid-shift layer: `data-motion-target="detail-grid-shell"`
 - grid items: `data-grid-item="<key>"`
-- movable image/media inside each item: `data-motion-target="detail-media"`
+- movable image/media inside each item: `data-motion-target="detail-media"` is recommended; otherwise the first `img`, `picture`, or `video` inside the keyed item is used
 - panel: `data-motion-target="detail-panel"`
 - Flip destination: `data-motion-target="detail-thumb"`
 - matching detail content: `data-grid-detail="<same key>"`
