@@ -40,7 +40,7 @@ function autoItemRange(item) {
       computeAlignedStart({
         trigger: item,
         anchor: "top",
-        viewport: 1.2
+        viewport: 120
       }),
     end: () =>
       computeAlignedStart({
