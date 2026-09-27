@@ -66,6 +66,7 @@ import { scrollTravel } from "./scroll-travel.js";
 import { scrollApertureWindow } from "./scroll-aperture-window.js";
 import { scrollSectionLift } from "./scroll-section-lift.js";
 import { scrollMediaMaskSwitch } from "./scroll-media-mask-switch.js";
+import { scrollAircraftHandoff } from "./scroll-aircraft-handoff.js";
 import { scrollTextPositionFlip } from "./scroll-text-position-flip.js";
 import { sectionHandoff } from "./section-handoff.js";
 import { sectionReplacement } from "./section-replacement.js";
@@ -108,6 +109,7 @@ export const modules = [
   scrollApertureWindow,
   scrollSectionLift,
   scrollMediaMaskSwitch,
+  scrollAircraftHandoff,
   scrollTextPositionFlip,
   scrollSyncedGallery,
   characterConverge,
