@@ -14,7 +14,7 @@ const DEFAULTS = Object.freeze({
   backgroundXPercentTo: -2,
   apertureScaleTo: 8,
   panelDistanceVw: 50,
-  skyYTo: "100vh",
+  parallaxYTo: "100vh",
   logoYFrom: "44vh",
   logoScaleFrom: 1.25
 });
@@ -39,7 +39,7 @@ function collectTargets(root) {
     aperture: optionalTarget(root, "aperture"),
     leftPanel: optionalTarget(root, "left-panel"),
     rightPanel: optionalTarget(root, "right-panel"),
-    sky: optionalTarget(root, "sky")
+    parallaxLayer: optionalTarget(root, "parallax-layer")
   };
 }
 
@@ -176,14 +176,14 @@ export const scrollApertureWindow = {
           addTween(tweens, timeline);
         }
 
-        if (desktop && targets.sky) {
+        if (desktop && targets.parallaxLayer) {
           addTween(
             tweens,
             gsap.fromTo(
-              targets.sky,
-              { y: readString(root, "motion-sky-y-from", "0vh"), translateZ: 10 },
+              targets.parallaxLayer,
+              { y: readString(root, "motion-parallax-y-from", "0vh"), translateZ: 10 },
               {
-                y: readString(root, "motion-sky-y-to", DEFAULTS.skyYTo),
+                y: readString(root, "motion-parallax-y-to", DEFAULTS.parallaxYTo),
                 translateZ: 10,
                 ease: "none",
                 scrollTrigger: trigger
