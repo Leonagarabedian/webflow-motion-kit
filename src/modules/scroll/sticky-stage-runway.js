@@ -63,6 +63,42 @@ function ensureStyles(doc) {
       pointer-events: auto;
     }
 
+    [data-mk-sticky-stage-debug] {
+      position: absolute;
+      left: 1rem;
+      bottom: 1rem;
+      z-index: 999;
+      display: grid;
+      gap: .25rem;
+      max-width: min(22rem, calc(100% - 2rem));
+      padding: .65rem .75rem;
+      border: 1px solid rgba(35, 35, 35, .22);
+      border-radius: .4rem;
+      background: rgba(248, 248, 248, .88);
+      color: #232323;
+      font: 500 11px/1.25 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: .03em;
+      text-transform: uppercase;
+      pointer-events: none;
+      backdrop-filter: blur(10px);
+    }
+
+    [data-mk-sticky-stage-debug-bar] {
+      width: 100%;
+      height: 3px;
+      overflow: hidden;
+      background: rgba(35, 35, 35, .16);
+    }
+
+    [data-mk-sticky-stage-debug-fill] {
+      display: block;
+      width: 100%;
+      height: 100%;
+      transform: scaleX(0);
+      transform-origin: left center;
+      background: #232323;
+    }
+
     @media screen and (max-width: 991px) {
       [data-motion~="sticky-stage-runway"][data-mk-sticky-stage-active="true"] {
         min-height: auto;
@@ -87,6 +123,10 @@ function ensureStyles(doc) {
         opacity: 1;
         visibility: visible;
         pointer-events: auto;
+      }
+
+      [data-mk-sticky-stage-debug] {
+        display: none;
       }
     }
   `;
@@ -129,7 +169,8 @@ function originalInlineState(element) {
     sticky: element.getAttribute("data-mk-sticky-stage-sticky"),
     stage: element.getAttribute("data-mk-sticky-stage-stage"),
     layer: element.getAttribute("data-mk-sticky-stage-layer"),
-    state: element.getAttribute("data-mk-sticky-stage-layer-state")
+    state: element.getAttribute("data-mk-sticky-stage-layer-state"),
+    debugState: element.getAttribute("data-mk-sticky-stage-debug-state")
   };
 }
 
@@ -147,6 +188,23 @@ function restoreInlineState(element, state) {
   restoreAttribute(element, "data-mk-sticky-stage-stage", state.stage);
   restoreAttribute(element, "data-mk-sticky-stage-layer", state.layer);
   restoreAttribute(element, "data-mk-sticky-stage-layer-state", state.state);
+  restoreAttribute(element, "data-mk-sticky-stage-debug-state", state.debugState);
+}
+
+function createDebugPanel(doc, stage, { activeLayer, layerCount, scrollVh }) {
+  const panel = doc.createElement("div");
+  panel.setAttribute("data-mk-sticky-stage-debug", "");
+  panel.innerHTML = `
+    <span data-mk-sticky-stage-debug-label>Sticky stage runway mounted</span>
+    <span data-mk-sticky-stage-debug-meta>active: ${activeLayer || "none"} / layers: ${layerCount} / runway: ${scrollVh}vh</span>
+    <span data-mk-sticky-stage-debug-bar><span data-mk-sticky-stage-debug-fill></span></span>
+  `;
+  stage.appendChild(panel);
+
+  return {
+    panel,
+    fill: panel.querySelector("[data-mk-sticky-stage-debug-fill]")
+  };
 }
 
 export const stickyStageRunway = {
@@ -173,6 +231,7 @@ export const stickyStageRunway = {
         const stickyTop = readString(root, "motion-sticky-top", "0px");
         const zIndex = readNumber(root, "motion-z-index", 1);
         const pin = readBoolean(root, "motion-pin", true) && !conditions.reduceMotion && !reducedMotion();
+        const debug = readBoolean(root, "motion-debug", false);
         const start = readString(root, "motion-start", "top top");
         const end = readString(root, "motion-end", "bottom bottom");
         const id = readString(root, "motion-id", "sticky-stage-runway");
@@ -189,6 +248,7 @@ export const stickyStageRunway = {
         });
 
         root.setAttribute("data-mk-sticky-stage-active", "true");
+        root.setAttribute("data-mk-sticky-stage-debug-state", debug ? "on" : "off");
         root.style.setProperty("--mk-sticky-stage-height", `${scrollVh}svh`);
         root.style.setProperty("--mk-sticky-stage-viewport", `${viewportVh}svh`);
         root.style.setProperty("--mk-sticky-stage-top", stickyTop);
@@ -197,31 +257,49 @@ export const stickyStageRunway = {
         sticky.setAttribute("data-mk-sticky-stage-sticky", pin ? "pinned" : "css");
         stage.setAttribute("data-mk-sticky-stage-stage", "");
 
+        const activeName = activeLayer || (layers[0] ? layerName(layers[0], 0) : "");
         layers.forEach((layer, index) => {
-          layer.setAttribute("data-mk-sticky-stage-layer", layerName(layer, index));
-          if (activeLayer) {
+          const name = layerName(layer, index);
+          layer.setAttribute("data-mk-sticky-stage-layer", name);
+          if (activeName) {
             layer.setAttribute(
               "data-mk-sticky-stage-layer-state",
-              layerName(layer, index) === activeLayer ? "active" : "hidden"
+              name === activeName ? "active" : "hidden"
             );
           }
         });
 
-        const trigger = pin
-          ? ScrollTrigger.create({
-              id,
-              trigger: root,
-              start,
-              end,
-              pin: sticky,
-              pinSpacing: false,
-              anticipatePin: 1,
-              invalidateOnRefresh: true
+        const debugPanel = debug
+          ? createDebugPanel(root.ownerDocument, stage, {
+              activeLayer: activeName,
+              layerCount: layers.length,
+              scrollVh
             })
           : null;
 
+        const trigger = ScrollTrigger.create({
+          id,
+          trigger: root,
+          start,
+          end,
+          pin: pin ? sticky : false,
+          pinSpacing: false,
+          anticipatePin: pin ? 1 : 0,
+          invalidateOnRefresh: true,
+          onUpdate(self) {
+            if (debugPanel?.fill) {
+              debugPanel.fill.style.transform = `scaleX(${self.progress.toFixed(4)})`;
+            }
+          }
+        });
+
+        if (debugPanel?.fill) {
+          debugPanel.fill.style.transform = `scaleX(${trigger.progress.toFixed(4)})`;
+        }
+
         return () => {
-          trigger?.kill();
+          trigger.kill();
+          debugPanel?.panel.remove();
           originals.forEach((state, element) => restoreInlineState(element, state));
         };
       }
