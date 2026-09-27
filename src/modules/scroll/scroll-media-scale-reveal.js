@@ -17,30 +17,30 @@ const DEFAULTS = Object.freeze({
   backgroundOpacityTo: 1,
   contentYFrom: 0,
   contentYTo: 100,
-  aircraftScaleFrom: 1,
-  aircraftScaleTo: 0.4,
-  aircraftYFrom: 0,
-  aircraftYTo: -15,
-  aircraftOpacityFrom: 1,
-  aircraftOpacityTo: 0,
-  aircraftMaskFrom: "100% 150%",
-  aircraftMaskTo: "100% 150%",
-  blueprintOpacityFrom: 0,
-  blueprintOpacityTo: 1,
-  blueprintMaskFrom: "100% 0%",
-  blueprintMaskTo: "100% 150%",
-  blueprintMaskYFrom: "200%",
-  blueprintMaskYTo: "50%",
+  primaryScaleFrom: 1,
+  primaryScaleTo: 0.4,
+  primaryYFrom: 0,
+  primaryYTo: -15,
+  primaryOpacityFrom: 1,
+  primaryOpacityTo: 0,
+  primaryMaskFrom: "100% 150%",
+  primaryMaskTo: "100% 150%",
+  revealOpacityFrom: 0,
+  revealOpacityTo: 1,
+  revealMaskFrom: "100% 0%",
+  revealMaskTo: "100% 150%",
+  revealMaskYFrom: "200%",
+  revealMaskYTo: "50%",
   backgroundAt: 0,
   backgroundDuration: 0.28,
   contentAt: 0.28,
   contentDuration: 0.44,
-  aircraftAt: 0.18,
-  aircraftDuration: 0.54,
+  primaryAt: 0.18,
+  primaryDuration: 0.54,
   handoffAt: 0.78,
   handoffDuration: 0.22,
   ease: "none",
-  aircraftEase: "none",
+  primaryEase: "none",
   handoffEase: "none"
 });
 
@@ -98,10 +98,10 @@ function cleanup(gsap, animations, targets) {
   }
 }
 
-export const scrollAircraftHandoff = {
-  name: "scroll-aircraft-handoff",
+export const scrollMediaScaleReveal = {
+  name: "scroll-media-scale-reveal",
   category: "composition",
-  selector: '[data-motion~="scroll-aircraft-handoff"]',
+  selector: '[data-motion~="scroll-media-scale-reveal"]',
 
   mount(root, { gsap, ScrollTrigger, reducedMotion }) {
     if (reducedMotion()) return;
@@ -125,27 +125,26 @@ export const scrollAircraftHandoff = {
         const trigger = resolveTrigger(root);
         const markers = readBoolean(root, "motion-markers", DEFAULTS.markers);
         const ease = readString(root, "motion-ease", DEFAULTS.ease);
-        const aircraftEase = readString(root, "motion-aircraft-ease", DEFAULTS.aircraftEase);
+        const primaryEase = readString(root, "motion-primary-ease", DEFAULTS.primaryEase);
         const handoffEase = readString(root, "motion-handoff-ease", DEFAULTS.handoffEase);
 
         const background = selectTarget(root, "background", null);
         const panels = selectTargets(root, "content-panel");
-        const aircraft = selectTarget(root, "aircraft", null);
-        const aircraftImage = selectTarget(root, "aircraft-image", null);
-        const reveal =
-          selectTarget(root, "aircraft-reveal", null) ?? selectTarget(root, "blueprint", null);
+        const primary = selectTarget(root, "primary", null);
+        const primaryImage = selectTarget(root, "primary-image", null);
+        const reveal = selectTarget(root, "reveal", null);
 
         const backgroundAt = normalizedPosition(root, "motion-background-at", DEFAULTS.backgroundAt);
         const backgroundDuration = normalizedDuration(root, "motion-background-duration", DEFAULTS.backgroundDuration);
         const contentAt = normalizedPosition(root, "motion-content-at", DEFAULTS.contentAt);
         const contentDuration = normalizedDuration(root, "motion-content-duration", DEFAULTS.contentDuration);
-        const aircraftAt = normalizedPosition(root, "motion-aircraft-at", DEFAULTS.aircraftAt);
-        const aircraftDuration = normalizedDuration(root, "motion-aircraft-duration", DEFAULTS.aircraftDuration);
+        const primaryAt = normalizedPosition(root, "motion-primary-at", DEFAULTS.primaryAt);
+        const primaryDuration = normalizedDuration(root, "motion-primary-duration", DEFAULTS.primaryDuration);
         const handoffAt = normalizedPosition(root, "motion-handoff-at", DEFAULTS.handoffAt);
         const handoffDuration = normalizedDuration(root, "motion-handoff-duration", DEFAULTS.handoffDuration);
 
         const animations = [];
-        const targets = [background, ...panels, aircraft, aircraftImage, reveal];
+        const targets = [background, ...panels, primary, primaryImage, reveal];
 
         if (background) {
           gsap.set(background, {
@@ -163,29 +162,29 @@ export const scrollAircraftHandoff = {
           });
         }
 
-        if (aircraft) {
-          gsap.set(aircraft, {
-            scale: readNumber(root, "motion-aircraft-scale-from", DEFAULTS.aircraftScaleFrom),
-            yPercent: readNumber(root, "motion-aircraft-y-from", DEFAULTS.aircraftYFrom),
+        if (primary) {
+          gsap.set(primary, {
+            scale: readNumber(root, "motion-primary-scale-from", DEFAULTS.primaryScaleFrom),
+            yPercent: readNumber(root, "motion-primary-y-from", DEFAULTS.primaryYFrom),
             translateZ: 10,
             willChange: "transform"
           });
         }
 
-        if (aircraftImage) {
-          gsap.set(aircraftImage, {
-            opacity: readNumber(root, "motion-aircraft-opacity-from", DEFAULTS.aircraftOpacityFrom),
-            ...maskProps(readString(root, "motion-aircraft-mask-from", DEFAULTS.aircraftMaskFrom)),
+        if (primaryImage) {
+          gsap.set(primaryImage, {
+            opacity: readNumber(root, "motion-primary-opacity-from", DEFAULTS.primaryOpacityFrom),
+            ...maskProps(readString(root, "motion-primary-mask-from", DEFAULTS.primaryMaskFrom)),
             willChange: "opacity, -webkit-mask-size, mask-size"
           });
         }
 
         if (reveal) {
           gsap.set(reveal, {
-            opacity: readNumber(root, "motion-blueprint-opacity-from", DEFAULTS.blueprintOpacityFrom),
+            opacity: readNumber(root, "motion-reveal-opacity-from", DEFAULTS.revealOpacityFrom),
             ...maskProps(
-              readString(root, "motion-blueprint-mask-from", DEFAULTS.blueprintMaskFrom),
-              readString(root, "motion-blueprint-mask-y-from", DEFAULTS.blueprintMaskYFrom)
+              readString(root, "motion-reveal-mask-from", DEFAULTS.revealMaskFrom),
+              readString(root, "motion-reveal-mask-y-from", DEFAULTS.revealMaskYFrom)
             ),
             willChange: "opacity, -webkit-mask-size, mask-size, -webkit-mask-position, mask-position"
           });
@@ -225,25 +224,25 @@ export const scrollAircraftHandoff = {
           );
         }
 
-        if (aircraft) {
+        if (primary) {
           timeline.to(
-            aircraft,
+            primary,
             {
-              scale: readNumber(root, "motion-aircraft-scale-to", DEFAULTS.aircraftScaleTo),
-              yPercent: readNumber(root, "motion-aircraft-y-to", DEFAULTS.aircraftYTo),
-              ease: aircraftEase,
-              duration: aircraftDuration
+              scale: readNumber(root, "motion-primary-scale-to", DEFAULTS.primaryScaleTo),
+              yPercent: readNumber(root, "motion-primary-y-to", DEFAULTS.primaryYTo),
+              ease: primaryEase,
+              duration: primaryDuration
             },
-            aircraftAt
+            primaryAt
           );
         }
 
-        if (aircraftImage) {
+        if (primaryImage) {
           timeline.to(
-            aircraftImage,
+            primaryImage,
             {
-              opacity: readNumber(root, "motion-aircraft-opacity-to", DEFAULTS.aircraftOpacityTo),
-              ...maskProps(readString(root, "motion-aircraft-mask-to", DEFAULTS.aircraftMaskTo)),
+              opacity: readNumber(root, "motion-primary-opacity-to", DEFAULTS.primaryOpacityTo),
+              ...maskProps(readString(root, "motion-primary-mask-to", DEFAULTS.primaryMaskTo)),
               ease: handoffEase,
               duration: handoffDuration
             },
@@ -255,10 +254,10 @@ export const scrollAircraftHandoff = {
           timeline.to(
             reveal,
             {
-              opacity: readNumber(root, "motion-blueprint-opacity-to", DEFAULTS.blueprintOpacityTo),
+              opacity: readNumber(root, "motion-reveal-opacity-to", DEFAULTS.revealOpacityTo),
               ...maskProps(
-                readString(root, "motion-blueprint-mask-to", DEFAULTS.blueprintMaskTo),
-                readString(root, "motion-blueprint-mask-y-to", DEFAULTS.blueprintMaskYTo)
+                readString(root, "motion-reveal-mask-to", DEFAULTS.revealMaskTo),
+                readString(root, "motion-reveal-mask-y-to", DEFAULTS.revealMaskYTo)
               ),
               ease: handoffEase,
               duration: handoffDuration
