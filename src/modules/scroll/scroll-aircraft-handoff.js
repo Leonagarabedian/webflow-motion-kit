@@ -41,11 +41,7 @@ const DEFAULTS = Object.freeze({
   handoffDuration: 0.22,
   ease: "none",
   aircraftEase: "none",
-  handoffEase: "none",
-  coordinateMode: "authored",
-  stageScale: 1,
-  stageXOffset: 0,
-  stageYOffset: 0
+  handoffEase: "none"
 });
 
 function configuredScrub(element, name, fallback) {
@@ -87,40 +83,6 @@ function maskProps(size, y = null) {
   return props;
 }
 
-function rectCenter(rect) {
-  return {
-    x: rect.left + rect.width / 2,
-    y: rect.top + rect.height / 2
-  };
-}
-
-function panelFinalYOffset(stage, contentYTo) {
-  const panel = stage?.closest?.('[data-motion-target~="content-panel"]');
-  if (!panel) return 0;
-  const rect = panel.getBoundingClientRect();
-  return rect.height * (contentYTo / 100);
-}
-
-function computeStageTravel({ aircraftImage, aircraft, stage, contentYTo, stageScale, xOffset, yOffset }) {
-  const source = aircraftImage || aircraft;
-  if (!source || !stage) return null;
-
-  const sourceRect = source.getBoundingClientRect();
-  const stageRect = stage.getBoundingClientRect();
-  if (!sourceRect.width || !sourceRect.height || !stageRect.width || !stageRect.height) return null;
-
-  const finalStageYOffset = panelFinalYOffset(stage, contentYTo);
-  const sourceCenter = rectCenter(sourceRect);
-  const stageCenter = rectCenter(stageRect);
-  const fitScale = (stageRect.width / sourceRect.width) * stageScale;
-
-  return {
-    x: stageCenter.x - sourceCenter.x + xOffset,
-    y: stageCenter.y + finalStageYOffset - sourceCenter.y + yOffset,
-    scale: fitScale
-  };
-}
-
 function cleanup(gsap, animations, targets) {
   animations.forEach((animation) => {
     animation.scrollTrigger?.kill();
@@ -131,7 +93,7 @@ function cleanup(gsap, animations, targets) {
   if (uniqueTargets.length) {
     gsap.set(uniqueTargets, {
       clearProps:
-        "opacity,transform,x,y,scale,willChange,webkitMaskSize,maskSize,webkitMaskPosition,maskPosition,--motion-mask-size,--motion-mask-y,--mask-size,--mask-y"
+        "opacity,transform,willChange,webkitMaskSize,maskSize,webkitMaskPosition,maskPosition,--motion-mask-size,--motion-mask-y,--mask-size,--mask-y"
     });
   }
 }
@@ -165,14 +127,12 @@ export const scrollAircraftHandoff = {
         const ease = readString(root, "motion-ease", DEFAULTS.ease);
         const aircraftEase = readString(root, "motion-aircraft-ease", DEFAULTS.aircraftEase);
         const handoffEase = readString(root, "motion-handoff-ease", DEFAULTS.handoffEase);
-        const coordinateMode = readString(root, "motion-coordinate-mode", DEFAULTS.coordinateMode);
 
         const background = selectTarget(root, "background", null);
         const panels = selectTargets(root, "content-panel");
         const aircraft = selectTarget(root, "aircraft", null);
         const aircraftImage = selectTarget(root, "aircraft-image", null);
         const blueprint = selectTarget(root, "blueprint", null);
-        const blueprintStage = selectTarget(root, "blueprint-stage", blueprint?.parentElement || null);
 
         const backgroundAt = normalizedPosition(root, "motion-background-at", DEFAULTS.backgroundAt);
         const backgroundDuration = normalizedDuration(root, "motion-background-duration", DEFAULTS.backgroundDuration);
@@ -182,14 +142,9 @@ export const scrollAircraftHandoff = {
         const aircraftDuration = normalizedDuration(root, "motion-aircraft-duration", DEFAULTS.aircraftDuration);
         const handoffAt = normalizedPosition(root, "motion-handoff-at", DEFAULTS.handoffAt);
         const handoffDuration = normalizedDuration(root, "motion-handoff-duration", DEFAULTS.handoffDuration);
-        const contentYTo = readNumber(root, "motion-content-y-to", DEFAULTS.contentYTo);
-        const stageScale = readNumber(root, "motion-stage-scale", DEFAULTS.stageScale);
-        const stageXOffset = readNumber(root, "motion-stage-x-offset", DEFAULTS.stageXOffset);
-        const stageYOffset = readNumber(root, "motion-stage-y-offset", DEFAULTS.stageYOffset);
-        const useSourceStage = coordinateMode === "source-stage" && blueprintStage && aircraft;
 
         const animations = [];
-        const targets = [background, ...panels, aircraft, aircraftImage, blueprint, blueprintStage];
+        const targets = [background, ...panels, aircraft, aircraftImage, blueprint];
 
         if (background) {
           gsap.set(background, {
@@ -209,10 +164,8 @@ export const scrollAircraftHandoff = {
 
         if (aircraft) {
           gsap.set(aircraft, {
-            x: 0,
-            y: 0,
             scale: readNumber(root, "motion-aircraft-scale-from", DEFAULTS.aircraftScaleFrom),
-            yPercent: useSourceStage ? 0 : readNumber(root, "motion-aircraft-y-from", DEFAULTS.aircraftYFrom),
+            yPercent: readNumber(root, "motion-aircraft-y-from", DEFAULTS.aircraftYFrom),
             translateZ: 10,
             willChange: "transform"
           });
@@ -264,7 +217,7 @@ export const scrollAircraftHandoff = {
           timeline.to(
             panels,
             {
-              yPercent: contentYTo,
+              yPercent: readNumber(root, "motion-content-y-to", DEFAULTS.contentYTo),
               duration: contentDuration
             },
             contentAt
@@ -272,52 +225,14 @@ export const scrollAircraftHandoff = {
         }
 
         if (aircraft) {
-          const authoredScaleTo = readNumber(root, "motion-aircraft-scale-to", DEFAULTS.aircraftScaleTo);
-          const authoredYTo = readNumber(root, "motion-aircraft-y-to", DEFAULTS.aircraftYTo);
-
           timeline.to(
             aircraft,
-            useSourceStage
-              ? {
-                  x: () =>
-                    computeStageTravel({
-                      aircraftImage,
-                      aircraft,
-                      stage: blueprintStage,
-                      contentYTo,
-                      stageScale,
-                      xOffset: stageXOffset,
-                      yOffset: stageYOffset
-                    })?.x ?? 0,
-                  y: () =>
-                    computeStageTravel({
-                      aircraftImage,
-                      aircraft,
-                      stage: blueprintStage,
-                      contentYTo,
-                      stageScale,
-                      xOffset: stageXOffset,
-                      yOffset: stageYOffset
-                    })?.y ?? 0,
-                  scale: () =>
-                    computeStageTravel({
-                      aircraftImage,
-                      aircraft,
-                      stage: blueprintStage,
-                      contentYTo,
-                      stageScale,
-                      xOffset: stageXOffset,
-                      yOffset: stageYOffset
-                    })?.scale ?? authoredScaleTo,
-                  ease: aircraftEase,
-                  duration: aircraftDuration
-                }
-              : {
-                  scale: authoredScaleTo,
-                  yPercent: authoredYTo,
-                  ease: aircraftEase,
-                  duration: aircraftDuration
-                },
+            {
+              scale: readNumber(root, "motion-aircraft-scale-to", DEFAULTS.aircraftScaleTo),
+              yPercent: readNumber(root, "motion-aircraft-y-to", DEFAULTS.aircraftYTo),
+              ease: aircraftEase,
+              duration: aircraftDuration
+            },
             aircraftAt
           );
         }
