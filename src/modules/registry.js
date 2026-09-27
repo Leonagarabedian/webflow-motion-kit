@@ -64,8 +64,6 @@ import { scrollMarquee } from "./scroll-marquee.js";
 import { scrollSyncedGallery } from "./scroll-synced-gallery.js";
 import { scrollTravel } from "./scroll-travel.js";
 import { scrollApertureWindow } from "./scroll-aperture-window.js";
-import { scrollSectionLift } from "./scroll-section-lift.js";
-import { scrollMediaMaskSwitch } from "./scroll-media-mask-switch.js";
 import { scrollAircraftHandoff } from "./scroll-aircraft-handoff.js";
 import { scrollTextPositionFlip } from "./scroll-text-position-flip.js";
 import { sectionHandoff } from "./section-handoff.js";
@@ -107,8 +105,6 @@ export const modules = [
   parallax,
   scrollTravel,
   scrollApertureWindow,
-  scrollSectionLift,
-  scrollMediaMaskSwitch,
   scrollAircraftHandoff,
   scrollTextPositionFlip,
   scrollSyncedGallery,
