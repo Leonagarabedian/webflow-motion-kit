@@ -12,9 +12,10 @@ const DEFAULTS = Object.freeze({
   start: "top center",
   end: "bottom center",
   direction: "up",
+  mode: "reveal",
   ease: "none",
   baseScaleFrom: 1,
-  baseScaleTo: 1.06,
+  baseScaleTo: 1.03,
   revealScaleFrom: 1.08,
   revealScaleTo: 1,
   baseOpacityFrom: 1,
@@ -24,6 +25,7 @@ const DEFAULTS = Object.freeze({
 });
 
 const FULL_CLIP = "inset(0% 0% 0% 0%)";
+const SUPPORTED_MODES = new Set(["reveal", "swap"]);
 
 const CLIPS = Object.freeze({
   up: {
@@ -55,6 +57,11 @@ function configuredScrub(element) {
 function configuredClips(root) {
   const direction = readString(root, "motion-direction", DEFAULTS.direction).toLowerCase();
   return CLIPS[direction] ?? CLIPS[DEFAULTS.direction];
+}
+
+function configuredMode(root) {
+  const mode = readString(root, "motion-mode", DEFAULTS.mode).toLowerCase();
+  return SUPPORTED_MODES.has(mode) ? mode : DEFAULTS.mode;
 }
 
 function clipProps(value) {
@@ -102,6 +109,7 @@ export const scrollMediaMaskSwitch = {
         if (!baseLayer && !revealLayer) return;
 
         const clips = configuredClips(root);
+        const mode = configuredMode(root);
         const triggerElement = resolveTrigger(root);
 
         const timeline = gsap.timeline({
@@ -119,6 +127,7 @@ export const scrollMediaMaskSwitch = {
         });
 
         if (baseLayer) {
+          const baseToClip = mode === "swap" ? clips.baseHidden : FULL_CLIP;
           timeline.fromTo(
             baseLayer,
             {
@@ -128,7 +137,7 @@ export const scrollMediaMaskSwitch = {
               willChange: "clip-path, transform, opacity"
             },
             {
-              ...clipProps(clips.baseHidden),
+              ...clipProps(baseToClip),
               scale: readNumber(root, "motion-base-scale-to", DEFAULTS.baseScaleTo),
               opacity: readNumber(root, "motion-base-opacity-to", DEFAULTS.baseOpacityTo)
             },
