@@ -132,7 +132,8 @@ export const scrollAircraftHandoff = {
         const panels = selectTargets(root, "content-panel");
         const aircraft = selectTarget(root, "aircraft", null);
         const aircraftImage = selectTarget(root, "aircraft-image", null);
-        const blueprint = selectTarget(root, "blueprint", null);
+        const reveal =
+          selectTarget(root, "aircraft-reveal", null) ?? selectTarget(root, "blueprint", null);
 
         const backgroundAt = normalizedPosition(root, "motion-background-at", DEFAULTS.backgroundAt);
         const backgroundDuration = normalizedDuration(root, "motion-background-duration", DEFAULTS.backgroundDuration);
@@ -144,7 +145,7 @@ export const scrollAircraftHandoff = {
         const handoffDuration = normalizedDuration(root, "motion-handoff-duration", DEFAULTS.handoffDuration);
 
         const animations = [];
-        const targets = [background, ...panels, aircraft, aircraftImage, blueprint];
+        const targets = [background, ...panels, aircraft, aircraftImage, reveal];
 
         if (background) {
           gsap.set(background, {
@@ -179,8 +180,8 @@ export const scrollAircraftHandoff = {
           });
         }
 
-        if (blueprint) {
-          gsap.set(blueprint, {
+        if (reveal) {
+          gsap.set(reveal, {
             opacity: readNumber(root, "motion-blueprint-opacity-from", DEFAULTS.blueprintOpacityFrom),
             ...maskProps(
               readString(root, "motion-blueprint-mask-from", DEFAULTS.blueprintMaskFrom),
@@ -250,9 +251,9 @@ export const scrollAircraftHandoff = {
           );
         }
 
-        if (blueprint) {
+        if (reveal) {
           timeline.to(
-            blueprint,
+            reveal,
             {
               opacity: readNumber(root, "motion-blueprint-opacity-to", DEFAULTS.blueprintOpacityTo),
               ...maskProps(
