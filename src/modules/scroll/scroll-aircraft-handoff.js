@@ -11,14 +11,8 @@ const DEFAULTS = Object.freeze({
   minWidth: 992,
   allowMobile: false,
   markers: false,
-  backgroundStart: "top top",
-  backgroundEnd: "center center",
-  contentStart: "50% center",
-  contentEnd: "85% bottom",
-  aircraftStart: "25% center",
-  aircraftEnd: "85% bottom",
-  maskStart: "85% bottom",
-  maskEnd: "bottom bottom",
+  timelineStart: "top top",
+  timelineEnd: "bottom bottom",
   backgroundOpacityFrom: 0,
   backgroundOpacityTo: 1,
   contentYFrom: 0,
@@ -27,14 +21,27 @@ const DEFAULTS = Object.freeze({
   aircraftScaleTo: 0.4,
   aircraftYFrom: 0,
   aircraftYTo: -15,
+  aircraftOpacityFrom: 1,
+  aircraftOpacityTo: 0,
   aircraftMaskFrom: "100% 150%",
-  aircraftMaskTo: "100% 0%",
+  aircraftMaskTo: "100% 150%",
+  blueprintOpacityFrom: 0,
+  blueprintOpacityTo: 1,
   blueprintMaskFrom: "100% 0%",
   blueprintMaskTo: "100% 150%",
   blueprintMaskYFrom: "200%",
   blueprintMaskYTo: "50%",
+  backgroundAt: 0,
+  backgroundDuration: 0.28,
+  contentAt: 0.28,
+  contentDuration: 0.44,
+  aircraftAt: 0.18,
+  aircraftDuration: 0.54,
+  handoffAt: 0.78,
+  handoffDuration: 0.22,
   ease: "none",
-  aircraftEase: "power2.in"
+  aircraftEase: "none",
+  handoffEase: "none"
 });
 
 function configuredScrub(element, name, fallback) {
@@ -44,6 +51,18 @@ function configuredScrub(element, name, fallback) {
   if (raw === "false" || raw === "0") return false;
   const value = Number.parseFloat(raw);
   return Number.isFinite(value) ? value : fallback;
+}
+
+function normalizedPosition(element, name, fallback) {
+  const value = readNumber(element, name, fallback);
+  if (!Number.isFinite(value)) return fallback;
+  return Math.max(0, Math.min(1, value));
+}
+
+function normalizedDuration(element, name, fallback) {
+  const value = readNumber(element, name, fallback);
+  if (!Number.isFinite(value)) return fallback;
+  return Math.max(0.01, Math.min(1, value));
 }
 
 function maskProps(size, y = null) {
@@ -107,6 +126,7 @@ export const scrollAircraftHandoff = {
         const markers = readBoolean(root, "motion-markers", DEFAULTS.markers);
         const ease = readString(root, "motion-ease", DEFAULTS.ease);
         const aircraftEase = readString(root, "motion-aircraft-ease", DEFAULTS.aircraftEase);
+        const handoffEase = readString(root, "motion-handoff-ease", DEFAULTS.handoffEase);
 
         const background = selectTarget(root, "background", null);
         const panels = selectTargets(root, "content-panel");
@@ -114,143 +134,139 @@ export const scrollAircraftHandoff = {
         const aircraftImage = selectTarget(root, "aircraft-image", null);
         const blueprint = selectTarget(root, "blueprint", null);
 
+        const backgroundAt = normalizedPosition(root, "motion-background-at", DEFAULTS.backgroundAt);
+        const backgroundDuration = normalizedDuration(root, "motion-background-duration", DEFAULTS.backgroundDuration);
+        const contentAt = normalizedPosition(root, "motion-content-at", DEFAULTS.contentAt);
+        const contentDuration = normalizedDuration(root, "motion-content-duration", DEFAULTS.contentDuration);
+        const aircraftAt = normalizedPosition(root, "motion-aircraft-at", DEFAULTS.aircraftAt);
+        const aircraftDuration = normalizedDuration(root, "motion-aircraft-duration", DEFAULTS.aircraftDuration);
+        const handoffAt = normalizedPosition(root, "motion-handoff-at", DEFAULTS.handoffAt);
+        const handoffDuration = normalizedDuration(root, "motion-handoff-duration", DEFAULTS.handoffDuration);
+
         const animations = [];
         const targets = [background, ...panels, aircraft, aircraftImage, blueprint];
 
         if (background) {
-          animations.push(
-            gsap.fromTo(
-              background,
-              {
-                opacity: readNumber(root, "motion-background-opacity-from", DEFAULTS.backgroundOpacityFrom),
-                translateZ: 10,
-                willChange: "opacity"
-              },
-              {
-                opacity: readNumber(root, "motion-background-opacity-to", DEFAULTS.backgroundOpacityTo),
-                translateZ: 10,
-                ease,
-                scrollTrigger: {
-                  trigger,
-                  start: readString(root, "motion-background-start", DEFAULTS.backgroundStart),
-                  end: readString(root, "motion-background-end", DEFAULTS.backgroundEnd),
-                  scrub: configuredScrub(root, "motion-background-scrub", true),
-                  invalidateOnRefresh: true,
-                  markers
-                }
-              }
-            )
+          gsap.set(background, {
+            opacity: readNumber(root, "motion-background-opacity-from", DEFAULTS.backgroundOpacityFrom),
+            translateZ: 10,
+            willChange: "opacity"
+          });
+        }
+
+        if (panels.length) {
+          gsap.set(panels, {
+            yPercent: readNumber(root, "motion-content-y-from", DEFAULTS.contentYFrom),
+            translateZ: 10,
+            willChange: "transform"
+          });
+        }
+
+        if (aircraft) {
+          gsap.set(aircraft, {
+            scale: readNumber(root, "motion-aircraft-scale-from", DEFAULTS.aircraftScaleFrom),
+            yPercent: readNumber(root, "motion-aircraft-y-from", DEFAULTS.aircraftYFrom),
+            translateZ: 10,
+            willChange: "transform"
+          });
+        }
+
+        if (aircraftImage) {
+          gsap.set(aircraftImage, {
+            opacity: readNumber(root, "motion-aircraft-opacity-from", DEFAULTS.aircraftOpacityFrom),
+            ...maskProps(readString(root, "motion-aircraft-mask-from", DEFAULTS.aircraftMaskFrom)),
+            willChange: "opacity, -webkit-mask-size, mask-size"
+          });
+        }
+
+        if (blueprint) {
+          gsap.set(blueprint, {
+            opacity: readNumber(root, "motion-blueprint-opacity-from", DEFAULTS.blueprintOpacityFrom),
+            ...maskProps(
+              readString(root, "motion-blueprint-mask-from", DEFAULTS.blueprintMaskFrom),
+              readString(root, "motion-blueprint-mask-y-from", DEFAULTS.blueprintMaskYFrom)
+            ),
+            willChange: "opacity, -webkit-mask-size, mask-size, -webkit-mask-position, mask-position"
+          });
+        }
+
+        const timeline = gsap.timeline({
+          defaults: { ease },
+          scrollTrigger: {
+            trigger,
+            start: readString(root, "motion-start", DEFAULTS.timelineStart),
+            end: readString(root, "motion-end", DEFAULTS.timelineEnd),
+            scrub: configuredScrub(root, "motion-scrub", 1.2),
+            invalidateOnRefresh: true,
+            markers
+          }
+        });
+
+        if (background) {
+          timeline.to(
+            background,
+            {
+              opacity: readNumber(root, "motion-background-opacity-to", DEFAULTS.backgroundOpacityTo),
+              duration: backgroundDuration
+            },
+            backgroundAt
           );
         }
 
         if (panels.length) {
-          animations.push(
-            gsap.fromTo(
-              panels,
-              {
-                yPercent: readNumber(root, "motion-content-y-from", DEFAULTS.contentYFrom),
-                translateZ: 10,
-                willChange: "transform"
-              },
-              {
-                yPercent: readNumber(root, "motion-content-y-to", DEFAULTS.contentYTo),
-                translateZ: 10,
-                ease,
-                scrollTrigger: {
-                  trigger,
-                  start: readString(root, "motion-content-start", DEFAULTS.contentStart),
-                  end: readString(root, "motion-content-end", DEFAULTS.contentEnd),
-                  scrub: configuredScrub(root, "motion-content-scrub", 1.2),
-                  invalidateOnRefresh: true,
-                  markers
-                }
-              }
-            )
+          timeline.to(
+            panels,
+            {
+              yPercent: readNumber(root, "motion-content-y-to", DEFAULTS.contentYTo),
+              duration: contentDuration
+            },
+            contentAt
           );
         }
 
         if (aircraft) {
-          animations.push(
-            gsap.fromTo(
-              aircraft,
-              {
-                scale: readNumber(root, "motion-aircraft-scale-from", DEFAULTS.aircraftScaleFrom),
-                yPercent: readNumber(root, "motion-aircraft-y-from", DEFAULTS.aircraftYFrom),
-                translateZ: 10,
-                willChange: "transform"
-              },
-              {
-                scale: readNumber(root, "motion-aircraft-scale-to", DEFAULTS.aircraftScaleTo),
-                yPercent: readNumber(root, "motion-aircraft-y-to", DEFAULTS.aircraftYTo),
-                translateZ: 10,
-                ease: aircraftEase,
-                scrollTrigger: {
-                  trigger,
-                  start: readString(root, "motion-aircraft-start", DEFAULTS.aircraftStart),
-                  end: readString(root, "motion-aircraft-end", DEFAULTS.aircraftEnd),
-                  scrub: configuredScrub(root, "motion-aircraft-scrub", 1.2),
-                  invalidateOnRefresh: true,
-                  markers
-                }
-              }
-            )
+          timeline.to(
+            aircraft,
+            {
+              scale: readNumber(root, "motion-aircraft-scale-to", DEFAULTS.aircraftScaleTo),
+              yPercent: readNumber(root, "motion-aircraft-y-to", DEFAULTS.aircraftYTo),
+              ease: aircraftEase,
+              duration: aircraftDuration
+            },
+            aircraftAt
           );
         }
 
         if (aircraftImage) {
-          animations.push(
-            gsap.fromTo(
-              aircraftImage,
-              {
-                ...maskProps(readString(root, "motion-aircraft-mask-from", DEFAULTS.aircraftMaskFrom)),
-                willChange: "-webkit-mask-size, mask-size"
-              },
-              {
-                ...maskProps(readString(root, "motion-aircraft-mask-to", DEFAULTS.aircraftMaskTo)),
-                ease,
-                scrollTrigger: {
-                  trigger,
-                  start: readString(root, "motion-mask-start", DEFAULTS.maskStart),
-                  end: readString(root, "motion-mask-end", DEFAULTS.maskEnd),
-                  scrub: configuredScrub(root, "motion-mask-scrub", true),
-                  invalidateOnRefresh: true,
-                  markers
-                }
-              }
-            )
+          timeline.to(
+            aircraftImage,
+            {
+              opacity: readNumber(root, "motion-aircraft-opacity-to", DEFAULTS.aircraftOpacityTo),
+              ...maskProps(readString(root, "motion-aircraft-mask-to", DEFAULTS.aircraftMaskTo)),
+              ease: handoffEase,
+              duration: handoffDuration
+            },
+            handoffAt
           );
         }
 
         if (blueprint) {
-          animations.push(
-            gsap.fromTo(
-              blueprint,
-              {
-                ...maskProps(
-                  readString(root, "motion-blueprint-mask-from", DEFAULTS.blueprintMaskFrom),
-                  readString(root, "motion-blueprint-mask-y-from", DEFAULTS.blueprintMaskYFrom)
-                ),
-                willChange: "-webkit-mask-size, mask-size, -webkit-mask-position, mask-position"
-              },
-              {
-                ...maskProps(
-                  readString(root, "motion-blueprint-mask-to", DEFAULTS.blueprintMaskTo),
-                  readString(root, "motion-blueprint-mask-y-to", DEFAULTS.blueprintMaskYTo)
-                ),
-                ease,
-                scrollTrigger: {
-                  trigger,
-                  start: readString(root, "motion-mask-start", DEFAULTS.maskStart),
-                  end: readString(root, "motion-mask-end", DEFAULTS.maskEnd),
-                  scrub: configuredScrub(root, "motion-mask-scrub", true),
-                  invalidateOnRefresh: true,
-                  markers
-                }
-              }
-            )
+          timeline.to(
+            blueprint,
+            {
+              opacity: readNumber(root, "motion-blueprint-opacity-to", DEFAULTS.blueprintOpacityTo),
+              ...maskProps(
+                readString(root, "motion-blueprint-mask-to", DEFAULTS.blueprintMaskTo),
+                readString(root, "motion-blueprint-mask-y-to", DEFAULTS.blueprintMaskYTo)
+              ),
+              ease: handoffEase,
+              duration: handoffDuration
+            },
+            handoffAt
           );
         }
 
+        animations.push(timeline);
         ScrollTrigger.refresh();
 
         return () => cleanup(gsap, animations, targets);
