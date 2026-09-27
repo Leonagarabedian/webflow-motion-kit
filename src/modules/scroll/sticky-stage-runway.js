@@ -6,8 +6,7 @@ import {
 } from "../../core/config.js";
 
 const STYLE_ID = "motion-kit-sticky-stage-runway-styles";
-const DEFAULT_LAYER_SELECTOR =
-  '[data-motion-layer], [data-motion-target="layer"], .about-choreo-layer';
+const DEFAULT_LAYER_SELECTOR = '[data-motion-layer], [data-motion-target="layer"]';
 
 function ensureStyles(doc) {
   if (doc.getElementById(STYLE_ID)) return;
@@ -17,12 +16,20 @@ function ensureStyles(doc) {
   style.textContent = `
     [data-motion~="sticky-stage-runway"][data-mk-sticky-stage-active="true"] {
       position: relative;
-      min-height: var(--mk-sticky-stage-height, 500svh);
+      min-height: var(--mk-sticky-stage-height, auto);
       overflow: visible;
       isolation: isolate;
     }
 
-    [data-mk-sticky-stage-sticky] {
+    [data-mk-sticky-stage-sticky="flow"] {
+      position: relative;
+      width: 100%;
+      height: auto;
+      overflow: visible;
+    }
+
+    [data-mk-sticky-stage-sticky="pinned"],
+    [data-mk-sticky-stage-sticky="css"] {
       width: 100%;
       height: var(--mk-sticky-stage-viewport, 100svh);
       overflow: hidden;
@@ -34,7 +41,15 @@ function ensureStyles(doc) {
       top: var(--mk-sticky-stage-top, 0px);
     }
 
-    [data-mk-sticky-stage-stage] {
+    [data-mk-sticky-stage-stage="flow"] {
+      position: relative;
+      width: 100%;
+      height: auto;
+      overflow: visible;
+      isolation: isolate;
+    }
+
+    [data-mk-sticky-stage-stage="stack"] {
       position: relative;
       width: 100%;
       height: 100%;
@@ -42,7 +57,7 @@ function ensureStyles(doc) {
       isolation: isolate;
     }
 
-    [data-mk-sticky-stage-layer] {
+    [data-mk-sticky-stage-stage="stack"] [data-mk-sticky-stage-layer] {
       position: absolute;
       inset: 0;
       width: 100%;
@@ -191,12 +206,12 @@ function restoreInlineState(element, state) {
   restoreAttribute(element, "data-mk-sticky-stage-debug-state", state.debugState);
 }
 
-function createDebugPanel(doc, stage, { activeLayer, layerCount, scrollVh }) {
+function createDebugPanel(doc, stage, { layerMode, activeLayer, layerCount, scrollVh }) {
   const panel = doc.createElement("div");
   panel.setAttribute("data-mk-sticky-stage-debug", "");
   panel.innerHTML = `
     <span data-mk-sticky-stage-debug-label>Sticky stage runway mounted</span>
-    <span data-mk-sticky-stage-debug-meta>active: ${activeLayer || "none"} / layers: ${layerCount} / runway: ${scrollVh}vh</span>
+    <span data-mk-sticky-stage-debug-meta>mode: ${layerMode} / active: ${activeLayer || "none"} / layers: ${layerCount} / runway: ${scrollVh}vh</span>
     <span data-mk-sticky-stage-debug-bar><span data-mk-sticky-stage-debug-fill></span></span>
   `;
   stage.appendChild(panel);
@@ -230,18 +245,19 @@ export const stickyStageRunway = {
         const viewportVh = Math.max(1, readNumber(root, "motion-viewport-vh", 100));
         const stickyTop = readString(root, "motion-sticky-top", "0px");
         const zIndex = readNumber(root, "motion-z-index", 1);
-        const pin = readBoolean(root, "motion-pin", true) && !conditions.reduceMotion && !reducedMotion();
         const debug = readBoolean(root, "motion-debug", false);
         const start = readString(root, "motion-start", "top top");
         const end = readString(root, "motion-end", "bottom bottom");
         const id = readString(root, "motion-id", "sticky-stage-runway");
-        const layerMode = readString(root, "motion-layer-mode", "stack");
+        const layerMode = readString(root, "motion-layer-mode", "flow");
+        const stackLayers = layerMode === "stack";
         const activeLayer = readString(root, "motion-active-layer", "");
         const layerSelector = readString(root, "motion-layer-selector", DEFAULT_LAYER_SELECTOR);
+        const pin = stackLayers && readBoolean(root, "motion-pin", true) && !conditions.reduceMotion && !reducedMotion();
 
         const sticky = selectTarget(root, "sticky", root);
         const stage = selectTarget(root, "stage", sticky);
-        const layers = layerMode === "none" ? [] : queryLayers(stage, layerSelector);
+        const layers = stackLayers ? queryLayers(stage, layerSelector) : [];
         const originals = new Map();
         [root, sticky, stage, ...layers].forEach((element) => {
           if (!originals.has(element)) originals.set(element, originalInlineState(element));
@@ -249,13 +265,13 @@ export const stickyStageRunway = {
 
         root.setAttribute("data-mk-sticky-stage-active", "true");
         root.setAttribute("data-mk-sticky-stage-debug-state", debug ? "on" : "off");
-        root.style.setProperty("--mk-sticky-stage-height", `${scrollVh}svh`);
+        root.style.setProperty("--mk-sticky-stage-height", stackLayers ? `${scrollVh}svh` : "auto");
         root.style.setProperty("--mk-sticky-stage-viewport", `${viewportVh}svh`);
         root.style.setProperty("--mk-sticky-stage-top", stickyTop);
         root.style.setProperty("--mk-sticky-stage-z", String(zIndex));
 
-        sticky.setAttribute("data-mk-sticky-stage-sticky", pin ? "pinned" : "css");
-        stage.setAttribute("data-mk-sticky-stage-stage", "");
+        sticky.setAttribute("data-mk-sticky-stage-sticky", stackLayers ? (pin ? "pinned" : "css") : "flow");
+        stage.setAttribute("data-mk-sticky-stage-stage", stackLayers ? "stack" : "flow");
 
         const activeName = activeLayer || (layers[0] ? layerName(layers[0], 0) : "");
         layers.forEach((layer, index) => {
@@ -271,9 +287,10 @@ export const stickyStageRunway = {
 
         const debugPanel = debug
           ? createDebugPanel(root.ownerDocument, stage, {
+              layerMode: stackLayers ? "stack" : "flow",
               activeLayer: activeName,
               layerCount: layers.length,
-              scrollVh
+              scrollVh: stackLayers ? scrollVh : "auto"
             })
           : null;
 
