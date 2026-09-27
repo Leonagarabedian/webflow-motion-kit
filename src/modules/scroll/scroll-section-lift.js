@@ -47,7 +47,7 @@ function cleanupTween(gsap, tween) {
 
 export const scrollSectionLift = {
   name: "scroll-section-lift",
-  category: "scroll",
+  category: "composition",
   selector: '[data-motion~="scroll-section-lift"]',
 
   mount(root, { gsap, ScrollTrigger, reducedMotion }) {
