@@ -9,7 +9,7 @@ This is not an About-specific choreography module. It scopes the original refere
 - background scale + x drift
 - aperture/window scale
 - left/right panel split on desktop
-- optional sky/background parallax on desktop
+- optional parallax layer movement on desktop
 
 The module does not create the section layout. Webflow must provide the scroll area height and sticky/viewport structure, the same way the reference site does with CSS-owned scroll areas.
 
@@ -18,7 +18,7 @@ The module does not create the section layout. Webflow must provide the scroll a
 ```html
 <section data-motion="scroll-aperture-window">
   <div class="sticky-window">
-    <div data-motion-target="sky"></div>
+    <div data-motion-target="parallax-layer"></div>
     <div data-motion-target="background"></div>
     <div data-motion-target="aperture">
       <div data-motion-target="left-panel"></div>
@@ -58,7 +58,7 @@ The module only animates the targets. It should not be used to pile unrelated se
 | `aperture` | `.hero-s` | scale `1 → 8` |
 | `left-panel` | `[hero-s_left]` | x `0vw → -50vw` on desktop |
 | `right-panel` | `[hero-s_right]` | x `0vw → 50vw` on desktop |
-| `sky` | `.sky-bg_hero` | y `0vh → 100vh` on desktop |
+| `parallax-layer` | `.sky-bg_hero` | y `0vh → 100vh` on desktop |
 
 ## Attributes
 
@@ -76,7 +76,7 @@ The module only animates the targets. It should not be used to pile unrelated se
 | `data-motion-panel-distance-vw` | `50` | Panel split distance. |
 | `data-motion-logo-y-from` | `44vh` | Logo starting y. |
 | `data-motion-logo-scale-from` | `1.25` | Logo starting scale. |
-| `data-motion-sky-y-to` | `100vh` | Sky/background parallax y. |
+| `data-motion-parallax-y-to` | `100vh` | Optional parallax layer y movement. |
 | `data-motion-markers` | `false` | Debug markers. |
 
 ## Source notes
