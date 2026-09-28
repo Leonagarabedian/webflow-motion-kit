@@ -157,6 +157,10 @@ export const scrollContracts = Object.freeze([
     "role": "owner"
   },
   {
+    "name": "scroll-media-scale-reveal",
+    "role": "owner"
+  },
+  {
     "name": "pinned-media",
     "role": "owner"
   },
