@@ -1,8 +1,8 @@
 # scroll-media-scale-reveal
 
-A reusable scroll composition where primary media scales down and shifts upward before the visible primary image fades/masks away and a reveal media layer opens in its place. A long scroll area holds a sticky viewport, content panels move out, the primary media scales into its arrival state, and the reveal media completes the transition.
+A neutral, reusable reconstruction of the scroll-driven media handoff used by the reference composition. It preserves the source motion model without depending on source-site classes, element names, artwork, or copy.
 
-The layout owns the scroll area, sticky viewport, media sizing, and masks. The module drives the effect with one sequenced ScrollTrigger timeline so the primary media scale movement ends before the reveal phase begins.
+The layout owns the scroll area, sticky layers, media sizing, stacking, and mask images. The module owns four independent scroll animations so each phase retains its original trigger range and scrub response.
 
 ## Webflow setup
 
@@ -20,65 +20,85 @@ The layout owns the scroll area, sticky viewport, media sizing, and masks. The m
   </div>
 
   <div data-motion-target="primary">
-    <img data-motion-target="primary-image" />
+    <img data-motion-target="primary-image" alt="">
   </div>
 
-  <img data-motion-target="reveal" />
+  <img data-motion-target="reveal" alt="">
 </section>
 ```
+
+The target names describe roles rather than source-site implementation names.
 
 ## Required targets
 
 | Target | Purpose |
 | --- | --- |
-| `background` | Background or light layer that fades in during the first part of the scroll area. |
-| `content-panel` | One or more text or detail panels that move downward through the middle of the scroll area. |
-| `primary` | The primary media wrapper that scales down and shifts upward into its arrival state. |
-| `primary-image` | The visible primary image layer that fades during the reveal phase. |
-| `reveal` | The secondary media layer that fades or mask-reveals after the primary scale movement. |
+| `background` | Background/light layer that fades in during the first phase. |
+| `content-panel` | One or more panels that move downward during the media contraction. |
+| `primary` | Primary media wrapper that scales down and shifts upward. |
+| `primary-image` | Visible primary image whose mask closes during the handoff. |
+| `reveal` | Secondary media whose mask opens during the handoff. |
 
-## Default timing
+Each target is optional, but `primary` plus the two image layers produce the complete composition.
 
-The effect is one scrubbed timeline from `data-motion-start` to `data-motion-end`.
+## Source-accurate default phases
 
-| Part | Timeline position | Default motion |
-| --- | --- | --- |
-| Background | `0` to `.28` | opacity `0` to `1` |
-| Primary media scale | `.18` to `.72` | scale `1` to `.4`, yPercent `0` to `-15` |
-| Content panels | `.28` to `.72` | yPercent `0` to `100` |
-| Reveal phase | `.78` to `1` | primary image opacity `1` to `0`; reveal opacity `0` to `1`, reveal mask opens |
+The reference uses separate top-level ScrollTriggers rather than one master timeline.
+
+| Part | Start | End | Scrub | Default motion |
+| --- | --- | --- | --- | --- |
+| Background | `top top` | `center center` | `true` | opacity `0 → 1` |
+| Primary media | `25% center` | `85% bottom` | `1.2` | scale `1 → .4`; yPercent `0 → -15`; custom accelerating ease |
+| Content panels | `50% center` | `85% bottom` | `1.2` | yPercent `0 → 100` |
+| Handoff | `85% bottom` | `bottom bottom` | `true` | primary mask closes; reveal mask opens |
+
+The primary ease defaults to cubic Bézier `0.5,0,0.75,0`. The other phases use linear easing.
 
 ## Attributes
 
-| Attribute | Default | Notes |
-| --- | --- | --- |
-| `data-motion-min-width` | `992` | Desktop breakpoint. |
-| `data-motion-mobile` | `false` | Allows the effect below the desktop breakpoint. |
-| `data-motion-trigger` | root | Optional trigger selector. |
-| `data-motion-markers` | `false` | Shows ScrollTrigger markers. |
-| `data-motion-start` | `top top` | Timeline start. |
-| `data-motion-end` | `bottom bottom` | Timeline end. |
-| `data-motion-scrub` | `1.2` | Scrub value for the full timeline. |
-| `data-motion-background-at` | `0` | Normalized timeline position for background fade. |
-| `data-motion-background-duration` | `.28` | Normalized background fade duration. |
-| `data-motion-content-at` | `.28` | Normalized timeline position for content movement. |
-| `data-motion-content-duration` | `.44` | Normalized content movement duration. |
-| `data-motion-primary-at` | `.18` | Normalized timeline position for primary media scale movement. |
-| `data-motion-primary-duration` | `.54` | Normalized primary media scale duration. |
-| `data-motion-handoff-at` | `.78` | Normalized timeline position for the reveal phase. |
-| `data-motion-handoff-duration` | `.22` | Normalized reveal phase duration. |
-| `data-motion-primary-scale-to` | `.4` | Arrival scale for the primary wrapper. |
-| `data-motion-primary-y-to` | `-15` | Arrival yPercent for the primary wrapper. |
-| `data-motion-primary-opacity-to` | `0` | Fade-out state for the primary image during reveal. |
-| `data-motion-reveal-opacity-to` | `1` | Fade-in state for the reveal image during reveal. |
+| Attribute | Default |
+| --- | --- |
+| `data-motion-min-width` | `992` |
+| `data-motion-mobile` | `false` |
+| `data-motion-trigger` | root |
+| `data-motion-markers` | `false` |
+| `data-motion-background-start` | `top top` |
+| `data-motion-background-end` | `center center` |
+| `data-motion-background-scrub` | `true` |
+| `data-motion-primary-start` | `25% center` |
+| `data-motion-primary-end` | `85% bottom` |
+| `data-motion-primary-scrub` | `1.2` |
+| `data-motion-content-start` | `50% center` |
+| `data-motion-content-end` | `85% bottom` |
+| `data-motion-content-scrub` | `1.2` |
+| `data-motion-handoff-start` | `85% bottom` |
+| `data-motion-handoff-end` | `bottom bottom` |
+| `data-motion-handoff-scrub` | `true` |
+| `data-motion-primary-scale-to` | `.4` |
+| `data-motion-primary-y-to` | `-15` |
+| `data-motion-primary-ease` | generated custom ease |
+| `data-motion-primary-ease-curve` | `0.5,0,0.75,0` |
+| `data-motion-primary-mask-from` | `100% 150%` |
+| `data-motion-primary-mask-to` | `100% 0%` |
+| `data-motion-reveal-mask-from` | `100% 0%` |
+| `data-motion-reveal-mask-to` | `100% 150%` |
+| `data-motion-reveal-mask-y-from` | `200%` |
+| `data-motion-reveal-mask-y-to` | `50%` |
 
-Older range-style attributes are not used by this module. Use the normalized `*-at` and `*-duration` attributes above for sequencing.
+Opacity remains `1` on both image layers by default because the source handoff is mask-driven. Optional `data-motion-primary-opacity-*` and `data-motion-reveal-opacity-*` attributes can add a fade for other designs.
 
 ## CSS requirements
 
-- Root scroll area should be about `400vh` high.
-- The sticky switcher should be `position: sticky; top: 0; height: 100vh; overflow: visible;`.
-- The primary media should be its own sticky layer across the scroll area, not trapped inside the sticky content switcher.
-- Prefer a real image element for `primary-image` so the visual has intrinsic dimensions.
-- `reveal` should start visually hidden, either through opacity or the default closed mask.
-- The module controls motion, opacity, and mask variables. It does not create layout or imagery.
+- Use a root scroll area approximately `400vh` high.
+- Use `position: relative` on the root.
+- Keep the text/content switcher sticky at `top: 0` with `height: 100vh`.
+- Keep the primary media on its own sticky layer across the scroll area.
+- Do not place a sticky layer beneath an ancestor with clipping overflow.
+- Apply the desired mask image, repeat, position, and initial sizing to `primary-image` and `reveal`. The module animates mask size and position, but does not choose the mask artwork.
+- Keep independent hover transforms on nested wrappers so they do not overwrite the scroll-owned transforms.
+
+Below `992px`, and when reduced motion is requested, the module leaves the Webflow-authored static layout intact unless `data-motion-mobile="true"` is explicitly set.
+
+## Lifecycle
+
+Every mounted target's complete pre-existing inline style is captured before animation. Destroying the module, changing out of the active media query, or reinitializing restores those styles exactly.
