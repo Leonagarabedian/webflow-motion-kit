@@ -21,6 +21,8 @@ const DEFAULTS = Object.freeze({
   primaryScaleTo: 0.4,
   primaryYFrom: 0,
   primaryYTo: -15,
+  primaryXFrom: 0,
+  primaryXTo: 0,
   primaryOpacityFrom: 1,
   primaryOpacityTo: 0,
   primaryMaskFrom: "100% 150%",
@@ -37,6 +39,8 @@ const DEFAULTS = Object.freeze({
   contentDuration: 0.44,
   primaryAt: 0.18,
   primaryDuration: 0.54,
+  primaryXAt: 0.48,
+  primaryXDuration: 0.32,
   handoffAt: 0.78,
   handoffDuration: 0.22,
   ease: "none",
@@ -140,6 +144,12 @@ export const scrollMediaScaleReveal = {
         const contentDuration = normalizedDuration(root, "motion-content-duration", DEFAULTS.contentDuration);
         const primaryAt = normalizedPosition(root, "motion-primary-at", DEFAULTS.primaryAt);
         const primaryDuration = normalizedDuration(root, "motion-primary-duration", DEFAULTS.primaryDuration);
+        const primaryXAt = normalizedPosition(root, "motion-primary-x-at", DEFAULTS.primaryXAt);
+        const primaryXDuration = normalizedDuration(
+          root,
+          "motion-primary-x-duration",
+          DEFAULTS.primaryXDuration
+        );
         const handoffAt = normalizedPosition(root, "motion-handoff-at", DEFAULTS.handoffAt);
         const handoffDuration = normalizedDuration(root, "motion-handoff-duration", DEFAULTS.handoffDuration);
 
@@ -166,6 +176,7 @@ export const scrollMediaScaleReveal = {
           gsap.set(primary, {
             scale: readNumber(root, "motion-primary-scale-from", DEFAULTS.primaryScaleFrom),
             yPercent: readNumber(root, "motion-primary-y-from", DEFAULTS.primaryYFrom),
+            xPercent: readNumber(root, "motion-primary-x-from", DEFAULTS.primaryXFrom),
             translateZ: 10,
             willChange: "transform"
           });
@@ -234,6 +245,16 @@ export const scrollMediaScaleReveal = {
               duration: primaryDuration
             },
             primaryAt
+          );
+
+          timeline.to(
+            primary,
+            {
+              xPercent: readNumber(root, "motion-primary-x-to", DEFAULTS.primaryXTo),
+              ease: primaryEase,
+              duration: primaryXDuration
+            },
+            primaryXAt
           );
         }
 
