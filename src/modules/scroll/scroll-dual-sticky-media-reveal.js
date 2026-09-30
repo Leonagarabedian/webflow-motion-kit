@@ -276,8 +276,6 @@ export const scrollDualStickyMediaReveal = {
           })
         );
 
-        requestAnimationFrame(() => ScrollTrigger.refresh());
-
         return () => {
           destroyAnimations(animations);
           restoreStyles(initialStyles);
