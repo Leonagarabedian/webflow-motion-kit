@@ -14,6 +14,7 @@ export const blurReveal = {
     const unit = readString(element, "motion-split", "lines");
     const type = unit === "chars" ? "words,chars" : unit;
     const duration = readNumber(element, "motion-duration", 1);
+    const delay = Math.max(0, readNumber(element, "motion-delay", 0));
     const stagger = readNumber(element, "motion-stagger", 0.06);
     const blur = readNumber(element, "motion-blur", 12);
     const yPercent = readNumber(element, "motion-y", 35);
@@ -35,8 +36,8 @@ export const blurReveal = {
             trigger,
             profile: "reveal",
             stages: units.map((target, index) => ({
-              start: index * stagger,
-              end: index * stagger + duration,
+              start: delay + index * stagger,
+              end: delay + index * stagger + duration,
               duration,
               target,
               yPercentFrom: yPercent,
@@ -67,6 +68,7 @@ export const blurReveal = {
           },
           {
             autoAlpha: 1,
+            delay,
             duration,
             ease: readString(element, "motion-ease", "power3.out"),
             filter: "blur(0px)",
