@@ -3,7 +3,7 @@ import {
   readNumber,
   readString,
   resolveTrigger,
-  selectTarget
+  selectTargets
 } from "../../core/config.js";
 
 export const SCROLL_DUAL_STICKY_MEDIA_REVEAL_DEFAULTS = Object.freeze({
@@ -55,18 +55,10 @@ function configuredScrub(element, name, fallback) {
 
 function maskProps(size, y = null) {
   const props = {
-    "--motion-mask-size": size,
-    "--mask-size": size,
-    webkitMaskSize: "var(--motion-mask-size)",
-    maskSize: "var(--motion-mask-size)"
+    "--mask-size": size
   };
 
-  if (y != null) {
-    props["--motion-mask-y"] = y;
-    props["--mask-y"] = y;
-    props.webkitMaskPosition = "50% var(--motion-mask-y)";
-    props.maskPosition = "50% var(--motion-mask-y)";
-  }
+  if (y != null) props["--mask-y"] = y;
 
   return props;
 }
@@ -98,9 +90,20 @@ function scrollConfig(root, trigger, phase, defaults) {
     start: readString(root, "motion-" + phase + "-start", defaults.start),
     end: readString(root, "motion-" + phase + "-end", defaults.end),
     scrub: configuredScrub(root, "motion-" + phase + "-scrub", defaults.scrub),
-    invalidateOnRefresh: true,
     markers: readBoolean(root, "motion-markers", DEFAULTS.markers)
   };
+}
+
+function addFromTo(animations, gsap, targets, fromVars, toVarsFactory) {
+  targets.forEach((target) => {
+    animations.push(
+      gsap.fromTo(
+        target,
+        fromVars(target),
+        toVarsFactory(target)
+      )
+    );
+  });
 }
 
 export const scrollDualStickyMediaReveal = {
@@ -110,6 +113,40 @@ export const scrollDualStickyMediaReveal = {
 
   mount(root, { gsap, ScrollTrigger, CustomEase, reducedMotion }) {
     if (reducedMotion()) return;
+
+    const trigger = resolveTrigger(root);
+    const backgroundTargets = selectTargets(root, "background");
+    const backgroundStyles = captureStyles(backgroundTargets);
+    const backgroundAnimations = [];
+    const ease = readString(root, "motion-ease", DEFAULTS.ease);
+
+    addFromTo(
+      backgroundAnimations,
+      gsap,
+      backgroundTargets,
+      () => ({
+        opacity: readNumber(
+          root,
+          "motion-background-opacity-from",
+          DEFAULTS.backgroundOpacityFrom
+        ),
+        translateZ: 10
+      }),
+      () => ({
+        opacity: readNumber(
+          root,
+          "motion-background-opacity-to",
+          DEFAULTS.backgroundOpacityTo
+        ),
+        translateZ: 10,
+        ease,
+        scrollTrigger: scrollConfig(root, trigger, "background", {
+          start: DEFAULTS.backgroundStart,
+          end: DEFAULTS.backgroundEnd,
+          scrub: DEFAULTS.backgroundScrub
+        })
+      })
+    );
 
     const minWidth = readNumber(root, "motion-min-width", DEFAULTS.minWidth);
     const mm = gsap.matchMedia();
@@ -127,26 +164,24 @@ export const scrollDualStickyMediaReveal = {
         const allowMobile = readBoolean(root, "motion-mobile", DEFAULTS.allowMobile);
         if (!desktop && !allowMobile) return;
 
-        const trigger = resolveTrigger(root);
-        const background = selectTarget(root, "background", null);
-        const contentPrimary = selectTarget(root, "content-primary", null);
-        const contentReveal = selectTarget(root, "content-reveal", null);
-        const media = selectTarget(root, "media", null);
-        const primaryVisual = selectTarget(root, "primary-visual", null);
-        const revealVisual = selectTarget(root, "reveal-visual", null);
-        const contentStates = [contentPrimary, contentReveal].filter(Boolean);
+        const contentPrimaryTargets = selectTargets(root, "content-primary");
+        const contentRevealTargets = selectTargets(root, "content-reveal");
+        const contentTargets = [
+          ...contentPrimaryTargets,
+          ...contentRevealTargets
+        ];
+        const mediaTargets = selectTargets(root, "media");
+        const primaryVisualTargets = selectTargets(root, "primary-visual");
+        const revealVisualTargets = selectTargets(root, "reveal-visual");
         const allTargets = [
-          background,
-          contentPrimary,
-          contentReveal,
-          media,
-          primaryVisual,
-          revealVisual
+          ...contentTargets,
+          ...mediaTargets,
+          ...primaryVisualTargets,
+          ...revealVisualTargets
         ];
         const initialStyles = captureStyles(allTargets);
         const animations = [];
 
-        const ease = readString(root, "motion-ease", DEFAULTS.ease);
         const handoffEase = readString(root, "motion-handoff-ease", DEFAULTS.handoffEase);
         const mediaEaseName = readString(root, "motion-media-ease", null);
         const mediaEase = mediaEaseName || CustomEase.create(
@@ -154,81 +189,47 @@ export const scrollDualStickyMediaReveal = {
           readString(root, "motion-media-ease-curve", DEFAULTS.mediaEaseCurve)
         );
 
-        if (background) {
-          animations.push(
-            gsap.fromTo(
-              background,
-              {
-                opacity: readNumber(
-                  root,
-                  "motion-background-opacity-from",
-                  DEFAULTS.backgroundOpacityFrom
-                ),
-                translateZ: 10
-              },
-              {
-                opacity: readNumber(
-                  root,
-                  "motion-background-opacity-to",
-                  DEFAULTS.backgroundOpacityTo
-                ),
-                translateZ: 10,
-                ease,
-                scrollTrigger: scrollConfig(root, trigger, "background", {
-                  start: DEFAULTS.backgroundStart,
-                  end: DEFAULTS.backgroundEnd,
-                  scrub: DEFAULTS.backgroundScrub
-                })
-              }
-            )
-          );
-        }
+        addFromTo(
+          animations,
+          gsap,
+          contentTargets,
+          () => ({
+            yPercent: readNumber(root, "motion-content-y-from", DEFAULTS.contentYFrom),
+            translateZ: 10
+          }),
+          () => ({
+            yPercent: readNumber(root, "motion-content-y-to", DEFAULTS.contentYTo),
+            translateZ: 10,
+            ease,
+            scrollTrigger: scrollConfig(root, trigger, "content", {
+              start: DEFAULTS.contentStart,
+              end: DEFAULTS.contentEnd,
+              scrub: DEFAULTS.contentScrub
+            })
+          })
+        );
 
-        if (contentStates.length) {
-          animations.push(
-            gsap.fromTo(
-              contentStates,
-              {
-                yPercent: readNumber(root, "motion-content-y-from", DEFAULTS.contentYFrom),
-                translateZ: 10
-              },
-              {
-                yPercent: readNumber(root, "motion-content-y-to", DEFAULTS.contentYTo),
-                translateZ: 10,
-                ease,
-                scrollTrigger: scrollConfig(root, trigger, "content", {
-                  start: DEFAULTS.contentStart,
-                  end: DEFAULTS.contentEnd,
-                  scrub: DEFAULTS.contentScrub
-                })
-              }
-            )
-          );
-        }
-
-        if (media) {
-          animations.push(
-            gsap.fromTo(
-              media,
-              {
-                scale: readNumber(root, "motion-media-scale-from", DEFAULTS.mediaScaleFrom),
-                yPercent: readNumber(root, "motion-media-y-from", DEFAULTS.mediaYFrom),
-                translateZ: 10
-              },
-              {
-                scale: readNumber(root, "motion-media-scale-to", DEFAULTS.mediaScaleTo),
-                yPercent: readNumber(root, "motion-media-y-to", DEFAULTS.mediaYTo),
-                translateZ: 10,
-                ease: mediaEase,
-                scrollTrigger: scrollConfig(root, trigger, "media", {
-                  start: DEFAULTS.mediaStart,
-                  end: DEFAULTS.mediaEnd,
-                  scrub: DEFAULTS.mediaScrub
-                })
-              }
-            )
-          );
-        }
+        addFromTo(
+          animations,
+          gsap,
+          mediaTargets,
+          () => ({
+            scale: readNumber(root, "motion-media-scale-from", DEFAULTS.mediaScaleFrom),
+            yPercent: readNumber(root, "motion-media-y-from", DEFAULTS.mediaYFrom),
+            translateZ: 10
+          }),
+          () => ({
+            scale: readNumber(root, "motion-media-scale-to", DEFAULTS.mediaScaleTo),
+            yPercent: readNumber(root, "motion-media-y-to", DEFAULTS.mediaYTo),
+            translateZ: 10,
+            ease: mediaEase,
+            scrollTrigger: scrollConfig(root, trigger, "media", {
+              start: DEFAULTS.mediaStart,
+              end: DEFAULTS.mediaEnd,
+              scrub: DEFAULTS.mediaScrub
+            })
+          })
+        );
 
         const handoffTrigger = () =>
           scrollConfig(root, trigger, "handoff", {
@@ -237,49 +238,45 @@ export const scrollDualStickyMediaReveal = {
             scrub: DEFAULTS.handoffScrub
           });
 
-        if (primaryVisual) {
-          animations.push(
-            gsap.fromTo(
-              primaryVisual,
-              {
-                ...maskProps(
-                  readString(root, "motion-primary-mask-from", DEFAULTS.primaryMaskFrom)
-                )
-              },
-              {
-                ...maskProps(
-                  readString(root, "motion-primary-mask-to", DEFAULTS.primaryMaskTo)
-                ),
-                ease: handoffEase,
-                scrollTrigger: handoffTrigger()
-              }
+        addFromTo(
+          animations,
+          gsap,
+          primaryVisualTargets,
+          () => ({
+            ...maskProps(
+              readString(root, "motion-primary-mask-from", DEFAULTS.primaryMaskFrom)
             )
-          );
-        }
+          }),
+          () => ({
+            ...maskProps(
+              readString(root, "motion-primary-mask-to", DEFAULTS.primaryMaskTo)
+            ),
+            ease: handoffEase,
+            scrollTrigger: handoffTrigger()
+          })
+        );
 
-        if (revealVisual) {
-          animations.push(
-            gsap.fromTo(
-              revealVisual,
-              {
-                ...maskProps(
-                  readString(root, "motion-reveal-mask-from", DEFAULTS.revealMaskFrom),
-                  readString(root, "motion-reveal-mask-y-from", DEFAULTS.revealMaskYFrom)
-                )
-              },
-              {
-                ...maskProps(
-                  readString(root, "motion-reveal-mask-to", DEFAULTS.revealMaskTo),
-                  readString(root, "motion-reveal-mask-y-to", DEFAULTS.revealMaskYTo)
-                ),
-                ease: handoffEase,
-                scrollTrigger: handoffTrigger()
-              }
+        addFromTo(
+          animations,
+          gsap,
+          revealVisualTargets,
+          () => ({
+            ...maskProps(
+              readString(root, "motion-reveal-mask-from", DEFAULTS.revealMaskFrom),
+              readString(root, "motion-reveal-mask-y-from", DEFAULTS.revealMaskYFrom)
             )
-          );
-        }
+          }),
+          () => ({
+            ...maskProps(
+              readString(root, "motion-reveal-mask-to", DEFAULTS.revealMaskTo),
+              readString(root, "motion-reveal-mask-y-to", DEFAULTS.revealMaskYTo)
+            ),
+            ease: handoffEase,
+            scrollTrigger: handoffTrigger()
+          })
+        );
 
-        ScrollTrigger.refresh();
+        requestAnimationFrame(() => ScrollTrigger.refresh());
 
         return () => {
           destroyAnimations(animations);
@@ -288,6 +285,12 @@ export const scrollDualStickyMediaReveal = {
       }
     );
 
-    return () => mm.revert();
+    requestAnimationFrame(() => ScrollTrigger.refresh());
+
+    return () => {
+      mm.revert();
+      destroyAnimations(backgroundAnimations);
+      restoreStyles(backgroundStyles);
+    };
   }
 };
