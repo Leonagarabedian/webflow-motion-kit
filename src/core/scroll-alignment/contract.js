@@ -13,15 +13,18 @@ export function scrollMode(root) {
  */
 export function resolveScrollContract(root, legacy, auto) {
   const mode = scrollMode(root);
+  const triggerId = readString(root, "motion-trigger-id", null);
+
   if (mode !== "auto") {
     const start = readString(root, "motion-start", null);
     const end = readString(root, "motion-end", null);
     const distance = readNumber(root, "motion-scroll-distance", 0);
     const vh = readNumber(root, "motion-scroll-vh", 0);
     const scrub = root.hasAttribute("data-motion-scrub") ? readNumber(root, "motion-scrub", legacy.scrub) : legacy.scrub;
-    if (start == null && end == null && !distance && !vh && scrub === legacy.scrub) return legacy;
+    if (start == null && end == null && !distance && !vh && scrub === legacy.scrub && triggerId == null) return legacy;
     return {
       ...legacy,
+      ...(triggerId == null ? {} : { id: triggerId }),
       ...(start == null ? {} : { start }),
       ...(end != null ? { end } : distance > 0 ? { end: () => "+=" + distance } : vh > 0 ? { end: () => "+=" + window.innerHeight * vh / 100 } : {}),
       ...(scrub === undefined ? {} : { scrub })
@@ -32,6 +35,7 @@ export function resolveScrollContract(root, legacy, auto) {
   return {
     ...legacy,
     ...geometry,
+    ...(triggerId == null ? {} : { id: triggerId }),
     invalidateOnRefresh: true,
     // Authored smoothing is independent of automatic range calculation.
     ...(root.hasAttribute("data-motion-scrub") ? { scrub: readNumber(root, "motion-scrub", legacy.scrub) } : {})
