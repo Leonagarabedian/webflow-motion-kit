@@ -21,6 +21,7 @@ export const syncedFade = {
     const syncTriggerId = readString(element, "motion-fade-sync-trigger-id", "");
     if (!syncTriggerId) return;
 
+    const minWidth = readNumber(element, "motion-min-width", 0);
     const progressStart = clamp01(
       readNumber(element, "motion-fade-progress-start", DEFAULTS.progressStart)
     );
@@ -36,9 +37,20 @@ export const syncedFade = {
     let destroyed = false;
     let syncTrigger = null;
     let rafId = null;
+    let wasDisabled = false;
 
     const update = () => {
       if (destroyed) return;
+
+      const disabled = minWidth > 0 && window.innerWidth < minWidth;
+      if (disabled) {
+        if (!wasDisabled) gsap.set(element, { clearProps: "opacity,y" });
+        wasDisabled = true;
+        rafId = requestAnimationFrame(update);
+        return;
+      }
+      wasDisabled = false;
+
       syncTrigger = ScrollTrigger.getById(syncTriggerId) || null;
 
       if (syncTrigger) {
