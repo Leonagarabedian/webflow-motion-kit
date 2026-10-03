@@ -7,7 +7,8 @@ const DEFAULTS = Object.freeze({
   opacityFrom: 1,
   opacityTo: 0,
   yFrom: 0,
-  yTo: 0
+  yTo: 0,
+  ease: "none"
 });
 
 export const syncedFade = {
@@ -33,6 +34,8 @@ export const syncedFade = {
     const opacityTo = readNumber(element, "motion-fade-opacity-to", DEFAULTS.opacityTo);
     const yFrom = readNumber(element, "motion-fade-y-from", DEFAULTS.yFrom);
     const yTo = readNumber(element, "motion-fade-y-to", DEFAULTS.yTo);
+    const easeName = readString(element, "motion-fade-ease", DEFAULTS.ease);
+    const ease = gsap.parseEase?.(easeName) || ((value) => value);
 
     let destroyed = false;
     let syncTrigger = null;
@@ -55,9 +58,10 @@ export const syncedFade = {
 
       if (syncTrigger) {
         const p = syncedProgress(syncTrigger.progress, progressStart, progressEnd);
+        const easedP = clamp01(ease(p));
         gsap.set(element, {
-          opacity: opacityFrom + (opacityTo - opacityFrom) * p,
-          y: yFrom + (yTo - yFrom) * p
+          opacity: opacityFrom + (opacityTo - opacityFrom) * easedP,
+          y: yFrom + (yTo - yFrom) * easedP
         });
       }
 
