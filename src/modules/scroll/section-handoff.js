@@ -130,12 +130,12 @@ export const sectionHandoff = {
           return `+=${Math.max(1, window.innerHeight)}`;
         }
 
-        if (/^-?\\d*\\.?\\d+vh$/.test(distance)) {
+        if (/^-?\d*\.?\d+vh$/.test(distance)) {
           const vh = parseFloat(distance);
           return `+=${Math.max(1, window.innerHeight * (vh / 100))}`;
         }
 
-        if (/^\\d+(?:\\.\\d+)?px$/.test(distance)) {
+        if (/^\d+(?:\.\d+)?px$/.test(distance)) {
           return `+=${Math.max(1, parseFloat(distance))}`;
         }
 
@@ -164,15 +164,10 @@ export const sectionHandoff = {
         const outgoingRect = outgoing.getBoundingClientRect();
         const incomingRect = element.getBoundingClientRect();
 
-        // Equal/taller incoming sections keep the authored slide-over timing.
         if (incomingRect.height >= outgoingRect.height) {
           return authoredEnd;
         }
 
-        // For a shorter incoming section, release the outgoing pin when the
-        // incoming section's bottom reaches the outgoing section's pinned bottom.
-        // ScrollTrigger refresh temporarily restores normal document flow, so
-        // these bounds reflect the authored layout each time they are measured.
         const scrollY = window.scrollY || window.pageYOffset || 0;
         const outgoingBottomInDocument = outgoingRect.bottom + scrollY;
         const outgoingPinnedBottom = outgoingBottomInDocument - self.start;
@@ -264,6 +259,8 @@ export const sectionHandoff = {
     const opacityTo = clamp(
       readNumber(element, "motion-section-handoff-opacity-to", DEFAULTS.opacityTo)
     );
+    const easeName = readString(element, "motion-section-handoff-ease", DEFAULTS.ease);
+    const ease = gsap.parseEase?.(easeName) || ((value) => value);
 
     if (usePosition) {
       gsap.set(element, {
@@ -289,10 +286,11 @@ export const sectionHandoff = {
 
       const triggerProgress = syncTrigger.progress;
       const p = clamp((triggerProgress - progressStart) / (progressEnd - progressStart));
+      const easedP = clamp(ease(p));
 
       if (useBackground && backgroundLayer) {
         gsap.set(backgroundLayer, {
-          opacity: opacityFrom + (opacityTo - opacityFrom) * p
+          opacity: opacityFrom + (opacityTo - opacityFrom) * easedP
         });
       }
 
@@ -304,7 +302,7 @@ export const sectionHandoff = {
         if (triggerProgress < progressStart) {
           setY(0);
         } else if (triggerProgress < progressEnd) {
-          setY(fullLift * p);
+          setY(fullLift * easedP);
         } else if (naturalTop > targetY) {
           setY(fullLift);
         } else {
